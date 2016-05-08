@@ -1,0 +1,21 @@
+Description: emphasize that a hyphen is really needed in "-1" by writing it as \(hy1
+Author: أحمد المحمودي (Ahmed El-Mahmoudy) <aelmahmoudy@users.sourceforge.net>
+--- a/doc/fribidi_remove_bidi_marks.3
++++ b/doc/fribidi_remove_bidi_marks.3
+@@ -54,14 +54,14 @@
+ string, the other way. Moreover, the position maps should be filled with
+ valid entries.
+ 
+-A position map pointing to a removed character is filled with -1. By the
++A position map pointing to a removed character is filled with \(hy1. By the
+ way, you should not use embedding_levels if str is visual string.
+ 
+ For best results this function should be run on a whole paragraph, not
+ lines; but feel free to do otherwise if you know what you are doing.
+ Deprecated.  Use fribidi_remove_special_chars instead.
+ .SH "RETURNS"
+-New length of the string, or -1 if an error occured (memory
++New length of the string, or \(hy1 if an error occured (memory
+ allocation failure most probably).
+ .SH "SEE ALSO"
+ fribidi_charset_to_unicode(3),

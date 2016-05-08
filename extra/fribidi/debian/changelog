@@ -1,0 +1,253 @@
+fribidi (0.19.2-3) unstable; urgency=low
+
+  * Split fribidi utility in a separate package (Closes: #665790)
+  * debian/control: Updated Standards-Version to 3.9.3
+
+ -- أحمد المحمودي (Ahmed El-Mahmoudy) <aelmahmoudy@sabily.org>  Wed, 28 Mar 2012 11:47:48 +0200
+
+fribidi (0.19.2-2) unstable; urgency=low
+
+  * debian/fribidi.1: fix manpage formatting (Closes: #477212)
+  * debian/control:
+    + Updated my email address
+    + XC-Package-Type -> Package-Type
+  * Add multiarch support
+    + Bumped compat level to 9
+    + debian/control:
+      - Bumped debhelper Build-Dep to 9~
+      - Added Pre-Depends: ${misc:Pre-Depends} for libfribidi0
+      - Added Multi-Arch: same for libfribidi0
+    + *.install: usr/lib/ -> /usr/lib/*/
+  * Bumped Standards-Version to 3.9.2
+    + Drop .la file as per Policy 10.2
+
+ -- أحمد المحمودي (Ahmed El-Mahmoudy) <aelmahmoudy@sabily.org>  Sat, 18 Feb 2012 18:58:42 +0200
+
+fribidi (0.19.2-1) unstable; urgency=low
+
+  * New upstream release. (Closes: #462612)
+  * Switch to 3.0 (quilt) source format.
+  * Added LGPL2 copyright notice in debian/copyright.
+  * Removed fribidi-config.1 since fribidi-config is removed from upstream.
+  * Added THANKS file to libfribidi0.docs.
+  * Added debian/tmp/usr/share/man/man3/*.3 to libfribid-dev.manpages.
+  * debian/rules:
+    + Simplify rules file.
+    + remove empty manpages.
+  * debian/compat: Bump to 7.
+  * debian/control:
+    + Bump debhelper version to >= 7.0.50~ in Build-Depends.
+    + Bump Standards-Version to 3.8.4
+    + Enhanced extended description for libfribidi0 and libfribidi-dev.
+    + Added ${misc:Depends} to Depends fields.
+    + Added myself to uploaders.
+    + Added Vcs-* fields.
+  * debian/fribidi.1: Fix a typo.
+  * Added manpages.diff patch to fix a couple of hyphen issues in
+    fribidi_remove_bidi_marks.3
+  * Added typos.diff patch to fix typo in fribidi help information.
+  * Use dh_install instead of dh_movefiles: Rename debian/*.files to 
+    debian/*.install
+
+ -- أحمد المحمودي (Ahmed El-Mahmoudy) <aelmahmoudy@users.sourceforge.net>  Thu, 04 Feb 2010 13:15:40 +0200
+
+fribidi (0.10.9-1) unstable; urgency=low
+
+  [ Baruch Even ]
+  * New upstream version 0.10.8
+    - Upgrade from unicode standard version 4.1 to 5.0
+
+  [ Lior Kaplan ]
+  * Update debian/control so packages are binNMU safe.
+    See http://wiki.debian.org/binNMU for more info.
+
+  [ Baruch Even ]
+  * Do not ignore errors for make clean
+  * Move Homepage from description to control field
+  * Updated to 0.10.9, former version failed its build tests (Closes: #428067)
+  * Update Standards-Version to 3.7.3, no changes needed
+
+ -- Baruch Even <baruch@debian.org>  Sat, 29 Dec 2007 17:37:56 +0200
+
+fribidi (0.10.7-4) unstable; urgency=low
+
+  * Fix manual page name section (Closes: #368632)
+  * debian/control: Upgrade standards version to 3.7.2 (no changes needed).
+  * debian/copyright: Update Dov Grobgeld's contact address.
+
+ -- Lior Kaplan <kaplan@debian.org>  Sat, 16 Sep 2006 10:37:10 +0300
+
+fribidi (0.10.7-3) unstable; urgency=low
+
+  [ Lior Kaplan ]
+  * Apply patch from Frans Pop on debian/{rules,control} to better handle udeb
+    package in the shlibs file (Closes: #356260)
+
+  [ Baruch Even ]
+  * Update watch file to use www.fribidi.org instead of fribidi.org, the later
+    seems to be malfunctioning.
+
+ -- Lior Kaplan <kaplan@debian.org>  Tue, 14 Mar 2006 23:21:06 +0200
+
+fribidi (0.10.7-2) unstable; urgency=low
+
+  * Update watch file (Closes: #354354)
+  * Use -V option to dh_makeshlibs to automatically update the shlibs file of
+    the package. So far upstream doesn't use so numbering and we have to
+    resort to this hack.
+
+ -- Baruch Even <baruch@debian.org>  Sun, 26 Feb 2006 19:01:46 +0000
+
+fribidi (0.10.7-1) unstable; urgency=low
+
+  * New upstream release
+  * Update link to homepage.
+  * Update libtool/automake/autoconf scripts
+  * Update shlibs to force builders to depend on the latest version
+
+ -- Baruch Even <baruch@debian.org>  Thu, 24 Nov 2005 20:38:11 +0000
+
+fribidi (0.10.5-4) unstable; urgency=low
+
+  * Tighten shlibs again (Closes: #327368, #324397)
+  * Update DH compat to 4
+
+ -- Baruch Even <baruch@debian.org>  Sat, 10 Sep 2005 17:16:24 +0100
+
+fribidi (0.10.5-3) unstable; urgency=low
+
+  * Change maintainership to be the Debian-Hebrew group.
+  * Add Lior Kaplan as uploader.
+  * Change standards-version to 3.6.2, no changes needed.
+
+ -- Baruch Even <baruch@debian.org>  Thu, 28 Jul 2005 10:47:14 +0100
+
+fribidi (0.10.5-2) unstable; urgency=low
+
+  * Compile with -Os -fomit-frame-pointer to reduce size of udeb
+    (Closes: #314379)
+
+ -- Baruch Even <baruch@debian.org>  Fri, 17 Jun 2005 11:03:25 +0100
+
+fribidi (0.10.5-1) unstable; urgency=low
+
+  * New upstream version
+
+ -- Baruch Even <baruch@debian.org>  Thu,  9 Jun 2005 21:08:31 +0100
+
+fribidi (0.10.4-6) unstable; urgency=low
+
+  * The shlibs file in 0.10.4-5 pointed to use fribidi 0.10.5 which is a bug.
+    (Closes: #278616)
+
+ -- Baruch Even <baruch@debian.org>  Thu, 28 Oct 2004 13:04:35 +0100
+
+fribidi (0.10.4-5) unstable; urgency=low
+
+  * Fixed a portability issue in fribidi where the uint32 type it used was
+    really just unsigned long and this fails miserably on 64 bit machines.
+    This bug was exposed by geresh test program for fribidi on ia64 and alpha
+    machines.
+    - Now using standard glibc headers to provide uint32 type and similar size
+      mandataed types.
+    - Added a test program in build stage to make sure we don't have this
+      problem again.
+  * Upped the version required in the Build-Dep so that others will use the
+    fixed version (the above changed ABI on 64 bit machines).
+
+ -- Baruch Even <baruch@debian.org>  Mon, 25 Oct 2004 07:42:00 +0100
+
+fribidi (0.10.4-4) unstable; urgency=low
+
+  * Change the FriBidi homepage in the description. Closes: #275900, #275902
+  * Change the FriBidi homepage in the copyright file.
+  * Remove dependency on automake and libtool, it's unneeded.
+  * Updated watch file.
+  * Added fribidi-config manpage. Closes: #190549
+  * Add shlibs file so other packages will have the correct dependency.
+    Closes: #158886, #183540, #228776
+
+ -- Baruch Even <baruch@debian.org>  Mon, 11 Oct 2004 05:15:23 +0100
+
+fribidi (0.10.4-3) unstable; urgency=low
+
+  * Change -dev package to section libdevel, the override said so.
+
+ -- Baruch Even <baruch@debian.org>  Mon,  7 Jun 2004 08:38:59 +0300
+
+fribidi (0.10.4-2) unstable; urgency=low
+
+  * Move the files in the udeb from /usr/lib to /lib, needed for library
+    reduction to work properly (God knows why). Thanks to Steve Langasek.
+    Closes: #252958
+
+ -- Baruch Even <baruch@debian.org>  Sun,  6 Jun 2004 21:00:04 +0300
+
+fribidi (0.10.4-1.1) unstable; urgency=low
+
+  * NMU.
+  * Produce libfribidi-udeb for debian Installer.
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Sat, 27 Mar 2004 21:17:09 +0000
+
+fribidi (0.10.4-1) unstable; urgency=low
+
+  * New maintainer (Closes: bug#188662)
+  * Moved dh_installdeb near the end so that postrm/postinst will be installed
+    correctly.
+  * Add manpage for fribidi (Closes: bug#174817)
+  * Move pkgconfig files to -dev package (Closes: bug#186158)
+
+ -- Baruch Even <baruch@debian.org>  Sat, 19 Apr 2003 17:32:26 +0300
+
+fribidi (0.10.4-0.1) unstable; urgency=low
+
+  * NMU.
+  * New upstream release - closes: #156879, #157807
+
+ -- Masayuki Hatta <mhatta@debian.org>  Thu, 29 Aug 2002 09:56:48 +0900
+
+fribidi (0.10.1-2) unstable; urgency=low
+
+  * Removed Depends, Build-Depends which don't be needed anymore.
+    (Closes: #136889)
+
+ -- Changwoo Ryu <cwryu@debian.org>  Thu,  7 Mar 2002 12:10:23 +0900
+
+fribidi (0.10.1-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Changwoo Ryu <cwryu@debian.org>  Fri,  8 Feb 2002 22:30:34 +0900
+
+fribidi (0.9.0-4) unstable; urgency=high
+
+  * Rebuild with glib 1.3.12. (Closes: #128539)
+
+ -- Changwoo Ryu <cwryu@debian.org>  Thu, 10 Jan 2002 16:54:19 +0900
+
+fribidi (0.9.0-3) unstable; urgency=low
+
+  * Rebuilt with glib 1.3.11.
+
+ -- Changwoo Ryu <cwryu@debian.org>  Sun,  2 Dec 2001 00:55:38 +0900
+
+fribidi (0.9.0-2) unstable; urgency=high
+
+  * Added libglib1.2-dev to the Build-Depends (Closes: #117224).
+
+ -- Changwoo Ryu <cwryu@debian.org>  Mon, 26 Nov 2001 03:57:04 +0900
+
+fribidi (0.9.0-1) unstable; urgency=low
+
+  * New upstream release.  (Closes: #113299)
+
+ -- Changwoo Ryu <cwryu@debian.org>  Mon, 24 Sep 2001 10:51:47 +0900
+
+fribidi (0.1.12-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Changwoo Ryu <cwryu@debian.org>  Tue, 22 Aug 2000 02:13:16 +0900
+
+

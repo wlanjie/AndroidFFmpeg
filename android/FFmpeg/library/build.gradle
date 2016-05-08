@@ -1,0 +1,76 @@
+apply plugin: 'com.android.model.application'
+
+//def ffmpeg_path = rootDir.absolutePath + "/../contrib/ffmpeg-build"
+def ffmpeg_path_armeabi = rootDir.absolutePath + "/../../extra/build/armeabi/include"
+def ffmpeg_path_armeabi_v7a = rootDir.absolutePath + "/../../extra/build/armeabi-v7a/include"
+def ffmpeg_path_x86 = rootDir.absolutePath + "/../../extra/build/x86/include"
+model {
+    android {
+        compileSdkVersion 23
+        buildToolsVersion "23.0.2"
+
+        defaultConfig {
+            applicationId "com.walnjie.ffmpeg.library"
+            minSdkVersion.apiLevel 14
+            targetSdkVersion.apiLevel 22
+            versionCode 1
+            versionName "1.0"
+        }
+        buildTypes {
+            release {
+                minifyEnabled false
+                proguardFiles.add(file("proguard-rules.pro"))
+            }
+        }
+    }
+
+    android.sources {
+        main {
+            jni {
+                source {
+                    include "libyuv/unit_test/*"
+                    exclude "libyuv/unit_test/*"
+                    include "libyuv/util/*"
+                    exclude "libyuv/util/*"
+                }
+            }
+        }
+    }
+
+    android.ndk {
+        moduleName = "wlanjie"
+        toolchain = "clang"
+        toolchainVersion = "3.6"
+        stl = "stlport_static"
+        CFlags.add("-Wall")
+        CFlags.add("-I${file("src/main/jni")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijkj4a")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijkj4a/j4a")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijkj4a/j4a/class")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijkj4a/j4a/class/android/media")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijkj4a/j4a/class/android/os")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijkj4a/j4a/class/android/java/nio")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijkj4a/j4a/class/android/java/util")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijksdl")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijksdl/android")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijksdl/dummy")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijksdl/ffmpeg")}".toString())
+        CFlags.add("-I${file("src/main/jni/ijksdl/gles2")}".toString())
+        CFlags.add("-I${file("src/main/jni/libyuv")}".toString())
+        CFlags.add("-I${file("src/main/jni/libyuv/include")}".toString())
+        CFlags.add("-I${file("src/main/jni/libyuv/include/libyuv")}".toString())
+        CFlags.add("-I${file(ffmpeg_path_armeabi)}".toString())
+        CFlags.add("-I${file(ffmpeg_path_armeabi_v7a)}".toString())
+        CFlags.add("-I${file(ffmpeg_path_x86)}".toString())
+
+        cppFlags.add("-I${file("src/main/jni/libyuv")}".toString())
+        cppFlags.add("-I${file("src/main/jni/libyuv/include")}".toString())
+        cppFlags.add("-I${file("src/main/jni/libyuv/include/libyuv")}".toString())
+
+        ldFlags.add("-L${file("src/main/jniLibs/armeabi")}".toString())
+        ldFlags.add("-L${file("src/main/jniLibs/armeabi-v7a")}".toString())
+        ldFlags.add("-L${file("src/main/jniLibs/x86")}".toString())
+        ldLibs.addAll(["android", "log", "OpenSLES", "GLESv3", "EGL", "ffmpeg"])
+        abiFilters.addAll(["armeabi","armeabi-v7a", "x86"])
+    }
+}

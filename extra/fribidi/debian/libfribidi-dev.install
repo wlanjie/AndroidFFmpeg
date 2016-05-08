@@ -1,0 +1,4 @@
+usr/include/fribidi/
+usr/lib/*/libfribidi.a
+usr/lib/*/libfribidi.so
+usr/lib/*/pkgconfig/fribidi.pc

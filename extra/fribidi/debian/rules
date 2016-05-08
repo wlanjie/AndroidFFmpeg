@@ -1,0 +1,28 @@
+#!/usr/bin/make -f
+
+# Uncomment this to turn on verbose mode. 
+#export DH_VERBOSE=1
+
+FRIBIDI_UDEB=libfribidi0-udeb
+
+ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
+OBJS += xmalloc.o
+else
+DEB_CFLAGS=-Os -fomit-frame-pointer
+endif
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- CFLAGS="${DEB_CFLAGS}"
+
+override_dh_auto_install:
+	dh_auto_install
+	# Remove empty manpages:
+	rm debian/tmp/usr/share/man/man3/fribidi_set_debug.3
+	rm debian/tmp/usr/share/man/man3/fribidi_unicode_version.3
+	rm debian/tmp/usr/share/man/man3/fribidi_version_info.3
+
+override_dh_makeshlibs:
+	dh_makeshlibs -V --add-udeb="$(FRIBIDI_UDEB)"
