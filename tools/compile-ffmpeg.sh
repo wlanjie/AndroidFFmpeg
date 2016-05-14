@@ -37,8 +37,8 @@ echo_nextstep_help() {
 case "$FF_TARGET" in
     "")
         echo_archs armv7a
-        sh ./do-compile-ffmpeg.sh armv7a
-        cp ffmpeg-build/ffmpeg-armv7a/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/armv7a
+        sh ./do-compile-ffmpeg.sh armeabi-v7a
+        cp ffmpeg-build/ffmpeg-armeabi-v7a/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/armeabi-v7a
     ;;
     armeabi|armeabi-v7a|armeabi-arm64|x86|x86-64)
         echo_archs $FF_TARGET
@@ -51,13 +51,8 @@ case "$FF_TARGET" in
         for ARCH in $FF_ACT_ARCHS_32
         do
             sh ./do-compile-ffmpeg.sh $ARCH
+            cp ffmpeg-build/ffmpeg-$ARCh/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/$ARCh
         done
-        cp ffmpeg-build/ffmpeg-armv5/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/armeabi
-        cp ffmpeg-build/ffmpeg-armv7a/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/armeabi-v7a
-        cp ffmpeg-build/ffmpeg-arm64/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/armeabi-arm64
-        cp ffmpeg-build/ffmpeg-x86/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/x86
-        cp ffmpeg-build/ffmpeg-x86_64/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/x86-64
-
         echo_nextstep_help
     ;;
     all|all64)
@@ -65,12 +60,8 @@ case "$FF_TARGET" in
         for ARCH in $FF_ACT_ARCHS_64
         do
             sh ./do-compile-ffmpeg.sh $ARCH
+            cp ffmpeg-build/ffmepg-armeabi/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/$ARCH
         done
-        cp ffmpeg-build/ffmpeg-armv5/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/armeabi
-        cp ffmpeg-build/ffmpeg-armv7a/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/armeabi-v7a
-        cp ffmpeg-build/ffmpeg-arm64/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/armeabi-arm64
-        cp ffmpeg-build/ffmpeg-x86/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/x86
-        cp ffmpeg-build/ffmpeg-x86_64/output/libffmpeg.so ../android/FFmpeg/library/src/main/jniLibs/x86-64
         echo_nextstep_help
     ;;
     clean)

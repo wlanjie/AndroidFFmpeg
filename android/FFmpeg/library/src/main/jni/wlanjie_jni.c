@@ -10,8 +10,9 @@
 #include <stdio.h>
 #include "utils.h"
 #include "openfile.h"
-#include "compress.h"
 #include "ffmpeg.h"
+#include "log.h"
+
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
 #endif
@@ -20,7 +21,7 @@
 extern "C" {
 #endif
 
-static jint compress(JNIEnv *env, jclass clazz, jstring *input_path, jstring *output_path, jint new_width, jint new_height) {
+static jint compress_jni(JNIEnv *env, jclass clazz, jstring *input_path, jstring *output_path, jint new_width, jint new_height) {
     int ret = 0;
     const char *input = (*env)->GetStringUTFChars(env, input_path, NULL);
     const char *output = (*env)->GetStringUTFChars(env, output_path, NULL);
@@ -58,6 +59,7 @@ static jint compress(JNIEnv *env, jclass clazz, jstring *input_path, jstring *ou
     if (ret < 0) {
         release();
     }
+    input_file = NULL;
     (*env)->ReleaseStringUTFChars(env, input_path, input);
     (*env)->ReleaseStringUTFChars(env, output_path, output);
     (*env)->DeleteLocalRef(env, clazz);
@@ -143,12 +145,21 @@ static void release_ffmpeg(JNIEnv *env, jclass clazz) {
     (*env)->DeleteLocalRef(env, clazz);
 }
 
+void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
+    FILE *fp = fopen("/sdcard/av_log.txt", "a+");
+    if (fp) {
+        vfprintf(fp, fmt, vl);
+        fflush(fp);
+        fclose(fp);
+    }
+}
+
 static JNINativeMethod g_methods[] = {
-        {"compress", "(Ljava/lang/String;Ljava/lang/String;II)I", compress},
+        {"compress", "(Ljava/lang/String;Ljava/lang/String;II)I", compress_jni},
         {"getVideoWidth", "(Ljava/lang/String;)I", get_video_width},
         {"getVideoHeight", "(Ljava/lang/String;)I", get_video_height},
         {"getRotation", "(Ljava/lang/String;)D", get_video_rotation},
-        {"release", "()V", release_ffmpeg}
+        {"release", "()V", release_ffmpeg},
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
@@ -156,13 +167,17 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
         return -1;
     }
+    av_register_all();
+    avfilter_register_all();
+    av_log_set_level(AV_LOG_ERROR);
+    av_log_set_callback(log_callback);
     jclass clazz = (*env)->FindClass(env, CLASS_NAME);
     (*env)->RegisterNatives(env, clazz, g_methods, NELEM(g_methods));
     return JNI_VERSION_1_6;
 }
 
 JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
-
+    LOGE("JNI OnUnLoad");
 }
 
 #ifdef __cplusplus
