@@ -179,17 +179,19 @@ int open_output_file(const char *output_path, int new_width, int new_height) {
                     if (ost == NULL) {
                         return AVERROR(ENOMEM);
                     }
-                    if (new_width > 0 && new_height > 0) {
-                        char video_size[10];
-                        snprintf(video_size, sizeof(video_size), "%dx%d", new_width, new_height);
-                        ret = av_parse_video_size(&ost->enc_ctx->width, &ost->enc_ctx->height,
-                                                  video_size);
-                        if (ret < 0) {
-                            av_free(video_size);
-                            av_err2str(ret);
-                            return ret;
-                        }
-                    }
+                    ost->new_width = new_width;
+                    ost->new_height = new_height;
+//                    if (new_width > 0 && new_height > 0) {
+//                        char video_size[10];
+//                        snprintf(video_size, sizeof(video_size), "%dx%d", new_width, new_height);
+//                        ret = av_parse_video_size(&ost->enc_ctx->width, &ost->enc_ctx->height,
+//                                                  video_size);
+//                        if (ret < 0) {
+//                            av_free(video_size);
+//                            av_err2str(ret);
+//                            return ret;
+//                        }
+//                    }
                     ost->st->sample_aspect_ratio = ost->enc_ctx->sample_aspect_ratio;
                     ost->avfilter = av_strdup("null");
                 }

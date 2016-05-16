@@ -37,7 +37,7 @@ public class MainActivity extends Activity {
                                         newWidth = width / 2;
                                         newHeight = height / 2;
                                     }
-                                    int result = FFmpeg.compress("/sdcard/DCIM/Camera/a.mp4", "/sdcard/DCIM/Camera/compress.mp4", newWidth, newHeight);
+                                    int result = FFmpeg.compress("/sdcard/DCIM/Camera/a.mp4", "/sdcard/DCIM/Camera/compress.mp4", -1, -1);
                                     FFmpeg.release();
                                     long end = System.currentTimeMillis();
                                     if (result >= 0) {

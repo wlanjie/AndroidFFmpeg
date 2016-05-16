@@ -190,8 +190,12 @@ int configure_output_video_filter(FilterGraph *graph, AVFilterInOut *out) {
         return ret;
     }
     AVFilterContext *scale_context = NULL;
-    if (graph->output->ost->enc_ctx->width > 0 && graph->output->ost->enc_ctx->height > 0) {
-        scale_context = get_scale_filter(format_context, graph->graph, graph->output->ost->enc_ctx->width, graph->output->ost->enc_ctx->height);
+    int width = graph->output->ost->new_width;
+    int height = graph->output->ost->new_height;
+    if (!(width == -1 && height == -1)) {
+        if ((width == -1 || width > 0) && (height == -1 || height > 0)) {
+            scale_context = get_scale_filter(format_context, graph->graph, width, height);
+        }
     }
     ret = avfilter_link(scale_context ? scale_context : format_context, 0, graph->output->filter, 0);
     if (ret < 0) {

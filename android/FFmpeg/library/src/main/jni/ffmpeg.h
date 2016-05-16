@@ -36,6 +36,8 @@ typedef struct OutputStream {
     AVCodecContext *enc_ctx;
     struct AVCodec *enc;
     char *avfilter;
+    int new_width;
+    int new_height;
     struct OutputFilter *filter;
 } OutputStream;
 
