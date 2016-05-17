@@ -5,7 +5,7 @@
 #ifndef FFMPEG_OPENFILE_H
 #define FFMPEG_OPENFILE_H
 
-int open_input_file(const char *input_path);
-int open_output_file(const char *output_path, int new_width, int new_height);
+int open_input_file(char *input_data_source);
+int open_output_file(char *output_data_source, int new_width, int new_height);
 void release();
 #endif //FFMPEG_OPENFILE_H

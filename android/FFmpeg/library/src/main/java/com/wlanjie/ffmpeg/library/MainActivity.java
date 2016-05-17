@@ -25,9 +25,12 @@ public class MainActivity extends Activity {
                                 super.run();
                                 try {
                                     long start = System.currentTimeMillis();
-                                    int width = FFmpeg.getVideoWidth("/sdcard/DCIM/Camera/a.mp4");
-                                    int height = FFmpeg.getVideoHeight("/sdcard/DCIM/Camera/a.mp4");
-                                    double rotation = FFmpeg.getRotation("/sdcard/DCIM/Camera/a.mp4");
+                                    FFmpeg ffmpeg = FFmpeg.getInstance();
+                                    ffmpeg.setInputDataSource("/sdcard/DCIM/Camera/a.mp4");
+                                    ffmpeg.setOutputDataSource("/sdcard/DCIM/Camera/compress.mp4");
+                                    int width = ffmpeg.getVideoWidth();
+                                    int height = ffmpeg.getVideoHeight();
+                                    double rotation = ffmpeg.getRotation();
                                     int newWidth;
                                     int newHeight;
                                     if (rotation == 90) {
@@ -37,8 +40,8 @@ public class MainActivity extends Activity {
                                         newWidth = width / 2;
                                         newHeight = height / 2;
                                     }
-                                    int result = FFmpeg.compress("/sdcard/DCIM/Camera/a.mp4", "/sdcard/DCIM/Camera/compress.mp4", -1, -1);
-                                    FFmpeg.release();
+                                    int result = ffmpeg.compress(newWidth, newHeight);
+                                    ffmpeg.release();
                                     long end = System.currentTimeMillis();
                                     if (result >= 0) {
                                         Looper.prepare();

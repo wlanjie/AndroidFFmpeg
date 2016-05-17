@@ -8,7 +8,9 @@
 #include <jni.h>
 #include <unistd.h>
 #include <stdio.h>
+#import "ffmpeg.h"
 
-int check_file_exist(JNIEnv *env, const char *file_path);
+MediaSource *get_media_source(JNIEnv *env, jobject instance);
+int check_file_exist(JNIEnv *env, MediaSource *mediaSource);
 
 #endif //FFMPEG_UTILS_H

@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include "utils.h"
 #include "openfile.h"
-#include "ffmpeg.h"
 #include "log.h"
 
 #ifndef NELEM
@@ -21,37 +20,32 @@
 extern "C" {
 #endif
 
-static jint compress_jni(JNIEnv *env, jclass clazz, jstring *input_path, jstring *output_path, jint new_width, jint new_height) {
+static jint compress_jni(JNIEnv *env, jobject object, jint new_width, jint new_height) {
     int ret = 0;
-    const char *input = (*env)->GetStringUTFChars(env, input_path, NULL);
-    const char *output = (*env)->GetStringUTFChars(env, output_path, NULL);
+    MediaSource *mediaSource = get_media_source(env, object);
+    if (mediaSource == NULL) return -1;
     //判断文件是否存在
-
-    if (check_file_exist(env, input) < 0) {
-        (*env)->ReleaseStringUTFChars(env, output_path, output);
-        (*env)->ReleaseStringUTFChars(env, input_path, input);
-        (*env)->DeleteLocalRef(env, clazz);
+    if (check_file_exist(env, mediaSource) < 0) {
+        (*env)->DeleteLocalRef(env, object);
         release();
         return -1;
     }
     if (!input_file) {
-        ret = open_input_file(input);
+        ret = open_input_file(mediaSource->input_path);
         if (ret < 0) {
             if ((*env)->ExceptionCheck) {
                 jclass illegal_argument_class = (*env)->FindClass(env, "java/lang/IllegalStateException");
                 (*env)->ExceptionClear(env);
                 char error[255];
-                snprintf(error, sizeof(error), "Cannot not open file %s\n", input);
+                snprintf(error, sizeof(error), "Cannot not open file %s\n", mediaSource->input_path);
                 (*env)->ThrowNew(env, illegal_argument_class, error);
             }
-            (*env)->ReleaseStringUTFChars(env, input_path, input);
-            (*env)->ReleaseStringUTFChars(env, output_path, output);
-            (*env)->DeleteLocalRef(env, clazz);
+            (*env)->DeleteLocalRef(env, object);
             release();
             return -2;
         }
     }
-    ret = open_output_file(output, new_width, new_height);
+    ret = open_output_file(mediaSource->output_path, new_width, new_height);
     if (ret < 0) {
         return -3;
     }
@@ -59,22 +53,20 @@ static jint compress_jni(JNIEnv *env, jclass clazz, jstring *input_path, jstring
     if (ret < 0) {
         release();
     }
-    input_file = NULL;
-    (*env)->ReleaseStringUTFChars(env, input_path, input);
-    (*env)->ReleaseStringUTFChars(env, output_path, output);
-    (*env)->DeleteLocalRef(env, clazz);
+    (*env)->DeleteLocalRef(env, mediaSource);
+    (*env)->DeleteLocalRef(env, object);
     return ret;
 }
 
-static jint get_video_width(JNIEnv *env, jclass clazz, jstring input_path) {
-    const char *input = (*env)->GetStringUTFChars(env, input_path, 0);
-    if (check_file_exist(env, input) < 0) {
-        (*env)->ReleaseStringUTFChars(env, input_path, input);
+static jint get_video_width(JNIEnv *env, jobject object) {
+    MediaSource *mediaSource = get_media_source(env, object);
+    if (mediaSource == NULL) return 0;
+    if (check_file_exist(env, mediaSource) < 0) {
         release();
         return -1;
     }
     if (!input_file) {
-        if (open_input_file(input) < 0) {
+        if (open_input_file(mediaSource->input_path) < 0) {
             release();
             return -1;
         }
@@ -87,19 +79,20 @@ static jint get_video_width(JNIEnv *env, jclass clazz, jstring input_path) {
             continue;
         }
     }
-    (*env)->DeleteLocalRef(env, clazz);
+    (*env)->DeleteLocalRef(env, mediaSource);
+    (*env)->DeleteLocalRef(env, object);
     return 0;
 }
 
-static jint get_video_height(JNIEnv *env, jclass clazz, jstring input_path) {
-    const char *input = (*env)->GetStringUTFChars(env, input_path, 0);
-    if (check_file_exist(env, input) < 0) {
-        (*env)->ReleaseStringUTFChars(env, input_path, input);
+static jint get_video_height(JNIEnv *env, jobject object) {
+    MediaSource *mediaSource = get_media_source(env, object);
+    if (mediaSource == NULL) return -1;
+    if (check_file_exist(env, mediaSource) < 0) {
         release();
         return -1;
     }
     if (!input_file) {
-        if (open_input_file(input) < 0) {
+        if (open_input_file(mediaSource->input_path) < 0) {
             release();
             return -1;
         }
@@ -112,18 +105,20 @@ static jint get_video_height(JNIEnv *env, jclass clazz, jstring input_path) {
             continue;
         }
     }
-    (*env)->DeleteLocalRef(env, clazz);
+    (*env)->DeleteLocalRef(env, mediaSource);
+    (*env)->DeleteLocalRef(env, object);
     return 0;
 }
 
-static jdouble get_video_rotation(JNIEnv *env, jclass clazz, jstring input_path) {
-    const char *input = (*env)->GetStringUTFChars(env, input_path, 0);
-    if (check_file_exist(env, input) < 0) {
+static jdouble get_video_rotation(JNIEnv *env, jobject object) {
+    MediaSource *mediaSource = get_media_source(env, object);
+    if (mediaSource == NULL) return -1;
+    if (check_file_exist(env, mediaSource) < 0) {
         release();
         return -1.0;
     }
     if (!input_file) {
-        if (open_input_file(input) < 0) {
+        if (open_input_file(mediaSource->input_path) < 0) {
             release();
             return -1.0;
         }
@@ -136,7 +131,8 @@ static jdouble get_video_rotation(JNIEnv *env, jclass clazz, jstring input_path)
             continue;
         }
     }
-    (*env)->DeleteLocalRef(env, clazz);
+    (*env)->DeleteLocalRef(env, mediaSource);
+    (*env)->DeleteLocalRef(env, object);
     return 0;
 }
 
@@ -155,10 +151,10 @@ void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
 }
 
 static JNINativeMethod g_methods[] = {
-        {"compress", "(Ljava/lang/String;Ljava/lang/String;II)I", compress_jni},
-        {"getVideoWidth", "(Ljava/lang/String;)I", get_video_width},
-        {"getVideoHeight", "(Ljava/lang/String;)I", get_video_height},
-        {"getRotation", "(Ljava/lang/String;)D", get_video_rotation},
+        {"compress", "(II)I", compress_jni},
+        {"getVideoWidth", "()I", get_video_width},
+        {"getVideoHeight", "()I", get_video_height},
+        {"getRotation", "()D", get_video_rotation},
         {"release", "()V", release_ffmpeg},
 };
 

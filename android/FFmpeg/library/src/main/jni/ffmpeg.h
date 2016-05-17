@@ -59,6 +59,11 @@ typedef struct FilterGraph {
     OutputFilter *output;
 } FilterGraph;
 
+typedef struct MediaSource {
+    char *input_path;
+    char *output_path;
+} MediaSource;
+
 extern InputFile *input_file;
 extern InputStream **input_streams;
 extern int nb_input_streams;
