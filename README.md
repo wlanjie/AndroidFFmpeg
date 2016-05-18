@@ -14,7 +14,7 @@
 
 ##### 使用
 
-![](http://www.github.com/wlanjie/AndroidFFmpeg)
+![压缩](https://github.com/wlanjie/AndroidFFmpeg/master/image/compress.png)
 
 ### 压缩
 
@@ -28,7 +28,7 @@ int videoWidth = ffmpeg.getVideoWidth();
 int videoHeight = ffmpeg.getVideoHeight();
 //视频的角度,90,180,270,360
 doule roation = ffmpeg.getRotation();
-int result = ffmpeg.setCompress(需要绽放的宽,需要缩放的高);
+int result = ffmpeg.setCompress(需要缩放的宽,需要缩放的高);
 //result >= 0 success
 if (rest < 0) {
     //error
@@ -37,7 +37,7 @@ if (rest < 0) {
 
 ### About me:
 
-wlanjie,供职于teambition Android工程师
+wlanjie,任职于teambition Android工程师
 联系方式:qq:153920981
          email:wlanjie888@gmail.com
 
