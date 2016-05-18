@@ -39,5 +39,4 @@ if (rest < 0) {
 
 wlanjie,任职于teambition Android工程师
 联系方式:qq:153920981
-         email:wlanjie888@gmail.com
 
