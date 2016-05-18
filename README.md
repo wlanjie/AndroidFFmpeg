@@ -14,12 +14,19 @@
 
 ##### 使用
 
+![](http://www.github.com/wlanjie/AndroidFFmpeg)
+
+### 压缩
+
 ```java
 FFmpeg ffmpeg = FFmpeg.getInstance();
 ffmpeg.setInputDataSource("you vido path");
 ffmpeg.setOutputDataSource("you output path");
+//视频的宽
 int videoWidth = ffmpeg.getVideoWidth();
+//视频的高
 int videoHeight = ffmpeg.getVideoHeight();
+//视频的角度,90,180,270,360
 doule roation = ffmpeg.getRotation();
 int result = ffmpeg.setCompress(需要绽放的宽,需要缩放的高);
 //result >= 0 success

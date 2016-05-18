@@ -26,8 +26,8 @@ public class MainActivity extends Activity {
                                 try {
                                     long start = System.currentTimeMillis();
                                     FFmpeg ffmpeg = FFmpeg.getInstance();
-                                    ffmpeg.setInputDataSource("/sdcard/DCIM/Camera/a.mp4");
-                                    ffmpeg.setOutputDataSource("/sdcard/DCIM/Camera/compress.mp4");
+                                    ffmpeg.setInputDataSource("/sdcard/Download/b.mp4");
+                                    ffmpeg.setOutputDataSource("/sdcard/Download/compress.mp4");
                                     int width = ffmpeg.getVideoWidth();
                                     int height = ffmpeg.getVideoHeight();
                                     double rotation = ffmpeg.getRotation();

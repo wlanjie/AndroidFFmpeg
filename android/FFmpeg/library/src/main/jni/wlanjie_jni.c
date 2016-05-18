@@ -26,6 +26,9 @@ static jint compress_jni(JNIEnv *env, jobject object, jint new_width, jint new_h
     if (mediaSource == NULL) return -1;
     //判断文件是否存在
     if (check_file_exist(env, mediaSource) < 0) {
+        av_freep(&mediaSource->input_path);
+        av_freep((&mediaSource->output_path));
+        av_freep(&mediaSource);
         (*env)->DeleteLocalRef(env, object);
         release();
         return -1;
@@ -40,6 +43,9 @@ static jint compress_jni(JNIEnv *env, jobject object, jint new_width, jint new_h
                 snprintf(error, sizeof(error), "Cannot not open file %s\n", mediaSource->input_path);
                 (*env)->ThrowNew(env, illegal_argument_class, error);
             }
+            av_freep(&mediaSource->input_path);
+            av_freep(&mediaSource->output_path);
+            av_freep(&mediaSource);
             (*env)->DeleteLocalRef(env, object);
             release();
             return -2;
@@ -47,13 +53,19 @@ static jint compress_jni(JNIEnv *env, jobject object, jint new_width, jint new_h
     }
     ret = open_output_file(mediaSource->output_path, new_width, new_height);
     if (ret < 0) {
+        av_freep(&mediaSource->input_path);
+        av_freep(&mediaSource->output_path);
+        av_freep(&mediaSource);
+        (*env)->DeleteLocalRef(env, object);
         return -3;
     }
     ret = transcode();
     if (ret < 0) {
         release();
     }
-    (*env)->DeleteLocalRef(env, mediaSource);
+    av_freep(&mediaSource->input_path);
+    av_freep(&mediaSource->output_path);
+    av_freep(&mediaSource);
     (*env)->DeleteLocalRef(env, object);
     return ret;
 }
@@ -79,7 +91,9 @@ static jint get_video_width(JNIEnv *env, jobject object) {
             continue;
         }
     }
-    (*env)->DeleteLocalRef(env, mediaSource);
+    av_freep(&mediaSource->input_path);
+    av_freep(&mediaSource->output_path);
+    av_freep(&mediaSource);
     (*env)->DeleteLocalRef(env, object);
     return 0;
 }
@@ -105,7 +119,9 @@ static jint get_video_height(JNIEnv *env, jobject object) {
             continue;
         }
     }
-    (*env)->DeleteLocalRef(env, mediaSource);
+    av_freep(&mediaSource->input_path);
+    av_freep(&mediaSource->output_path);
+    av_freep(&mediaSource);
     (*env)->DeleteLocalRef(env, object);
     return 0;
 }
@@ -131,7 +147,9 @@ static jdouble get_video_rotation(JNIEnv *env, jobject object) {
             continue;
         }
     }
-    (*env)->DeleteLocalRef(env, mediaSource);
+    av_freep(&mediaSource->input_path);
+    av_freep(&mediaSource->output_path);
+    av_freep(&mediaSource);
     (*env)->DeleteLocalRef(env, object);
     return 0;
 }
