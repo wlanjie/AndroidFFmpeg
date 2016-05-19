@@ -51,5 +51,5 @@ cd tools
 ./compile-x264.sh x86
 #./compile-ffmpeg.sh armeabi
 #./compile-ffmpeg.sh armeabi-v7a
-#./compile-ffmpeg.sh x86
+./compile-ffmpeg.sh x86
 cd -

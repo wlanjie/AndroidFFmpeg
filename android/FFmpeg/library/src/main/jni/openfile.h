@@ -4,8 +4,11 @@
 
 #ifndef FFMPEG_OPENFILE_H
 #define FFMPEG_OPENFILE_H
+#include "ffmpeg.h"
+#include "log.h"
+#include "filter.h"
 
-int open_input_file(const char *input_path);
-int open_output_file(const char *output_path, int new_width, int new_height);
+int open_input_file(MediaSource *mediaSource);
+int open_output_file(MediaSource *mediaSource, int new_width, int new_height);
 void release();
 #endif //FFMPEG_OPENFILE_H
