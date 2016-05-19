@@ -14,7 +14,7 @@
 
 ##### 使用
 
-![压缩](https://github.com/wlanjie/AndroidFFmpeg/master/image/compress.png)
+![压缩](https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/compress.png)
 
 ### 压缩
 
