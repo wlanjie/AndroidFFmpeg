@@ -20,67 +20,78 @@
 extern "C" {
 #endif
 
+static void release_media_source(MediaSource *mediaSource) {
+    av_freep(&mediaSource->input_data_source);
+    av_freep(&mediaSource->output_data_source);
+    if (mediaSource->video_avfilter) {
+        av_freep(&mediaSource->video_avfilter);
+    }
+    if (mediaSource->audio_avfilter) {
+        av_freep(&mediaSource->audio_avfilter);
+    }
+    av_freep(&mediaSource);
+}
+
+static void throw_not_open_file_exception(JNIEnv *env, MediaSource *mediaSource) {
+    if ((*env)->ExceptionCheck) {
+        jclass illegal_argument_class = (*env)->FindClass(env, "java/lang/IllegalStateException");
+        (*env)->ExceptionClear(env);
+        char error[255];
+        snprintf(error, sizeof(error), "Cannot not open file %s\n", mediaSource->input_data_source);
+        (*env)->ThrowNew(env, illegal_argument_class, error);
+    }
+    release_media_source(mediaSource);
+    release();
+}
+
 static jint compress_jni(JNIEnv *env, jobject object, jint new_width, jint new_height) {
     int ret = 0;
     MediaSource *mediaSource = get_media_source(env, object);
+    mediaSource->video_avfilter = av_strdup("null");
+    mediaSource->audio_avfilter = av_strdup("anull");
     if (mediaSource == NULL) return -1;
     //判断文件是否存在
     if (check_file_exist(env, mediaSource) < 0) {
-        av_freep(&mediaSource->input_path);
-        av_freep((&mediaSource->output_path));
-        av_freep(&mediaSource);
+        release_media_source(mediaSource);
         (*env)->DeleteLocalRef(env, object);
         release();
         return -1;
     }
     if (!input_file) {
-        ret = open_input_file(mediaSource->input_path);
+        ret = open_input_file(mediaSource);
         if (ret < 0) {
-            if ((*env)->ExceptionCheck) {
-                jclass illegal_argument_class = (*env)->FindClass(env, "java/lang/IllegalStateException");
-                (*env)->ExceptionClear(env);
-                char error[255];
-                snprintf(error, sizeof(error), "Cannot not open file %s\n", mediaSource->input_path);
-                (*env)->ThrowNew(env, illegal_argument_class, error);
-            }
-            av_freep(&mediaSource->input_path);
-            av_freep(&mediaSource->output_path);
-            av_freep(&mediaSource);
+            throw_not_open_file_exception(env, mediaSource);
             (*env)->DeleteLocalRef(env, object);
-            release();
-            return -2;
+            return ret;
         }
     }
-    ret = open_output_file(mediaSource->output_path, new_width, new_height);
+    ret = open_output_file(mediaSource, new_width, new_height);
     if (ret < 0) {
-        av_freep(&mediaSource->input_path);
-        av_freep(&mediaSource->output_path);
-        av_freep(&mediaSource);
+        release_media_source(mediaSource);
+        release();
         (*env)->DeleteLocalRef(env, object);
-        return -3;
+        return ret;
     }
     ret = transcode();
-    if (ret < 0) {
-        release();
-    }
-    av_freep(&mediaSource->input_path);
-    av_freep(&mediaSource->output_path);
-    av_freep(&mediaSource);
+    release_media_source(mediaSource);
     (*env)->DeleteLocalRef(env, object);
     return ret;
 }
 
 static jint get_video_width(JNIEnv *env, jobject object) {
+    int ret = 0;
     MediaSource *mediaSource = get_media_source(env, object);
-    if (mediaSource == NULL) return 0;
+    if (mediaSource == NULL) return -1;
     if (check_file_exist(env, mediaSource) < 0) {
+        release_media_source(mediaSource);
         release();
         return -1;
     }
     if (!input_file) {
-        if (open_input_file(mediaSource->input_path) < 0) {
-            release();
-            return -1;
+        if ((ret = open_input_file(mediaSource)) < 0) {
+            throw_not_open_file_exception(env, mediaSource);
+            (*env)->DeleteLocalRef(env, object);
+            return ret;
         }
     }
     for (int i = 0; i < input_file->ic->nb_streams; ++i) {
@@ -91,24 +102,25 @@ static jint get_video_width(JNIEnv *env, jobject object) {
             continue;
         }
     }
-    av_freep(&mediaSource->input_path);
-    av_freep(&mediaSource->output_path);
-    av_freep(&mediaSource);
+    release_media_source(mediaSource);
     (*env)->DeleteLocalRef(env, object);
-    return 0;
+    return ret;
 }
 
 static jint get_video_height(JNIEnv *env, jobject object) {
+    int ret = 0;
     MediaSource *mediaSource = get_media_source(env, object);
     if (mediaSource == NULL) return -1;
     if (check_file_exist(env, mediaSource) < 0) {
+        release_media_source(mediaSource);
         release();
         return -1;
     }
     if (!input_file) {
-        if (open_input_file(mediaSource->input_path) < 0) {
-            release();
-            return -1;
+        if ((ret = open_input_file(mediaSource)) < 0) {
+            throw_not_open_file_exception(env, mediaSource);
+            (*env)->DeleteLocalRef(env, object);
+            return ret;
         }
     }
     for (int i = 0; i < input_file->ic->nb_streams; ++i) {
@@ -119,24 +131,25 @@ static jint get_video_height(JNIEnv *env, jobject object) {
             continue;
         }
     }
-    av_freep(&mediaSource->input_path);
-    av_freep(&mediaSource->output_path);
-    av_freep(&mediaSource);
+    release_media_source(mediaSource);
     (*env)->DeleteLocalRef(env, object);
     return 0;
 }
 
 static jdouble get_video_rotation(JNIEnv *env, jobject object) {
+    int ret = 0;
     MediaSource *mediaSource = get_media_source(env, object);
     if (mediaSource == NULL) return -1;
     if (check_file_exist(env, mediaSource) < 0) {
+        release_media_source(mediaSource);
         release();
         return -1.0;
     }
     if (!input_file) {
-        if (open_input_file(mediaSource->input_path) < 0) {
-            release();
-            return -1.0;
+        if ((ret = open_input_file(mediaSource)) < 0) {
+            throw_not_open_file_exception(env, mediaSource);
+            (*env)->DeleteLocalRef(env, object);
+            return ret;
         }
     }
     for (int i = 0; i < input_file->ic->nb_streams; ++i) {
@@ -147,11 +160,43 @@ static jdouble get_video_rotation(JNIEnv *env, jobject object) {
             continue;
         }
     }
-    av_freep(&mediaSource->input_path);
-    av_freep(&mediaSource->output_path);
-    av_freep(&mediaSource);
+    release_media_source(mediaSource);
     (*env)->DeleteLocalRef(env, object);
     return 0;
+}
+
+static jint crop_jni(JNIEnv *env, jobject object, jint x, jint y, jint width, jint height) {
+    int ret = 0;
+    MediaSource *mediaSource = get_media_source(env, object);
+    if (mediaSource == NULL) return -1;
+    char crop_avfilter[128];
+    snprintf(crop_avfilter, sizeof(crop_avfilter), "crop=%d:%d:%d:%d", width, height, x, y);
+    if (check_file_exist(env, mediaSource) < 0) {
+        release_media_source(mediaSource);
+        release();
+        return -1;
+    }
+    mediaSource->video_avfilter = av_strdup(crop_avfilter);
+    mediaSource->audio_avfilter = av_strdup("anull");
+    if (!input_file) {
+        ret = open_input_file(mediaSource);
+        if (ret < 0) {
+            throw_not_open_file_exception(env, mediaSource);
+            (*env)->DeleteLocalRef(env, object);
+            return ret;
+        }
+    }
+    ret = open_output_file(mediaSource, 0, 0);
+    if (ret < 0) {
+        release_media_source(mediaSource);
+        release();
+        (*env)->DeleteLocalRef(env, object);
+        return ret;
+    }
+    ret = transcode();
+    release_media_source(mediaSource);
+    (*env)->DeleteLocalRef(env, object);
+    return ret;
 }
 
 static void release_ffmpeg(JNIEnv *env, jclass clazz) {
@@ -173,6 +218,7 @@ static JNINativeMethod g_methods[] = {
         {"getVideoWidth", "()I", get_video_width},
         {"getVideoHeight", "()I", get_video_height},
         {"getRotation", "()D", get_video_rotation},
+        {"crop", "(IIII)I", crop_jni},
         {"release", "()V", release_ffmpeg},
 };
 

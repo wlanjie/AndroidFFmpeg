@@ -60,8 +60,10 @@ typedef struct FilterGraph {
 } FilterGraph;
 
 typedef struct MediaSource {
-    char *input_path;
-    char *output_path;
+    char *input_data_source;
+    char *output_data_source;
+    char *video_avfilter;
+    char *audio_avfilter;
 } MediaSource;
 
 extern InputFile *input_file;

@@ -8,8 +8,8 @@ void throw_exception(JNIEnv *env, jclass *exception_class, char *message) {
     if (exception_class == NULL || message == NULL) return;
     if ((*env)->ExceptionCheck(env)) {
         (*env)->ExceptionClear(env);
-        (*env)->ThrowNew(env, exception_class, message);
     }
+    (*env)->ThrowNew(env, exception_class, message);
 }
 
 MediaSource *get_media_source(JNIEnv *env, jobject object) {
@@ -91,8 +91,8 @@ MediaSource *get_media_source(JNIEnv *env, jobject object) {
         return NULL;
     }
     MediaSource *mediaSource = av_mallocz(sizeof(*mediaSource));
-    mediaSource->input_path = av_strdup(input_data_source);
-    mediaSource->output_path = av_strdup(output_data_source);
+    mediaSource->input_data_source = av_strdup(input_data_source);
+    mediaSource->output_data_source = av_strdup(output_data_source);
     (*env)->ReleaseStringUTFChars(env, get_input_data_source, input_data_source);
     (*env)->DeleteLocalRef(env, media_source_class);
     (*env)->DeleteLocalRef(env, media_source_object);
@@ -102,33 +102,33 @@ MediaSource *get_media_source(JNIEnv *env, jobject object) {
 }
 
 int check_file_exist(JNIEnv *env, MediaSource *mediaSource) {
-    if (strlen(mediaSource->input_path) == 0) {
+    if (strlen(mediaSource->input_data_source) == 0) {
         if ((*env)->ExceptionCheck(env)) {
             (*env)->ExceptionClear(env);
-            jclass illegal_argument_class = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
-            (*env)->ThrowNew(env, illegal_argument_class, "must be before call FFmpeg.SetInputDataSource() method");
-            (*env)->DeleteLocalRef(env, illegal_argument_class);
         }
+        jclass illegal_argument_class = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
+        (*env)->ThrowNew(env, illegal_argument_class, "must be before call FFmpeg.SetInputDataSource() method");
+        (*env)->DeleteLocalRef(env, illegal_argument_class);
         return -1;
     }
-    if (strlen(mediaSource->output_path) == 0) {
+    if (strlen(mediaSource->output_data_source) == 0) {
         if ((*env)->ExceptionCheck(env)) {
             (*env)->ExceptionClear(env);
-            jclass illegal_argument_class = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
-            (*env)->ThrowNew(env, illegal_argument_class, "must be before call FFmpeg.SetOutputDataSource() method");
-            (*env)->DeleteLocalRef(env, illegal_argument_class);
         }
+        jclass illegal_argument_class = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
+        (*env)->ThrowNew(env, illegal_argument_class, "must be before call FFmpeg.SetOutputDataSource() method");
+        (*env)->DeleteLocalRef(env, illegal_argument_class);
         return -1;
     }
-    if (access(mediaSource->input_path, 4) == -1) {
+    if (access(mediaSource->input_data_source, 4) == -1) {
         if ((*env)->ExceptionCheck(env)) {
             (*env)->ExceptionClear(env);
-            jclass file_not_found_class = (*env)->FindClass(env, "java/io/FileNotFoundException");
-            char error[255];
-            snprintf(error, sizeof(error), "%s not found\n", mediaSource->input_path);
-            (*env)->ThrowNew(env, file_not_found_class, error);
-            (*env)->DeleteLocalRef(env, file_not_found_class);
         }
+        jclass file_not_found_class = (*env)->FindClass(env, "java/io/FileNotFoundException");
+        char error[255];
+        snprintf(error, sizeof(error), "%s not found\n", mediaSource->input_data_source);
+        (*env)->ThrowNew(env, file_not_found_class, error);
+        (*env)->DeleteLocalRef(env, file_not_found_class);
         return -1;
     }
     return 0;

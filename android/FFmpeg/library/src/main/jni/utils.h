@@ -10,7 +10,7 @@
 #include <stdio.h>
 #import "ffmpeg.h"
 
-MediaSource *get_media_source(JNIEnv *env, jobject instance);
+MediaSource *get_media_source(JNIEnv *env, jobject object);
 int check_file_exist(JNIEnv *env, MediaSource *mediaSource);
 
 #endif //FFMPEG_UTILS_H

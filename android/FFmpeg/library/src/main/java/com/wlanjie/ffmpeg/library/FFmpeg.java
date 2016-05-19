@@ -116,7 +116,7 @@ public class FFmpeg {
      * @param width 裁剪视频之后的宽度
      * @param height 裁剪视频之后的高度
      */
-    public native void crop(int x, int y, int width, int height);
+    public native int crop(int x, int y, int width, int height);
 
     /**
      * 释放资源

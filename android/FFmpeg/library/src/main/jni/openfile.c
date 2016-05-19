@@ -2,16 +2,13 @@
 // Created by wlanjie on 16/5/3.
 //
 #include "openfile.h"
-#include "ffmpeg.h"
-#include "log.h"
-#include "filter.h"
 
-int open_input_file(char *input_data_source) {
+int open_input_file(MediaSource *mediaSource) {
     int ret = 0;
     AVFormatContext *ic = NULL;
-    ret = avformat_open_input(&ic, input_data_source, NULL, NULL);
+    ret = avformat_open_input(&ic, mediaSource->input_data_source, NULL, NULL);
     if (ret < 0) {
-        LOGE("open input file error %s file path %s", av_err2str(ret), input_data_source);
+        LOGE("open input file error %s file path %s", av_err2str(ret), mediaSource->input_data_source);
         av_err2str(ret);
         return ret;
     }
@@ -38,7 +35,7 @@ int open_input_file(char *input_data_source) {
     }
     input_file = av_mallocz(sizeof(*input_file));
     input_file->ic = ic;
-    av_dump_format(ic, 0, input_data_source, 0);
+    av_dump_format(ic, 0, mediaSource->input_data_source, 0);
     return ret;
 }
 
@@ -158,10 +155,10 @@ OutputStream *new_output_stream(AVFormatContext *oc, enum AVMediaType type, cons
     return ost;
 }
 
-int open_output_file(char *output_data_source, int new_width, int new_height) {
+int open_output_file(MediaSource *mediaSource, int new_width, int new_height) {
     int ret = 0;
     AVFormatContext *oc = avformat_alloc_context();
-    ret = avformat_alloc_output_context2(&oc, NULL, NULL, output_data_source);
+    ret = avformat_alloc_output_context2(&oc, NULL, NULL, mediaSource->output_data_source);
     if (ret < 0) {
         av_err2str(ret);
         return ret;
@@ -172,7 +169,7 @@ int open_output_file(char *output_data_source, int new_width, int new_height) {
         InputStream *ist = input_streams[i];
         switch (ist->st->codec->codec_type) {
             case AVMEDIA_TYPE_VIDEO:
-                if (av_guess_codec(oc->oformat, NULL, output_data_source, NULL, AVMEDIA_TYPE_VIDEO) != AV_CODEC_ID_NONE) {
+                if (av_guess_codec(oc->oformat, NULL, mediaSource->output_data_source, NULL, AVMEDIA_TYPE_VIDEO) != AV_CODEC_ID_NONE) {
                     OutputStream *ost = new_output_stream(oc, AVMEDIA_TYPE_VIDEO, "libx264", i);
                     if (ost == NULL) {
                         return AVERROR(ENOMEM);
@@ -191,16 +188,16 @@ int open_output_file(char *output_data_source, int new_width, int new_height) {
 //                        }
 //                    }
                     ost->st->sample_aspect_ratio = ost->enc_ctx->sample_aspect_ratio;
-                    ost->avfilter = av_strdup("null");
+                    ost->avfilter = mediaSource->video_avfilter;
                 }
                 break;
             case AVMEDIA_TYPE_AUDIO:
-                if (av_guess_codec(oc->oformat, NULL, output_data_source, NULL, AVMEDIA_TYPE_AUDIO) != AV_CODEC_ID_NONE) {
+                if (av_guess_codec(oc->oformat, NULL, mediaSource->output_data_source, NULL, AVMEDIA_TYPE_AUDIO) != AV_CODEC_ID_NONE) {
                     OutputStream *ost = new_output_stream(oc, AVMEDIA_TYPE_AUDIO, "aac", i);
                     if (ost == NULL) {
                         return AVERROR(ENOMEM);
                     }
-                    ost->avfilter = av_strdup("anull");
+                    ost->avfilter = mediaSource->audio_avfilter;
                 }
                 break;
             default:
@@ -208,7 +205,7 @@ int open_output_file(char *output_data_source, int new_width, int new_height) {
         }
     }
     if (!(oc->oformat->flags & AVFMT_NOFILE)) {
-        ret = avio_open2(&oc->pb, output_data_source, AVIO_FLAG_WRITE, NULL, NULL);
+        ret = avio_open2(&oc->pb, mediaSource->output_data_source, AVIO_FLAG_WRITE, NULL, NULL);
         if (ret < 0) {
             av_err2str(ret);
             return ret;
