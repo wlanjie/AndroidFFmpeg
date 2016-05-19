@@ -5,6 +5,69 @@
 #include "filter.h"
 #include "log.h"
 
+AVFilterContext *get_transpose_filter(AVFilterContext *link_filter_context, AVFilterGraph *graph, const char *args) {
+    AVFilterContext *transpose_context;
+    const AVFilter *transpose = avfilter_get_by_name("transpose");
+    if (avfilter_graph_create_filter(&transpose_context, transpose, "transpose", args, NULL, graph) < 0) {
+        return NULL;
+    }
+    if (avfilter_link(link_filter_context, 0, transpose_context, 0) < 0) {
+        return NULL;
+    }
+    return transpose_context;
+}
+
+AVFilterContext *get_hflip_filter(AVFilterContext *link_filter_context, AVFilterGraph *graph) {
+    AVFilterContext *hflip_context;
+    if (avfilter_graph_create_filter(&hflip_context, avfilter_get_by_name("hflip"), "hflip", NULL, NULL, graph) < 0) {
+        return NULL;
+    }
+    if (avfilter_link(link_filter_context, 0, hflip_context, 0) < 0) {
+        return NULL;
+    }
+    return hflip_context;
+}
+
+AVFilterContext *get_vflip_filter(AVFilterContext *link_filter_context, AVFilterGraph *graph) {
+    AVFilterContext *vflip_context;
+    if (avfilter_graph_create_filter(&vflip_context, avfilter_get_by_name("vflip"), "vflip", NULL, NULL, graph) < 0) {
+        return NULL;
+    }
+
+    if (avfilter_link(link_filter_context, 0, vflip_context, 0) < 0) {
+        return NULL;
+    }
+    return vflip_context;
+}
+
+AVFilterContext *get_rotate_filter(AVFilterContext *link_filter_context, AVFilterGraph *graph, double theta) {
+    AVFilterContext *rotate_context;
+    char rotate_buf[64];
+    snprintf(rotate_buf, sizeof(rotate_buf), "%f*PI/180", theta);
+    if (avfilter_graph_create_filter(&rotate_context, avfilter_get_by_name("rotate"), "rotate", rotate_buf, NULL, graph) < 0) {
+        return NULL;
+    }
+    if (avfilter_link(link_filter_context, 0, rotate_context, 0) < 0) {
+        return NULL;
+    }
+    return rotate_context;
+}
+
+AVFilterContext *get_scale_filter(AVFilterContext *link_filter_context, AVFilterGraph *graph, int width, int height) {
+    AVFilterContext *scale_context;
+    AVFilter *scale_filter = avfilter_get_by_name("scale");
+    AVBPrint args;
+    av_bprint_init(&args, 0, AV_BPRINT_SIZE_AUTOMATIC);
+    av_bprintf(&args, "%d:%d", width, height);
+    if (avfilter_graph_create_filter(&scale_context, scale_filter, "scale", args.str, NULL, graph) < 0) {
+        return NULL;
+    }
+    if (avfilter_link(link_filter_context, 0, scale_context, 0) < 0) {
+       return  NULL;
+    }
+    return scale_context;
+}
+
 int configure_input_video_filter(FilterGraph *fg, AVFilterInOut *in) {
     int ret = 0;
     AVFilter *buffer = avfilter_get_by_name("buffer");
@@ -34,72 +97,24 @@ int configure_input_video_filter(FilterGraph *fg, AVFilterInOut *in) {
     AVFilterContext *last_filter = fg->input->filter;
     double theta = get_rotation(fg->input->ist->st);
     if (fabs(theta - 90) < 1.0) {
-        AVFilterContext *transpose_context;
-        const AVFilter *transpose = avfilter_get_by_name("transpose");
-        ret = avfilter_graph_create_filter(&transpose_context, transpose, "transpose", "clock", NULL, fg->graph);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
+        if (last_filter != NULL) {
+            last_filter = get_transpose_filter(last_filter, fg->graph, "clock");
         }
-        ret = avfilter_link(last_filter, 0, transpose_context, 0);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
-        }
-        last_filter = transpose_context;
     } else if (fabs(theta - 180) < 1.0) {
-        AVFilterContext *hflip_context;
-        ret = avfilter_graph_create_filter(&hflip_context, avfilter_get_by_name("hflip"), "hflip", NULL, NULL, fg->graph);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
+        if (last_filter != NULL) {
+            last_filter = get_hflip_filter(last_filter, fg->graph);
         }
-        ret = avfilter_link(last_filter, 0, hflip_context, 0);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
+        if (last_filter != NULL) {
+            last_filter = get_vflip_filter(last_filter, fg->graph);
         }
-        last_filter = hflip_context;
-        AVFilterContext *vflip_context;
-        ret = avfilter_graph_create_filter(&vflip_context, avfilter_get_by_name("vflip"), "vflip", NULL, NULL, fg->graph);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
-        }
-        ret = avfilter_link(last_filter, 0, vflip_context, 0);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
-        }
-        last_filter = vflip_context;
     } else if (fabs(theta - 270) < 1.0) {
-        AVFilterContext *transpose_context;
-        ret = avfilter_graph_create_filter(&transpose_context, avfilter_get_by_name("transpose"), "transpose", "cclock", NULL, fg->graph);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
+        if (last_filter != NULL) {
+            last_filter = get_transpose_filter(last_filter, fg->graph, "cclock");
         }
-        ret = avfilter_link(last_filter, 0, transpose_context, 0);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
-        }
-        last_filter = transpose_context;
     } else if (fabs(theta) > 1.0) {
-        char rotate_buf[64];
-        snprintf(rotate_buf, sizeof(rotate_buf), "%f*PI/180", theta);
-        AVFilterContext *rotate_context;
-        ret = avfilter_graph_create_filter(&rotate_context, avfilter_get_by_name("rotate"), "rotate", rotate_buf, NULL, fg->graph);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
+        if (last_filter != NULL) {
+            last_filter = get_rotate_filter(last_filter, fg->graph, theta);
         }
-        ret = avfilter_link(last_filter, 0, rotate_context, 0);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
-        }
-        last_filter = rotate_context;
     }
 
     ret = avfilter_link(last_filter, 0, in->filter_ctx, 0);
@@ -175,20 +190,11 @@ int configure_output_video_filter(FilterGraph *graph, AVFilterInOut *out) {
         return ret;
     }
     AVFilterContext *scale_context = NULL;
-    if (graph->output->ost->enc_ctx->width > 0 && graph->output->ost->enc_ctx->height > 0) {
-        AVFilter *scale_filter = avfilter_get_by_name("scale");
-        AVBPrint args;
-        av_bprint_init(&args, 0, AV_BPRINT_SIZE_AUTOMATIC);
-        av_bprintf(&args, "%d:%d", graph->output->ost->enc_ctx->width, graph->output->ost->enc_ctx->height);
-        ret = avfilter_graph_create_filter(&scale_context, scale_filter, "scale", args.str, NULL, graph->graph);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
-        }
-        ret = avfilter_link(format_context, 0, scale_context, 0);
-        if (ret < 0) {
-            av_err2str(ret);
-            return ret;
+    int width = graph->output->ost->new_width;
+    int height = graph->output->ost->new_height;
+    if (!(width == -1 && height == -1)) {
+        if ((width == -1 || width > 0) && (height == -1 || height > 0)) {
+            scale_context = get_scale_filter(format_context, graph->graph, width, height);
         }
     }
     ret = avfilter_link(scale_context ? scale_context : format_context, 0, graph->output->filter, 0);
@@ -296,7 +302,6 @@ int configure_filtergraph(FilterGraph *graph) {
         av_err2str(ret);
         char error[255];
         av_make_error_string(error, sizeof(error), ret);
-        LOGE("ffmpeg", "avfilter graph parse2 error %s", error);
         return ret;
     }
     if (!in || in->next || !out || out->next) {

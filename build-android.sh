@@ -46,10 +46,10 @@ fi
 #   ln -s $ROOT/$YUV_LOCAL_REPO $YUV_JNI_PATH
 # fi
 cd tools
-./compile-x264.sh armeabi
-./compile-x264.sh armeabi-v7a
+#./compile-x264.sh armeabi
+#./compile-x264.sh armeabi-v7a
 ./compile-x264.sh x86
-./compile-ffmpeg.sh armeabi
-./compile-ffmpeg.sh armeabi-v7a
+#./compile-ffmpeg.sh armeabi
+#./compile-ffmpeg.sh armeabi-v7a
 ./compile-ffmpeg.sh x86
 cd -

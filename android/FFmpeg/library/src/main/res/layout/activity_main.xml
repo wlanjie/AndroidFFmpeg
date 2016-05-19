@@ -9,4 +9,11 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="压缩视频"/>
+
+    <Button
+        android:id="@+id/crop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/compress"
+        android:text="裁剪视频"/>
 </RelativeLayout>

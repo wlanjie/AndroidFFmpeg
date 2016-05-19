@@ -4,8 +4,8 @@ FF_TARGET=$1
 set -e
 set +x
 
-FF_ACT_ARCHS_32="armv5 armv7a x86"
-FF_ACT_ARCHS_64="armv5 armv7a arm64 x86 x86_64"
+FF_ACT_ARCHS_32="armeabi armeabi-v7a x86"
+FF_ACT_ARCHS_64="armeabi armeabi-v7a armeabi-arm64 x86 x86-64"
 FF_ACT_ARCHS_ALL=$FF_ACT_ARCHS_64
 
 echo_archs() {
@@ -43,7 +43,7 @@ case "$FF_TARGET" in
         echo_archs armv7a
         sh ./do-compile-x264.sh armv7a
     ;;
-    armv5|armv7a|arm64|x86|x86_64)
+    armeabi|armeabi-v7a|armeabi-arm64|x86|x86-64)
         echo_archs $FF_TARGET
         sh ./do-compile-x264.sh $FF_TARGET
         echo_nextstep_help

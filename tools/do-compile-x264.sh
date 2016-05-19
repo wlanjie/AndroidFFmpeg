@@ -34,16 +34,16 @@ FF_GCC_64_VER=$GCC_64_VER
 
 
 #----- armv7a begin -----
-if [ "$FF_ARCH" = "armv7a" ]; then
-    FF_BUILD_NAME=x264-armv7a
+if [ "$FF_ARCH" = "armeabi-v7a" ]; then
+    FF_BUILD_NAME=armeabi-v7a
     FF_CROSS_PREFIX=arm-linux-androideabi
-	  FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
+	FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
     FF_PLATFORM_CFG_FLAGS="android-armv7"
     FF_HOST_NAME="arm-linux"
     FF_EXTRA_CFLAGS="$FF_EXTRA_CFLAGS -mcpu=cortex-a8 -mfpu=vfpv3-d16 -mthumb -march=armv7-a -mtune=cortex-a9 -mfloat-abi=softfp -mfpu=neon -D__ARM_ARCH_7__ -D__ARM_ARCH_7A__"
     FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS -Wl,--fix-cortex-a8"
-elif [ "$FF_ARCH" = "armv5" ]; then
-    FF_BUILD_NAME=x264-armv5
+elif [ "$FF_ARCH" = "armeabi" ]; then
+    FF_BUILD_NAME=armeabi
     FF_CFG_FLAGS="$FF_CFG_FLAGS --disable-asm"
     FF_CROSS_PREFIX=arm-linux-androideabi
 	  FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
@@ -52,7 +52,7 @@ elif [ "$FF_ARCH" = "armv5" ]; then
     FF_PLATFORM_CFG_FLAGS="android"
     FF_HOST_NAME="arm-linux"
 elif [ "$FF_ARCH" = "x86" ]; then
-    FF_BUILD_NAME=x264-x86
+    FF_BUILD_NAME=x86
     FF_CFG_FLAGS="$FF_CFG_FLAGS --disable-asm"
     FF_CROSS_PREFIX=i686-linux-android
 	  FF_TOOLCHAIN_NAME=x86-${FF_GCC_VER}
@@ -60,9 +60,9 @@ elif [ "$FF_ARCH" = "x86" ]; then
     FF_HOST_NAME="x86-linux"
     FF_EXTRA_CFLAGS="$FF_EXTRA_CFLAGS -march=atom -msse3 -ffast-math -mfpmath=sse"
     FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS"
-elif [ "$FF_ARCH" = "x86_64" ]; then
+elif [ "$FF_ARCH" = "x86-64" ]; then
     FF_ANDROID_PLATFORM=android-21
-    FF_BUILD_NAME=x264-x86_64
+    FF_BUILD_NAME=x86-64
     FF_CFG_FLAGS="$FF_CFG_FLAGS --disable-asm"
     FF_CROSS_PREFIX=x86_64-linux-android
     FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_64_VER}
@@ -70,9 +70,9 @@ elif [ "$FF_ARCH" = "x86_64" ]; then
     FF_HOST_NAME="x86-linux"
     FF_EXTRA_CFLAGS="$FF_EXTRA_CFLAGS"
     FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS"
-elif [ "$FF_ARCH" = "arm64" ]; then
+elif [ "$FF_ARCH" = "armeabi-arm64" ]; then
     FF_ANDROID_PLATFORM=android-21
-    FF_BUILD_NAME=x264-arm64
+    FF_BUILD_NAME=armeabi-arm64
     FF_CFG_FLAGS="$FF_CFG_FLAGS --disable-asm"
     FF_CROSS_PREFIX=aarch64-linux-android
     FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_64_VER}

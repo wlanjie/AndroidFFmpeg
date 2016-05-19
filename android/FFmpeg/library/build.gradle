@@ -1,9 +1,8 @@
 apply plugin: 'com.android.model.application'
 
-//def ffmpeg_path = rootDir.absolutePath + "/../contrib/ffmpeg-build"
-def ffmpeg_path_armeabi = rootDir.absolutePath + "/../../extra/build/armeabi/include"
-def ffmpeg_path_armeabi_v7a = rootDir.absolutePath + "/../../extra/build/armeabi-v7a/include"
-def ffmpeg_path_x86 = rootDir.absolutePath + "/../../extra/build/x86/include"
+def ffmpeg_path_armeabi = rootDir.absolutePath + "/../../tools/ffmpeg-build/armeabi/output/include"
+def ffmpeg_path_armeabi_v7a = rootDir.absolutePath + "/../../tools/ffmpeg-build/armeabi-v7a/output/include"
+def ffmpeg_path_x86 = rootDir.absolutePath + "/../../tools/ffmepg-build/x86/output/include"
 model {
     android {
         compileSdkVersion 23
@@ -73,4 +72,9 @@ model {
         ldLibs.addAll(["android", "log", "OpenSLES", "GLESv3", "EGL", "ffmpeg"])
         abiFilters.addAll(["armeabi","armeabi-v7a", "x86"])
     }
+}
+
+dependencies {
+    compile 'io.reactivex:rxandroid:1.2.0'
+    compile 'io.reactivex:rxjava:1.1.5'
 }

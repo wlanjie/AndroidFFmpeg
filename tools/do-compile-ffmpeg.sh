@@ -67,10 +67,10 @@ FF_GCC_64_VER=$GCC_64_VER
 
 
 #----- armv7a begin -----
-if [ "$FF_ARCH" = "armv7a" ]; then
-    FF_BUILD_NAME=ffmpeg-armv7a
-    FF_BUILD_NAME_OPENSSL=openssl-armv7a
-    FF_BUILD_NAME_X264=x264-armv7a
+if [ "$FF_ARCH" = "armeabi-v7a" ]; then
+    FF_BUILD_NAME=armeabi-v7a
+    FF_BUILD_NAME_OPENSSL=armeabi-v7a
+    FF_BUILD_NAME_X264=armeabi-v7a
     FF_CROSS_PREFIX=arm-linux-androideabi
     FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
 
@@ -83,10 +83,10 @@ if [ "$FF_ARCH" = "armv7a" ]; then
 
     FF_ASSEMBLER_SUB_DIRS="arm"
 
-elif [ "$FF_ARCH" = "armv5" ]; then
-    FF_BUILD_NAME=ffmpeg-armv5
-    FF_BUILD_NAME_OPENSSL=openssl-armv5
-    FF_BUILD_NAME_X264=x264-armv5
+elif [ "$FF_ARCH" = "armeabi" ]; then
+    FF_BUILD_NAME=armeabi
+    FF_BUILD_NAME_OPENSSL=armeabi
+    FF_BUILD_NAME_X264=armeabi
     FF_CROSS_PREFIX=arm-linux-androideabi
     FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
 
@@ -98,9 +98,9 @@ elif [ "$FF_ARCH" = "armv5" ]; then
     FF_ASSEMBLER_SUB_DIRS="arm"
 
 elif [ "$FF_ARCH" = "x86" ]; then
-    FF_BUILD_NAME=ffmpeg-x86
-    FF_BUILD_NAME_OPENSSL=openssl-x86
-    FF_BUILD_NAME_X264=x264-x86
+    FF_BUILD_NAME=x86
+    FF_BUILD_NAME_OPENSSL=x86
+    FF_BUILD_NAME_X264=x86
     FF_CROSS_PREFIX=i686-linux-android
     FF_TOOLCHAIN_NAME=x86-${FF_GCC_VER}
 
@@ -111,11 +111,11 @@ elif [ "$FF_ARCH" = "x86" ]; then
 
     FF_ASSEMBLER_SUB_DIRS="x86"
 
-elif [ "$FF_ARCH" = "x86_64" ]; then
+elif [ "$FF_ARCH" = "x86-64" ]; then
     FF_ANDROID_PLATFORM=android-21
-    FF_BUILD_NAME=ffmpeg-x86_64
-    FF_BUILD_NAME_OPENSSL=openssl-x86_64
-    FF_BUILD_NAME_X264=x264-x86_64
+    FF_BUILD_NAME=x86-64
+    FF_BUILD_NAME_OPENSSL=x86_-4
+    FF_BUILD_NAME_X264=x86-64
     FF_CROSS_PREFIX=x86_64-linux-android
     FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_64_VER}
 
@@ -126,12 +126,12 @@ elif [ "$FF_ARCH" = "x86_64" ]; then
 
     FF_ASSEMBLER_SUB_DIRS="x86"
 
-elif [ "$FF_ARCH" = "arm64" ]; then
+elif [ "$FF_ARCH" = "armeabi-arm64" ]; then
     FF_ANDROID_PLATFORM=android-21
 
-    FF_BUILD_NAME=ffmpeg-arm64
-    FF_BUILD_NAME_OPENSSL=openssl-arm64
-    FF_BUILD_NAME_X264=x264-arm64
+    FF_BUILD_NAME=armeabi-arm64
+    FF_BUILD_NAME_OPENSSL=armeabi-arm64
+    FF_BUILD_NAME_X264=armeabi-arm64
     FF_CROSS_PREFIX=aarch64-linux-android
     FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_64_VER}
 
@@ -223,6 +223,7 @@ fi
 #with x264
 if [ -f "${FF_DEP_X264_LIB}/libx264.a" ]; then
     echo "X264 detected"
+    echo "$FF_DEP_X264_LIB $FF_DEP_X264_INC"
 # FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-nonfree"
     FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-libx264"
     FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-encoder=libx264"

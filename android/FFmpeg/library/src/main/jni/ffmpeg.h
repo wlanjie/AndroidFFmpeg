@@ -35,11 +35,10 @@ typedef struct OutputStream {
     AVStream *st;
     AVCodecContext *enc_ctx;
     struct AVCodec *enc;
-    int source_index;
     char *avfilter;
+    int new_width;
+    int new_height;
     struct OutputFilter *filter;
-    int finished;
-    uint64_t sync_opts;
 } OutputStream;
 
 typedef struct InputFilter {
@@ -60,6 +59,13 @@ typedef struct FilterGraph {
     OutputFilter *output;
 } FilterGraph;
 
+typedef struct MediaSource {
+    char *input_data_source;
+    char *output_data_source;
+    char *video_avfilter;
+    char *audio_avfilter;
+} MediaSource;
+
 extern InputFile *input_file;
 extern InputStream **input_streams;
 extern int nb_input_streams;
@@ -73,4 +79,5 @@ void *grow_array(void *array, int elem_size, int *size, int new_size);
 #define GROW_ARRAY(array, nb_elems) \
     array = grow_array(array, sizeof(*array), &nb_elems, nb_elems + 1);
 
+int transcode();
 #endif //FFMPEG_FFMPEG_H
