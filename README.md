@@ -42,9 +42,9 @@ if (result < 0) {
 
 
 <figure>
-    <img width="250" height="500" src="https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_before.png">
-    <img width="250" height="500" src="https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_after.png">
-    <img width="260" height="260" src="https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_description.png">
+    <img width="200" height="400" src="https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_before.png">
+    <img width="200" height="400" src="https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_after.png">
+    <img width="250" height="400" src="https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_description.png">
 </figure>
 
 ```java
