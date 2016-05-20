@@ -20,7 +20,7 @@
 
 ```java
 FFmpeg ffmpeg = FFmpeg.getInstance();
-ffmpeg.setInputDataSource("you vido path");
+ffmpeg.setInputDataSource("you input path");
 ffmpeg.setOutputDataSource("you output path");
 //视频的宽
 int videoWidth = ffmpeg.getVideoWidth();
@@ -29,8 +29,28 @@ int videoHeight = ffmpeg.getVideoHeight();
 //视频的角度,90,180,270,360
 doule roation = ffmpeg.getRotation();
 int result = ffmpeg.setCompress(需要缩放的宽,需要缩放的高);
+ffmpeg.release();
 //result >= 0 success
-if (rest < 0) {
+if (result < 0) {
+    //error
+}
+```
+
+### 裁剪
+
+下面是裁剪的效果图
+![裁剪之前](https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_before.png)
+![裁剪之后](https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_after.png)
+![示例图](https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_description.png)
+
+```java
+FFmpeg ffmpeg = FFmpeg.getInstance();
+ffmpeg.setInputDataSource("you input path");
+ffmpeg.setOutputDataSource("you outpu path");
+int result = ffmpeg.crop(x, y, width, height);
+ffmpeg.release();
+// result >= 0 success
+if (result < 0) {
     //error
 }
 ```

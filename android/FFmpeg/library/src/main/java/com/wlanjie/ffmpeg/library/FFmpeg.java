@@ -111,8 +111,8 @@ public class FFmpeg {
 
     /**
      * 裁剪视频
-     * @param x 视频x坐标,不能大于视频的宽度
-     * @param y 视频y坐标,不能大于视频的高度
+     * @param x 视频x坐标
+     * @param y 视频y坐标
      * @param width 裁剪视频之后的宽度
      * @param height 裁剪视频之后的高度
      */

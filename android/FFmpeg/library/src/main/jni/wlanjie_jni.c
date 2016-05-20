@@ -173,6 +173,7 @@ static jint crop_jni(JNIEnv *env, jobject object, jint x, jint y, jint width, ji
     snprintf(crop_avfilter, sizeof(crop_avfilter), "crop=%d:%d:%d:%d", width, height, x, y);
     if (check_file_exist(env, mediaSource) < 0) {
         release_media_source(mediaSource);
+        (*env)->DeleteLocalRef(env, object);
         release();
         return -1;
     }

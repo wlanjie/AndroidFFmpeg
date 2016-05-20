@@ -27,6 +27,15 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        findViewById(R.id.rotation)
+                .setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+//                        getRotation("/sdcard/DCIM/Camera/compress.mp4");
+                        getRotation("/sdcard/crop.mp4");
+                    }
+                });
+
         findViewById(R.id.crop)
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -43,6 +52,7 @@ public class MainActivity extends Activity {
                         compress("/sdcard/Download/a.mp4");
                     }
                 });
+
     }
 
     private void startRecoderVideoIntent(int requestCode) {
@@ -63,6 +73,35 @@ public class MainActivity extends Activity {
                 break;
         }
     }
+
+    private void getRotation(final String path) {
+        Observable.create(new Observable.OnSubscribe<Boolean>() {
+            @Override
+            public void call(Subscriber<? super Boolean> subscriber) {
+                try {
+                    FFmpeg ffmpeg = FFmpeg.getInstance();
+                    ffmpeg.setInputDataSource(path);
+                    ffmpeg.setOutputDataSource("/sdcard/compress.mp4");
+                    double rotation = ffmpeg.getRotation();
+                    System.out.println("rotation = " + rotation);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io())
+                .subscribe(new Action1<Boolean>() {
+                    @Override
+                    public void call(Boolean aBoolean) {
+
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        throwable.printStackTrace();
+                    }
+                });
+    }
     
     private void crop(final String path) {
         Observable.create(new Observable.OnSubscribe<Boolean>() {
@@ -73,14 +112,26 @@ public class MainActivity extends Activity {
                     FFmpeg ffmpeg = FFmpeg.getInstance();
                     ffmpeg.setInputDataSource(path);
                     ffmpeg.setOutputDataSource("/sdcard/crop.mp4");
+                    double rotation = ffmpeg.getRotation();
                     final int width = ffmpeg.getVideoWidth();
                     final int height = ffmpeg.getVideoHeight();
-                    int result = ffmpeg.crop(150, 150, 400, 400);
+                    int newWidth;
+                    int newHeight;
+                    if (rotation == 90) {
+                        newWidth = height;
+                        newHeight = width;
+                    } else {
+                        newWidth = width;
+                        newHeight = height;
+                    }
+                    //裁剪视频正中间部分
+                    int result = ffmpeg.crop(newWidth / 2 / 2, newHeight / 2 / 2 , newWidth / 2, newHeight / 2);
                     long end = System.currentTimeMillis();
-                    System.out.println("time = " + ((end - start) / 1000));
+                    System.out.println("time = " + ((end - start) / 1000) + " width = " + width + " height = " + height + " rotation = " + rotation);
                     if (result < 0) {
                         subscriber.onNext(false);
                     }
+                    ffmpeg.release();
                     subscriber.onNext(true);
                     subscriber.onCompleted();
                 } catch (Exception e) {
@@ -99,7 +150,7 @@ public class MainActivity extends Activity {
                 }, new Action1<Throwable>() {
                     @Override
                     public void call(Throwable throwable) {
-                        
+                        throwable.printStackTrace();
                     }
                 });
     }
@@ -151,7 +202,7 @@ public class MainActivity extends Activity {
                 }, new Action1<Throwable>() {
                     @Override
                     public void call(Throwable throwable) {
-
+                        throwable.printStackTrace();
                     }
                 });
     }
