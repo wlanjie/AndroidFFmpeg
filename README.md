@@ -41,7 +41,11 @@ if (result < 0) {
 下面是裁剪的效果图
 
 
-![裁剪之前](https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_before.png)   ![裁剪之后](https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_after.png)   ![示例图](https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_description.png)
+<figure>
+    <img width="150" height="300" src="https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_before.png">
+    <img width="150" height="300" src="https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_after.png">
+    <img width="150" height="300" src="https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/crop_description.png">
+</figure>
 
 ```java
 FFmpeg ffmpeg = FFmpeg.getInstance();
