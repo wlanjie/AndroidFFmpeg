@@ -68,7 +68,7 @@ AVFilterContext *get_scale_filter(AVFilterContext *link_filter_context, AVFilter
     return scale_context;
 }
 
-int configure_input_video_filter(FilterGraph *fg, AVFilterInOut *in) {
+int configure_input_video_filter(FilterGraph *graph, AVFilterInOut *in) {
     int ret = 0;
     AVFilter *buffer = avfilter_get_by_name("buffer");
     if (!buffer) {
@@ -76,44 +76,43 @@ int configure_input_video_filter(FilterGraph *fg, AVFilterInOut *in) {
     }
     AVBPrint args;
     av_bprint_init(&args, 0, AV_BPRINT_SIZE_AUTOMATIC);
-    InputFilter *ifilter = fg->input;
-    const int width = ifilter->ist->dec_ctx->width;
-    const int height = ifilter->ist->dec_ctx->height;
-    const enum AVPixelFormat formt = ifilter->ist->dec_ctx->pix_fmt;
-    const struct AVRational time_base = ifilter->ist->dec_ctx->time_base;
-    const struct AVRational sample_aspect_ratio = ifilter->ist->dec_ctx->sample_aspect_ratio;
-    av_bprintf(&args, "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d", width, height, formt,
+    const int width = graph->ist->dec_ctx->width;
+    const int height = graph->ist->dec_ctx->height;
+    const enum AVPixelFormat format = graph->ist->dec_ctx->pix_fmt;
+    const struct AVRational time_base = graph->ist->dec_ctx->time_base;
+    const struct AVRational sample_aspect_ratio = graph->ist->dec_ctx->sample_aspect_ratio;
+    av_bprintf(&args, "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d", width, height, format,
                time_base.num, time_base.den, sample_aspect_ratio.num, sample_aspect_ratio.den);
-    AVRational fr = av_guess_frame_rate(input_file->ic, ifilter->ist->st, NULL);
+    AVRational fr = av_guess_frame_rate(input_file->ic, graph->ist->st, NULL);
     if (fr.num && fr.den) {
         av_bprintf(&args, ":frame_rate=%d/%d", fr.num, fr.den);
     }
     char name[255];
-    snprintf(name, sizeof(name), "video graph input stream %d", ifilter->ist->st->index);
-    ret = avfilter_graph_create_filter(&fg->input->filter, buffer, name, args.str, NULL, fg->graph);
+    snprintf(name, sizeof(name), "video graph input stream %d", graph->ist->st->index);
+    ret = avfilter_graph_create_filter(&graph->ist->filter, buffer, name, args.str, NULL, graph->graph);
     if (ret < 0) {
         return ret;
     }
-    AVFilterContext *last_filter = fg->input->filter;
-    double theta = get_rotation(fg->input->ist->st);
+    AVFilterContext *last_filter = graph->ist->filter;
+    double theta = get_rotation(graph->ist->st);
     if (fabs(theta - 90) < 1.0) {
         if (last_filter != NULL) {
-            last_filter = get_transpose_filter(last_filter, fg->graph, "clock");
+            last_filter = get_transpose_filter(last_filter, graph->graph, "clock");
         }
     } else if (fabs(theta - 180) < 1.0) {
         if (last_filter != NULL) {
-            last_filter = get_hflip_filter(last_filter, fg->graph);
+            last_filter = get_hflip_filter(last_filter, graph->graph);
         }
         if (last_filter != NULL) {
-            last_filter = get_vflip_filter(last_filter, fg->graph);
+            last_filter = get_vflip_filter(last_filter, graph->graph);
         }
     } else if (fabs(theta - 270) < 1.0) {
         if (last_filter != NULL) {
-            last_filter = get_transpose_filter(last_filter, fg->graph, "cclock");
+            last_filter = get_transpose_filter(last_filter, graph->graph, "cclock");
         }
     } else if (fabs(theta) > 1.0) {
         if (last_filter != NULL) {
-            last_filter = get_rotate_filter(last_filter, fg->graph, theta);
+            last_filter = get_rotate_filter(last_filter, graph->graph, theta);
         }
     }
 
@@ -132,21 +131,21 @@ int configure_input_audio_filter(FilterGraph *graph, AVFilterInOut *in) {
     }
     AVBPrint args;
     av_bprint_init(&args, 0, AV_BPRINT_SIZE_AUTOMATIC);
-    av_bprintf(&args, "time_base=%d/%d:sample_rate=%d:sample_fmt=%s", 1, graph->input->ist->dec_ctx->sample_rate,
-               graph->input->ist->dec_ctx->sample_rate, av_get_sample_fmt_name(graph->input->ist->dec_ctx->sample_fmt));
-    if (graph->input->ist->dec_ctx->channel_layout) {
-        av_bprintf(&args, ":channel_layout=0x%"PRIX64, graph->input->ist->dec_ctx->channel_layout);
+    av_bprintf(&args, "time_base=%d/%d:sample_rate=%d:sample_fmt=%s", 1, graph->ist->dec_ctx->sample_rate,
+               graph->ist->dec_ctx->sample_rate, av_get_sample_fmt_name(graph->ist->dec_ctx->sample_fmt));
+    if (graph->ist->dec_ctx->channel_layout) {
+        av_bprintf(&args, ":channel_layout=0x%"PRIX64, graph->ist->dec_ctx->channel_layout);
     } else {
-        av_bprintf(&args, ":channels=%d", graph->input->ist->dec_ctx->channels);
+        av_bprintf(&args, ":channels=%d", graph->ist->dec_ctx->channels);
     }
     char name[255];
-    snprintf(name, sizeof(name), "audio graph input stream %d", graph->input->ist->st->index);
-    ret = avfilter_graph_create_filter(&graph->input->filter, abuffer, name, args.str, NULL, graph->graph);
+    snprintf(name, sizeof(name), "audio graph input stream %d", graph->ist->st->index);
+    ret = avfilter_graph_create_filter(&graph->ist->filter, abuffer, name, args.str, NULL, graph->graph);
     if (ret < 0) {
         av_err2str(ret);
         return ret;
     }
-    ret = avfilter_link(graph->input->filter, 0, in->filter_ctx, 0);
+    ret = avfilter_link(graph->ist->filter, 0, in->filter_ctx, 0);
     if (ret < 0) {
         av_err2str(ret);
         return ret;
@@ -158,15 +157,15 @@ int configure_output_video_filter(FilterGraph *graph, AVFilterInOut *out) {
     int ret = 0;
     AVFilter *buffersink = avfilter_get_by_name("buffersink");
     char name[255];
-    snprintf(name, sizeof(name), "video graph output stream %d", graph->output->ost->st->index);
-    ret = avfilter_graph_create_filter(&graph->output->filter, buffersink, name, NULL, NULL, graph->graph);
+    snprintf(name, sizeof(name), "video graph output stream %d", graph->ost->st->index);
+    ret = avfilter_graph_create_filter(&graph->ost->filter, buffersink, name, NULL, NULL, graph->graph);
     if (ret < 0) {
         av_err2str(ret);
         return ret;
     }
     AVFilterContext *format_context;
     const AVFilter *format_filter = avfilter_get_by_name("format");
-    const enum AVPixelFormat *p = graph->output->ost->enc->pix_fmts;
+    const enum AVPixelFormat *p = graph->ost->enc->pix_fmts;
     AVIOContext *s;
     ret = avio_open_dyn_buf(&s);
     if (ret < 0) {
@@ -190,14 +189,14 @@ int configure_output_video_filter(FilterGraph *graph, AVFilterInOut *out) {
         return ret;
     }
     AVFilterContext *scale_context = NULL;
-    int width = graph->output->ost->new_width;
-    int height = graph->output->ost->new_height;
+    int width = graph->ost->new_width;
+    int height = graph->ost->new_height;
     if (!(width == -1 && height == -1)) {
         if ((width == -1 || width > 0) && (height == -1 || height > 0)) {
             scale_context = get_scale_filter(format_context, graph->graph, width, height);
         }
     }
-    ret = avfilter_link(scale_context ? scale_context : format_context, 0, graph->output->filter, 0);
+    ret = avfilter_link(scale_context ? scale_context : format_context, 0, graph->ost->filter, 0);
     if (ret < 0) {
         av_err2str(ret);
         return ret;
@@ -250,15 +249,15 @@ int configure_output_audio_filter(FilterGraph *graph, AVFilterInOut *out) {
     int ret = 0;
     AVFilter *abuffersink = avfilter_get_by_name("abuffersink");
     char name[255];
-    snprintf(name, sizeof(name), "audio graph output stream %d", graph->output->ost->st->index);
-    ret = avfilter_graph_create_filter(&graph->output->filter, abuffersink, name, NULL, NULL, graph->graph);
+    snprintf(name, sizeof(name), "audio graph output stream %d", graph->ost->st->index);
+    ret = avfilter_graph_create_filter(&graph->ost->filter, abuffersink, name, NULL, NULL, graph->graph);
     if (ret < 0) {
         av_err2str(ret);
         return ret;
     }
-    const char *sample_fmts = choose_sample_fmts(graph->output->ost);
-    const char *sample_rates = choose_sample_rates(graph->output->ost);
-    const char *channel_layouts = choose_channel_layouts(graph->output->ost);
+    const char *sample_fmts = choose_sample_fmts(graph->ost);
+    const char *sample_rates = choose_sample_rates(graph->ost);
+    const char *channel_layouts = choose_channel_layouts(graph->ost);
     char args[255];
     args[0] = 0;
     if (sample_fmts) {
@@ -282,7 +281,7 @@ int configure_output_audio_filter(FilterGraph *graph, AVFilterInOut *out) {
         av_err2str(ret);
         return ret;
     }
-    ret = avfilter_link(aformat_context, 0, graph->output->filter, 0);
+    ret = avfilter_link(aformat_context, 0, graph->ost->filter, 0);
     if (ret < 0) {
         av_err2str(ret);
         return ret;
@@ -297,7 +296,7 @@ int configure_filtergraph(FilterGraph *graph) {
         return AVERROR(ENOMEM);
     }
     AVFilterInOut *in, *out, *cur;
-    ret = avfilter_graph_parse2(graph->graph, graph->output->ost->avfilter, &in, &out);
+    ret = avfilter_graph_parse2(graph->graph, graph->ost->avfilter, &in, &out);
     if (ret < 0) {
         av_err2str(ret);
         char error[255];
@@ -360,13 +359,7 @@ FilterGraph* init_filtergraph(InputStream *ist, OutputStream *ost) {
     FilterGraph *graph = av_mallocz(sizeof(FilterGraph));
     if (!graph)
         return NULL;
-    graph->input = av_mallocz(sizeof(*graph->input));
-    graph->output = av_mallocz(sizeof(*graph->output));
-    graph->input->ist = ist;
-    graph->input->graph = graph;
-    graph->output->ost = ost;
-    graph->output->graph = graph;
-    ist->filter= graph->input;
-    ost->filter = graph->output;
+    graph->ist = ist;
+    graph->ost = ost;
     return graph;
 }

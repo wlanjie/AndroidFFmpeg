@@ -24,7 +24,7 @@ typedef struct InputStream {
     AVStream *st;
     AVCodecContext *dec_ctx;
     struct AVCodec *dec;
-    struct InputFilter *filter;
+    AVFilterContext *filter;
 } InputStream;
 
 typedef struct OutputFile {
@@ -35,28 +35,16 @@ typedef struct OutputStream {
     AVStream *st;
     AVCodecContext *enc_ctx;
     struct AVCodec *enc;
+    AVFilterContext *filter;
     char *avfilter;
     int new_width;
     int new_height;
-    struct OutputFilter *filter;
 } OutputStream;
 
-typedef struct InputFilter {
-    AVFilterContext *filter;
-    struct InputStream *ist;
-    struct FilterGraph *graph;
-} InputFilter;
-
-typedef struct OutputFilter {
-    AVFilterContext *filter;
-    struct OutputStream *ost;
-    struct FilterGraph *graph;
-} OutputFilter;
-
 typedef struct FilterGraph {
+    InputStream *ist;
+    OutputStream *ost;
     AVFilterGraph *graph;
-    InputFilter *input;
-    OutputFilter *output;
 } FilterGraph;
 
 typedef struct MediaSource {

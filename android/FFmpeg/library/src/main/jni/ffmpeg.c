@@ -110,7 +110,7 @@ int filter_encoder_write_frame(int stream_index) {
         if (!frame) {
             return AVERROR(ENOMEM);
         }
-        ret = av_buffersink_get_frame_flags(ost->filter->filter, frame, AV_BUFFERSINK_FLAG_NO_REQUEST);
+        ret = av_buffersink_get_frame_flags(ost->filter, frame, AV_BUFFERSINK_FLAG_NO_REQUEST);
         if (ret < 0) {
             if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
                 ret = 0;
@@ -149,7 +149,7 @@ int transcode() {
         }
         if (got_frame) {
             frame->pts = av_frame_get_best_effort_timestamp(frame);
-            ret = av_buffersrc_add_frame_flags(ist->filter->filter, frame, AV_BUFFERSRC_FLAG_PUSH);
+            ret = av_buffersrc_add_frame_flags(ist->filter, frame, AV_BUFFERSRC_FLAG_PUSH);
             if (ret < 0) {
                 av_frame_unref(frame);
                 return ret;

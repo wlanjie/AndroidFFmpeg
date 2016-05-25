@@ -43,8 +43,19 @@ int get_buffer(AVCodecContext *s, AVFrame *frame, int flags) {
     return avcodec_default_get_buffer2(s, frame, flags);
 }
 
+void free_filter_graph(FilterGraph **graph, int graph_count) {
+    for (int i = 0; i < graph_count; ++i) {
+        FilterGraph *filterGraph = graph[i];
+        avfilter_graph_free(&filterGraph->graph);
+        av_freep(&filterGraph);
+        av_freep(&graph);
+    }
+}
+
 int init_output() {
     int ret = 0;
+    FilterGraph **graph = NULL;
+    int graph_count = 0;
     for (int i = 0; i < nb_output_streams; ++i) {
         InputStream *ist = input_streams[i];
         OutputStream *ost = output_streams[i];
@@ -52,14 +63,16 @@ int init_output() {
         ost->enc_ctx->bits_per_raw_sample = ist->dec_ctx->bits_per_raw_sample;
         ost->enc_ctx->chroma_sample_location = ist->dec_ctx->chroma_sample_location;
         if (!ost->filter && (ost->enc_ctx->codec_type == AVMEDIA_TYPE_VIDEO || ost->enc_ctx->codec_type == AVMEDIA_TYPE_AUDIO)) {
-            FilterGraph *graph = init_filtergraph(ist, ost);
-            if ((ret = configure_filtergraph(graph)) < 0) {
+            FilterGraph *filterGraph = init_filtergraph(ist, ost);
+            if ((ret = configure_filtergraph(filterGraph)) < 0) {
                 return ret;
             }
+            GROW_ARRAY(graph, graph_count);
+            graph[graph_count - 1] = filterGraph;
         }
         AVRational frame_rate = { 0, 0 };
         if (ost->enc_ctx->codec_type == AVMEDIA_TYPE_VIDEO) {
-            frame_rate = av_buffersink_get_frame_rate(ost->filter->filter);
+            frame_rate = av_buffersink_get_frame_rate(ost->filter);
             if (!frame_rate.num) {
                 frame_rate = (AVRational) { 25, 1 };
             }
@@ -71,9 +84,9 @@ int init_output() {
          */
         switch (ost->enc_ctx->codec_type) {
             case AVMEDIA_TYPE_VIDEO:
-                ost->enc_ctx->pix_fmt = (enum AVPixelFormat) ost->filter->filter->inputs[0]->format;
-                ost->enc_ctx->width = ost->filter->filter->inputs[0]->w;
-                ost->enc_ctx->height = ost->filter->filter->inputs[0]->h;
+                ost->enc_ctx->pix_fmt = (enum AVPixelFormat) ost->filter->inputs[0]->format;
+                ost->enc_ctx->width = ost->filter->inputs[0]->w;
+                ost->enc_ctx->height = ost->filter->inputs[0]->h;
                 AVRational time_base  = av_inv_q(frame_rate);
 //                ost->st->avg_frame_rate = frame_rate;
                 ost->enc_ctx->time_base = ist->dec_ctx->time_base;
@@ -81,10 +94,10 @@ int init_output() {
                 ost->enc_ctx->sample_aspect_ratio = ist->dec_ctx->sample_aspect_ratio;
                 break;
             case AVMEDIA_TYPE_AUDIO:
-                ost->enc_ctx->sample_fmt = (enum AVSampleFormat) ost->filter->filter->inputs[0]->format;
-                ost->enc_ctx->sample_rate = ost->filter->filter->inputs[0]->sample_rate;
-                ost->enc_ctx->channels = avfilter_link_get_channels(ost->filter->filter->inputs[0]);
-                ost->enc_ctx->channel_layout = ost->filter->filter->inputs[0]->channel_layout;
+                ost->enc_ctx->sample_fmt = (enum AVSampleFormat) ost->filter->inputs[0]->format;
+                ost->enc_ctx->sample_rate = ost->filter->inputs[0]->sample_rate;
+                ost->enc_ctx->channels = avfilter_link_get_channels(ost->filter->inputs[0]);
+                ost->enc_ctx->channel_layout = ost->filter->inputs[0]->channel_layout;
                 ost->enc_ctx->time_base = (AVRational) { 1, ost->enc_ctx->sample_rate };
                 break;
             default:
@@ -100,6 +113,7 @@ int init_output() {
         ist->dec_ctx->get_buffer2 = get_buffer;
         if ((ret = avcodec_open2(ist->dec_ctx, ist->dec, &decoder_opts)) < 0) {
             av_err2str(ret);
+            free_filter_graph(graph, graph_count);
             return ret;
         }
     }
@@ -109,10 +123,12 @@ int init_output() {
     for (int i = 0; i < nb_output_streams; ++i) {
         OutputStream *ost = output_streams[i];
         if ((ret = avcodec_open2(ost->enc_ctx, ost->enc, &encoder_opts)) < 0) {
+            free_filter_graph(graph, graph_count);
             av_err2str(ret);
             return ret;
         }
         if ((ret = avcodec_copy_context(ost->st->codec, ost->enc_ctx)) < 0) {
+            free_filter_graph(graph, graph_count);
             av_err2str(ret);
             return ret;
         }
@@ -121,6 +137,7 @@ int init_output() {
     }
     //写文件头
     if ((ret = avformat_write_header(output_file->oc, NULL)) < 0) {
+        free_filter_graph(graph, graph_count);
         av_err2str(ret);
         return ret;
     }
@@ -230,16 +247,6 @@ void release() {
                     avcodec_close(ist->dec_ctx);
                     avcodec_free_context(&ist->dec_ctx);
                 }
-                if (ist->filter) {
-                    if (ist->filter->graph) {
-//                        if (ist->filter->graph->graph) {
-//                            avfilter_graph_free(&ist->filter->graph->graph);
-//                        }
-//                        av_freep(&ist->filter->graph);
-                    }
-                    av_freep(&ist->filter->filter);
-                    av_freep(&ist->filter);
-                }
                 av_freep(&ist);
             }
             ist = NULL;
@@ -262,13 +269,6 @@ void release() {
                     if (ost->enc_ctx) {
                         avcodec_close(ost->enc_ctx);
                         avcodec_free_context(&ost->enc_ctx);
-                    }
-                    if (ost->filter) {
-                        if (ost->filter->graph) {
-//                            avfilter_graph_free(&ost->filter->graph->graph);
-                        }
-                        av_freep(&ost->filter->graph);
-                        av_freep(&ost->filter);
                     }
                     av_freep(&ost->avfilter);
                     av_freep(&ost);
