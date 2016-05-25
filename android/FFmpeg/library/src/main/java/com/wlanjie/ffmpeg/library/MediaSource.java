@@ -3,12 +3,12 @@ package com.wlanjie.ffmpeg.library;
 /**
  * Created by wlanjie on 16/5/16.
  */
-public class MediaSource {
+class MediaSource {
     private String inputDataSource;
     private String outputDataSource;
     private int width;
     private int height;
-    private double getRotation;
+    private double rotation;
     private int duration;
 
     public String getInputDataSource() {
@@ -43,12 +43,12 @@ public class MediaSource {
         this.height = height;
     }
 
-    public double getGetRotation() {
-        return getRotation;
+    public double getRotation() {
+        return rotation;
     }
 
-    public void setGetRotation(double getRotation) {
-        this.getRotation = getRotation;
+    public void setRotation(double rotation) {
+        this.rotation = rotation;
     }
 
     public int getDuration() {

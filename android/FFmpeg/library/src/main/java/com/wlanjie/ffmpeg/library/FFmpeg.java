@@ -36,7 +36,7 @@ public class FFmpeg {
      * @throws FileNotFoundException 如果输入视频文件不存在抛出此异常
      * @throws IllegalArgumentException 如果输入文件和输出文件为null,抛出此异常
      */
-    public void setInputDataSource(File inputFile) throws FileNotFoundException, IllegalArgumentException {
+    public void openInput(File inputFile) throws FileNotFoundException, IllegalArgumentException {
         if (inputFile == null) {
             throw new IllegalArgumentException("input file must be not null");
         }
@@ -47,48 +47,31 @@ public class FFmpeg {
     }
 
     /**
-     * 设置输出文件路径
-     * @param outputFile 输出文件
-     * @throws IllegalArgumentException 如果输出文件为null,抛出此异常
+     * 打开输入文件
+     * @return >= 0 success, <0 error
+     * @throws IllegalStateException 不能打开时,或者打开的路径为空时抛出此异常
      */
-    public void setOutputDataSource(File outputFile) throws IllegalArgumentException {
-        if (outputFile == null) {
-            throw new IllegalArgumentException("output file must be not null");
-        }
-        mediaSource.setOutputDataSource(outputFile.getAbsolutePath());
-    }
-
-    /**
-     * 设置视频的输入和输出路径
-     * @param inputPath 视频源路径
-     * @throws IllegalArgumentException 输入路径为空时,抛出此异常
-     */
-    public void setInputDataSource(String inputPath) throws FileNotFoundException, IllegalArgumentException {
-        mediaSource.setInputDataSource(inputPath);
-    }
-
-    /**
-     * 设置输出路径
-     * @param outputPath 视频输出路径
-     * @throws IllegalArgumentException 输出路径为空时,抛出此异常
-     */
-    public void setOutputDataSource(String outputPath) throws IllegalArgumentException {
-        mediaSource.setOutputDataSource(outputPath);
-    }
+    public native int openInput(String inputPath) throws IllegalStateException, IllegalArgumentException;
 
     /**
      * 获取视频的宽
      * @return 视频的宽
      * @throws FileNotFoundException 如果视频文件不存在,则抛出此异常
      */
-    public native int getVideoWidth() throws FileNotFoundException, IllegalStateException;
+    public int getVideoWidth() {
+        return mediaSource.getWidth();
+    }
+//    public native int getVideoWidth() throws FileNotFoundException, IllegalStateException;
 
     /**
      * 获取视频的高
      * @return 视频的高
      * @throws FileNotFoundException 如果视频文件不存在,则抛出此异常
      */
-    public native int getVideoHeight() throws FileNotFoundException, IllegalStateException;
+    public int getVideoHeight() {
+        return mediaSource.getHeight();
+    }
+//    public native int getVideoHeight() throws FileNotFoundException, IllegalStateException;
 
     /**
      * 压缩视频,视频采用h264编码,音频采用aac编码,此方法是阻塞式操作,如果在ui线程操作,会产生anr异常
@@ -101,13 +84,16 @@ public class FFmpeg {
      * @throws IllegalStateException
      */
 
-    public native int compress(int newWidth, int newHeight) throws FileNotFoundException, IllegalStateException;
+    public native int compress(String outputPath, int width, int height) throws FileNotFoundException;
 
     /**
      * 获取视频的角度
      * @return 视频的角度
      */
-    public native double getRotation();
+    public double getRotation() {
+        return mediaSource.getRotation();
+    }
+//    public native double getRotation();
 
     /**
      * 裁剪视频
@@ -116,7 +102,7 @@ public class FFmpeg {
      * @param width 裁剪视频之后的宽度
      * @param height 裁剪视频之后的高度
      */
-    public native int crop(int x, int y, int width, int height);
+    public native int crop(String outputPath, int x, int y, int width, int height);
 
     /**
      * 释放资源

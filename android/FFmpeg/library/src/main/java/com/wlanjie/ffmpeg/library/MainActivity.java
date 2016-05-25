@@ -52,7 +52,6 @@ public class MainActivity extends Activity {
                         compress("/sdcard/Download/a.mp4");
                     }
                 });
-
     }
 
     private void startRecoderVideoIntent(int requestCode) {
@@ -80,8 +79,7 @@ public class MainActivity extends Activity {
             public void call(Subscriber<? super Boolean> subscriber) {
                 try {
                     FFmpeg ffmpeg = FFmpeg.getInstance();
-                    ffmpeg.setInputDataSource(path);
-                    ffmpeg.setOutputDataSource("/sdcard/compress.mp4");
+                    ffmpeg.openInput(path);
                     double rotation = ffmpeg.getRotation();
                     System.out.println("rotation = " + rotation);
                 } catch (Exception e) {
@@ -110,8 +108,10 @@ public class MainActivity extends Activity {
                 try {
                     long start = System.currentTimeMillis();
                     FFmpeg ffmpeg = FFmpeg.getInstance();
-                    ffmpeg.setInputDataSource(path);
-                    ffmpeg.setOutputDataSource("/sdcard/crop.mp4");
+                    int result = ffmpeg.openInput(path);
+                    if (result < 0) {
+                        return;
+                    }
                     double rotation = ffmpeg.getRotation();
                     final int width = ffmpeg.getVideoWidth();
                     final int height = ffmpeg.getVideoHeight();
@@ -125,7 +125,7 @@ public class MainActivity extends Activity {
                         newHeight = height;
                     }
                     //裁剪视频正中间部分
-                    int result = ffmpeg.crop(newWidth / 2 / 2, newHeight / 2 / 2 , newWidth / 2, newHeight / 2);
+                    result = ffmpeg.crop("/sdcard/crop.mp4", newWidth / 2 / 2, newHeight / 2 / 2 , newWidth / 2, newHeight / 2);
                     long end = System.currentTimeMillis();
                     System.out.println("time = " + ((end - start) / 1000) + " width = " + width + " height = " + height + " rotation = " + rotation);
                     if (result < 0) {
@@ -162,11 +162,15 @@ public class MainActivity extends Activity {
                 try {
                     long start = System.currentTimeMillis();
                     FFmpeg ffmpeg = FFmpeg.getInstance();
-                    ffmpeg.setInputDataSource(path);
-                    ffmpeg.setOutputDataSource("/sdcard/Download/compress.mp4");
+                    int result = ffmpeg.openInput(path);
+                    if (result < 0) {
+                        Toast.makeText(MainActivity.this, "open input error", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     int width = ffmpeg.getVideoWidth();
                     int height = ffmpeg.getVideoHeight();
                     double rotation = ffmpeg.getRotation();
+                    System.out.println("width = " + width + " height = " + height);
                     int newWidth;
                     int newHeight;
                     if (rotation == 90) {
@@ -176,7 +180,7 @@ public class MainActivity extends Activity {
                         newWidth = width / 2;
                         newHeight = height / 2;
                     }
-                    int result = ffmpeg.compress(newWidth, newHeight);
+                    result = ffmpeg.compress("/sdcard/compress.mp4", 360, -1);
                     ffmpeg.release();
                     long end = System.currentTimeMillis();
                     if (result >= 0) {

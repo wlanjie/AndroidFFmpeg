@@ -357,7 +357,7 @@ int configure_filtergraph(FilterGraph *graph) {
 }
 
 FilterGraph* init_filtergraph(InputStream *ist, OutputStream *ost) {
-    FilterGraph *graph = av_mallocz(sizeof(*graph));
+    FilterGraph *graph = av_mallocz(sizeof(FilterGraph));
     if (!graph)
         return NULL;
     graph->input = av_mallocz(sizeof(*graph->input));
