@@ -34,16 +34,15 @@ static void release_media_source(MediaSource *mediaSource) {
 //    av_freep(&mediaSource);
 }
 
-static void throw_not_open_file_exception(JNIEnv *env, MediaSource *mediaSource) {
+static void throw_not_open_file_exception(JNIEnv *env, const char *input_data_source) {
     if ((*env)->ExceptionCheck) {
         (*env)->ExceptionClear(env);
     }
     jclass illegal_argument_class = (*env)->FindClass(env, "java/lang/IllegalStateException");
     char error[255];
-    snprintf(error, sizeof(error), "Cannot not open file %s\n", mediaSource->input_data_source);
+    snprintf(error, sizeof(error), "Cannot not open file %s\n", input_data_source);
     (*env)->ThrowNew(env, illegal_argument_class, error);
     (*env)->DeleteLocalRef(env, illegal_argument_class);
-    release_media_source(mediaSource);
     release();
 }
 
@@ -71,6 +70,7 @@ static jint open_input_jni(JNIEnv *env, jobject object, jstring input_path) {
     ret = open_input_file(input_data_source);
     if (ret < 0 || input_file == NULL) {
         release_media_source(&mediaSource);
+        throw_not_open_file_exception(env, input_data_source);
         (*env)->ReleaseStringUTFChars(env, input_path, input_data_source);
         (*env)->DeleteLocalRef(env, object);
         release();
@@ -137,8 +137,6 @@ static jint crop_jni(JNIEnv *env, jobject object, jstring output_path, jint x, j
 
 static void release_ffmpeg(JNIEnv *env, jobject object) {
     release();
-//    mediaSource.nb_input_streams = 0;
-//    mediaSource.nb_output_streams = 0;
     av_freep(&(mediaSource.input_data_source));
     av_freep(&(mediaSource.output_data_source));
     av_freep(&mediaSource);
