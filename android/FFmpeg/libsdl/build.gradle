@@ -1,0 +1,35 @@
+apply plugin: 'com.android.model.library'
+
+model {
+    android {
+        compileSdkVersion 23
+        buildToolsVersion "23.0.2"
+
+        defaultConfig {
+            minSdkVersion.apiLevel 14
+            targetSdkVersion.apiLevel 22
+            versionCode 1
+            versionName "1.0"
+        }
+        buildTypes {
+            release {
+                minifyEnabled false
+                proguardFiles.add(file("proguard-rules.pro"))
+            }
+        }
+    }
+
+    android.ndk {
+        moduleName = "SDL2"
+        toolchain = "clang"
+        toolchainVersion = "3.6"
+        stl = "stlport_static"
+        CFlags.add("-Wall")
+        CFlags.add("-DGL_GLEXT_PROTOTYPES")
+        CFlags.add("-I${file("src/main/jni/include")}".toString())
+        cppFlags.add("-I${file("src/main/jni/include")}".toString())
+
+        ldLibs.addAll(["android", "log", "dl", "GLESv1_CM", "GLESv2"])
+        abiFilters.addAll(["armeabi","armeabi-v7a", "x86"])
+    }
+}

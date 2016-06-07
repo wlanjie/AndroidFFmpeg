@@ -1,3 +1,6 @@
 .DS_Store
 /tools/ffmpeg-build/*
 /tools/x264-build/*
+/tools/sdl2-build/*
+/android/FFmpeg/.idea/misc.xml
+/extra/SDL2/build/*
