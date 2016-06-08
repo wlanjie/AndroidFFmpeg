@@ -6,9 +6,9 @@
 
 int initPlayer() {
     int result = 0;
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
-        return AVERROR(ENOMEM);
-    }
+//    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
+//        return AVERROR(ENOMEM);
+//    }
 
     return result;
 }

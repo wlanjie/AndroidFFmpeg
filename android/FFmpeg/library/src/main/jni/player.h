@@ -6,7 +6,7 @@
 #define FFMPEG_PLAYER_H
 
 #include "ffmpeg.h"
-#include "SDL.h"
+//#include "SDL.h"
 
 int initPlayer();
 
