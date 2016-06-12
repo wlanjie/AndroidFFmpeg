@@ -25,33 +25,6 @@ android {
             proguardFiles.add(file("proguard-rules.pro"))
         }
     }
-//    ndk {
-//        moduleName = "wlanjie"
-//        toolchain = "clang"
-//        toolchainVersion = "3.6"
-//        stl = "stlport_static"
-//        CFlags.add("-Wall")
-//        CFlags.add("-I${file("src/main/jni")}".toString())
-//        CFlags.add("-I${file("src/main/jni/libyuv")}".toString())
-//        CFlags.add("-I${file("src/main/jni/libyuv/include")}".toString())
-//        CFlags.add("-I${file("src/main/jni/libyuv/include/libyuv")}".toString())
-//        CFlags.add("-I${file(sdl_header)}".toString())
-//        CFlags.add("-I${file(ffmpeg_path_armeabi)}".toString())
-//        CFlags.add("-I${file(ffmpeg_path_armeabi_v7a)}".toString())
-//        CFlags.add("-I${file(ffmpeg_path_x86)}".toString())
-//
-//        cppFlags.add("-I${file("src/main/jni/libyuv")}".toString())
-//        cppFlags.add("-I${file("src/main/jni/libyuv/include")}".toString())
-//        cppFlags.add("-I${file("src/main/jni/libyuv/include/libyuv")}".toString())
-//        cppFlags.add("-I${file(sdl_header)}".toString())
-//
-//        ldFlags.add("-L${file("src/main/jniLibs/armeabi")}".toString())
-//        ldFlags.add("-L${file("src/main/jniLibs/armeabi-v7a")}".toString())
-//        ldFlags.add("-L${file("src/main/jniLibs/x86")}".toString())
-//        ldLibs.addAll(["android", "log", "OpenSLES", "GLESv3", "EGL", "ffmpeg"])
-//        abiFilters.addAll(["armeabi","armeabi-v7a", "x86"])
-//        abiFilters.addAll(["x86"])
-//    }
 
     externalNativeBuild {
         cmake {
