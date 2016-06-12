@@ -3,6 +3,8 @@ apply plugin: 'com.android.model.application'
 def ffmpeg_path_armeabi = rootDir.absolutePath + "/../../tools/ffmpeg-build/armeabi/output/include"
 def ffmpeg_path_armeabi_v7a = rootDir.absolutePath + "/../../tools/ffmpeg-build/armeabi-v7a/output/include"
 def ffmpeg_path_x86 = rootDir.absolutePath + "/../../tools/ffmepg-build/x86/output/include"
+def sdl_header = rootDir.absolutePath + "/libsdl/src/main/jni/include"
+
 model {
     android {
         compileSdkVersion 23
@@ -32,6 +34,10 @@ model {
                     include "libyuv/util/*"
                     exclude "libyuv/util/*"
                 }
+
+                dependencies {
+                    project ":libsdl"
+                }
             }
         }
     }
@@ -46,6 +52,7 @@ model {
         CFlags.add("-I${file("src/main/jni/libyuv")}".toString())
         CFlags.add("-I${file("src/main/jni/libyuv/include")}".toString())
         CFlags.add("-I${file("src/main/jni/libyuv/include/libyuv")}".toString())
+        CFlags.add("-I${file(sdl_header)}".toString())
         CFlags.add("-I${file(ffmpeg_path_armeabi)}".toString())
         CFlags.add("-I${file(ffmpeg_path_armeabi_v7a)}".toString())
         CFlags.add("-I${file(ffmpeg_path_x86)}".toString())
@@ -53,12 +60,14 @@ model {
         cppFlags.add("-I${file("src/main/jni/libyuv")}".toString())
         cppFlags.add("-I${file("src/main/jni/libyuv/include")}".toString())
         cppFlags.add("-I${file("src/main/jni/libyuv/include/libyuv")}".toString())
+        cppFlags.add("-I${file(sdl_header)}".toString())
 
         ldFlags.add("-L${file("src/main/jniLibs/armeabi")}".toString())
         ldFlags.add("-L${file("src/main/jniLibs/armeabi-v7a")}".toString())
         ldFlags.add("-L${file("src/main/jniLibs/x86")}".toString())
         ldLibs.addAll(["android", "log", "OpenSLES", "GLESv3", "EGL", "ffmpeg"])
-        abiFilters.addAll(["armeabi","armeabi-v7a", "x86"])
+//        abiFilters.addAll(["armeabi","armeabi-v7a", "x86"])
+        abiFilters.addAll(["x86"])
     }
 }
 

@@ -23,4 +23,11 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/compress"
         android:text="裁剪视频"/>
+
+    <Button
+        android:id="@+id/player"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/crop"
+        android:text="播放视频"/>
 </RelativeLayout>

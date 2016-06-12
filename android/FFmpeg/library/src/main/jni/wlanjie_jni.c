@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include "utils.h"
 #include "openfile.h"
+#include "player.h"
 #include "log.h"
 
 #ifndef NELEM
@@ -135,6 +136,13 @@ static jint crop_jni(JNIEnv *env, jobject object, jstring output_path, jint x, j
     return ret;
 }
 
+static jint player_jni(JNIEnv *env, jobject object, jstring input_path) {
+    int ret = 0;
+    const char *input_data_source = (*env)->GetStringUTFChars(env, input_path, 0);
+    ret = player(input_data_source);
+    return ret;
+}
+
 static void release_ffmpeg(JNIEnv *env, jobject object) {
     release();
     av_freep(&(mediaSource.input_data_source));
@@ -156,6 +164,7 @@ static JNINativeMethod g_methods[] = {
         {"openInput", "(Ljava/lang/String;)I", open_input_jni},
         {"compress", "(Ljava/lang/String;II)I", compress},
         {"crop", "(Ljava/lang/String;IIII)I", crop_jni},
+        {"player", "(Ljava/lang/String;)I", player_jni},
         {"release", "()V", release_ffmpeg},
 };
 

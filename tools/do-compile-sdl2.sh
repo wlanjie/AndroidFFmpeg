@@ -151,8 +151,6 @@ make clean
     --disable-multi \
     --disable-mesa \
     --disable-multi-kernel \
-   CFLAGS="$FF_EXTRA_CFLAGS" \
-   LIBS="-landroid -llog -ldl -lGLESv1_CM -lGLESv2" \
 
 echo ""
 echo "--------------------"

@@ -10,6 +10,7 @@ public class FFmpeg {
 
     static {
         System.loadLibrary("ffmpeg");
+        System.loadLibrary("SDL2");
         System.loadLibrary("wlanjie");
     }
 
@@ -104,8 +105,12 @@ public class FFmpeg {
      */
     public native int crop(String outputPath, int x, int y, int width, int height);
 
+    public native int player(String url);
+
     /**
      * 释放资源
      */
     public native void release();
+
+
 }

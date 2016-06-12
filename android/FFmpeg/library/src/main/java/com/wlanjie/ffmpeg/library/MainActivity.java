@@ -52,6 +52,13 @@ public class MainActivity extends Activity {
                         compress("/sdcard/Download/a.mp4");
                     }
                 });
+        findViewById(R.id.player)
+                .setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        player("/sdcard/crop.mp4");
+                    }
+                });
     }
 
     private void startRecoderVideoIntent(int requestCode) {
@@ -207,6 +214,28 @@ public class MainActivity extends Activity {
                     @Override
                     public void call(Throwable throwable) {
                         throwable.printStackTrace();
+                    }
+                });
+    }
+
+    private void player(final String url) {
+        Observable.create(new Observable.OnSubscribe<Object>() {
+            @Override
+            public void call(Subscriber<? super Object> subscriber) {
+                FFmpeg ffmpeg = FFmpeg.getInstance();
+                ffmpeg.player(url);
+            }
+        }).observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io())
+                .subscribe(new Action1<Object>() {
+                    @Override
+                    public void call(Object o) {
+
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+
                     }
                 });
     }

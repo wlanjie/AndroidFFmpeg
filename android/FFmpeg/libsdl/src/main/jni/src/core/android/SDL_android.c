@@ -95,6 +95,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
         LOGE("Failed to get the environment using GetEnv()");
         return -1;
     }
+    __android_log_write(ANDROID_LOG_ERROR, "SDL", "SDL JNI_OnLoad");
     /*
      * Create mThreadKey so we can keep track of the JNIEnv assigned to each thread
      * Refer to http://developer.android.com/guide/practices/design/jni.html for the rationale behind this
