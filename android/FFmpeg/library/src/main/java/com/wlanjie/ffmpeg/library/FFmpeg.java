@@ -10,7 +10,7 @@ public class FFmpeg {
 
     static {
         System.loadLibrary("ffmpeg");
-        System.loadLibrary("SDL2");
+//        System.loadLibrary("SDL2");
         System.loadLibrary("wlanjie");
     }
 
