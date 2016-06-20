@@ -1,7 +1,10 @@
 package com.wlanjie.ffmpeg.library;
 
+import android.view.InputDevice;
+
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Arrays;
 
 /**
  * Created by wlanjie on 16/4/26.
@@ -10,6 +13,7 @@ public class FFmpeg {
 
     static {
         System.loadLibrary("ffmpeg");
+        System.loadLibrary("SDL2");
         System.loadLibrary("wlanjie");
     }
 
@@ -104,8 +108,54 @@ public class FFmpeg {
      */
     public native int crop(String outputPath, int x, int y, int width, int height);
 
+    public native int player(String url);
+
     /**
      * 释放资源
      */
     public native void release();
+
+    public static int[] inputGetInputDeviceIds(int sources) {
+        int[] ids = InputDevice.getDeviceIds();
+        int[] filtered = new int[ids.length];
+        int used = 0;
+        for (int i = 0; i < ids.length; ++i) {
+            InputDevice device = InputDevice.getDevice(ids[i]);
+            if ((device != null) && ((device.getSources() & sources) != 0)) {
+                filtered[used++] = device.getId();
+            }
+        }
+        return Arrays.copyOf(filtered, used);
+    }
+
+    // C functions we call
+    public static native int nativeInit(Object arguments);
+    public static native void nativeLowMemory();
+    public static native void nativeQuit();
+    public static native void nativePause();
+    public static native void nativeResume();
+    public static native void onNativeDropFile(String filename);
+    public static native void onNativeResize(int x, int y, int format, float rate);
+    public static native int onNativePadDown(int device_id, int keycode);
+    public static native int onNativePadUp(int device_id, int keycode);
+    public static native void onNativeJoy(int device_id, int axis,
+                                          float value);
+    public static native void onNativeHat(int device_id, int hat_id,
+                                          int x, int y);
+    public static native void onNativeKeyDown(int keycode);
+    public static native void onNativeKeyUp(int keycode);
+    public static native void onNativeKeyboardFocusLost();
+    public static native void onNativeMouse(int button, int action, float x, float y);
+    public static native void onNativeTouch(int touchDevId, int pointerFingerId,
+                                            int action, float x,
+                                            float y, float p);
+    public static native void onNativeAccel(float x, float y, float z);
+    public static native void onNativeSurfaceChanged();
+    public static native void onNativeSurfaceDestroyed();
+    public static native int nativeAddJoystick(int device_id, String name,
+                                               int is_accelerometer, int nbuttons,
+                                               int naxes, int nhats, int nballs);
+    public static native int nativeRemoveJoystick(int device_id);
+    public static native String nativeGetHint(String name);
+
 }
