@@ -20,6 +20,7 @@
 */
 
 #include "../../SDL_internal.h"
+#include <limits.h>
 
 #ifdef SDL_JOYSTICK_ANDROID
 

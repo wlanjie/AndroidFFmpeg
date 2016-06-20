@@ -23,6 +23,7 @@
 #define _SDL_main_h
 
 #include "SDL_stdinc.h"
+#include "SDL.h"
 
 /**
  *  \file SDL_main.h

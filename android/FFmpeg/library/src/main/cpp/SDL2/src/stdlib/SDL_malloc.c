@@ -655,52 +655,52 @@ DEFAULT_MMAP_THRESHOLD       default: 256K
 #define M_MMAP_THRESHOLD     (-3)
 
 /* ------------------------ Mallinfo declarations ------------------------ */
-
-#if !NO_MALLINFO
-/*
-  This version of malloc supports the standard SVID/XPG mallinfo
-  routine that returns a struct containing usage properties and
-  statistics. It should work on any system that has a
-  /usr/include/malloc.h defining struct mallinfo.  The main
-  declaration needed is the mallinfo struct that is returned (by-copy)
-  by mallinfo().  The malloinfo struct contains a bunch of fields that
-  are not even meaningful in this version of malloc.  These fields are
-  are instead filled by mallinfo() with other numbers that might be of
-  interest.
-
-  HAVE_USR_INCLUDE_MALLOC_H should be set if you have a
-  /usr/include/malloc.h file that includes a declaration of struct
-  mallinfo.  If so, it is included; else a compliant version is
-  declared below.  These must be precisely the same for mallinfo() to
-  work.  The original SVID version of this struct, defined on most
-  systems with mallinfo, declares all fields as ints. But some others
-  define as unsigned long. If your system defines the fields using a
-  type of different width than listed here, you MUST #include your
-  system version and #define HAVE_USR_INCLUDE_MALLOC_H.
-*/
-
-/* #define HAVE_USR_INCLUDE_MALLOC_H */
-
-#ifdef HAVE_USR_INCLUDE_MALLOC_H
-#include "/usr/include/malloc.h"
-#else /* HAVE_USR_INCLUDE_MALLOC_H */
-
-struct mallinfo
-{
-    MALLINFO_FIELD_TYPE arena;  /* non-mmapped space allocated from system */
-    MALLINFO_FIELD_TYPE ordblks;        /* number of free chunks */
-    MALLINFO_FIELD_TYPE smblks; /* always 0 */
-    MALLINFO_FIELD_TYPE hblks;  /* always 0 */
-    MALLINFO_FIELD_TYPE hblkhd; /* space in mmapped regions */
-    MALLINFO_FIELD_TYPE usmblks;        /* maximum total allocated space */
-    MALLINFO_FIELD_TYPE fsmblks;        /* always 0 */
-    MALLINFO_FIELD_TYPE uordblks;       /* total allocated space */
-    MALLINFO_FIELD_TYPE fordblks;       /* total free space */
-    MALLINFO_FIELD_TYPE keepcost;       /* releasable (via malloc_trim) space */
-};
-
-#endif /* HAVE_USR_INCLUDE_MALLOC_H */
-#endif /* NO_MALLINFO */
+//
+//#if !NO_MALLINFO
+///*
+//  This version of malloc supports the standard SVID/XPG mallinfo
+//  routine that returns a struct containing usage properties and
+//  statistics. It should work on any system that has a
+//  /usr/include/malloc.h defining struct mallinfo.  The main
+//  declaration needed is the mallinfo struct that is returned (by-copy)
+//  by mallinfo().  The malloinfo struct contains a bunch of fields that
+//  are not even meaningful in this version of malloc.  These fields are
+//  are instead filled by mallinfo() with other numbers that might be of
+//  interest.
+//
+//  HAVE_USR_INCLUDE_MALLOC_H should be set if you have a
+//  /usr/include/malloc.h file that includes a declaration of struct
+//  mallinfo.  If so, it is included; else a compliant version is
+//  declared below.  These must be precisely the same for mallinfo() to
+//  work.  The original SVID version of this struct, defined on most
+//  systems with mallinfo, declares all fields as ints. But some others
+//  define as unsigned long. If your system defines the fields using a
+//  type of different width than listed here, you MUST #include your
+//  system version and #define HAVE_USR_INCLUDE_MALLOC_H.
+//*/
+//
+///* #define HAVE_USR_INCLUDE_MALLOC_H */
+//
+//#ifdef HAVE_USR_INCLUDE_MALLOC_H
+//#include "/usr/include/malloc.h"
+//#else /* HAVE_USR_INCLUDE_MALLOC_H */
+//
+//struct mallinfo
+//{
+//    MALLINFO_FIELD_TYPE arena;  /* non-mmapped space allocated from system */
+//    MALLINFO_FIELD_TYPE ordblks;        /* number of free chunks */
+//    MALLINFO_FIELD_TYPE smblks; /* always 0 */
+//    MALLINFO_FIELD_TYPE hblks;  /* always 0 */
+//    MALLINFO_FIELD_TYPE hblkhd; /* space in mmapped regions */
+//    MALLINFO_FIELD_TYPE usmblks;        /* maximum total allocated space */
+//    MALLINFO_FIELD_TYPE fsmblks;        /* always 0 */
+//    MALLINFO_FIELD_TYPE uordblks;       /* total allocated space */
+//    MALLINFO_FIELD_TYPE fordblks;       /* total free space */
+//    MALLINFO_FIELD_TYPE keepcost;       /* releasable (via malloc_trim) space */
+//};
+//
+//#endif /* HAVE_USR_INCLUDE_MALLOC_H */
+//#endif /* NO_MALLINFO */
 
 #ifdef __cplusplus
 extern "C"
@@ -712,22 +712,22 @@ extern "C"
 /* ------------------- Declarations of public routines ------------------- */
 
 #ifndef USE_DL_PREFIX
-#define dlcalloc               calloc
-#define dlfree                 free
-#define dlmalloc               malloc
-#define dlmemalign             memalign
-#define dlrealloc              realloc
-#define dlvalloc               valloc
-#define dlpvalloc              pvalloc
-#define dlmallinfo             mallinfo
-#define dlmallopt              mallopt
-#define dlmalloc_trim          malloc_trim
-#define dlmalloc_stats         malloc_stats
-#define dlmalloc_usable_size   malloc_usable_size
-#define dlmalloc_footprint     malloc_footprint
-#define dlmalloc_max_footprint malloc_max_footprint
-#define dlindependent_calloc   independent_calloc
-#define dlindependent_comalloc independent_comalloc
+//#define dlcalloc               calloc
+//#define dlfree                 free
+//#define dlmalloc               malloc
+//#define dlmemalign             memalign
+//#define dlrealloc              realloc
+//#define dlvalloc               valloc
+//#define dlpvalloc              pvalloc
+//#define dlmallinfo             mallinfo
+//#define dlmallopt              mallopt
+//#define dlmalloc_trim          malloc_trim
+//#define dlmalloc_stats         malloc_stats
+//#define dlmalloc_usable_size   malloc_usable_size
+//#define dlmalloc_footprint     malloc_footprint
+//#define dlmalloc_max_footprint malloc_max_footprint
+//#define dlindependent_calloc   independent_calloc
+//#define dlindependent_comalloc independent_comalloc
 #endif                          /* USE_DL_PREFIX */
 
 

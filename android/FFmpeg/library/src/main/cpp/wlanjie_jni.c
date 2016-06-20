@@ -139,7 +139,7 @@ static jint crop_jni(JNIEnv *env, jobject object, jstring output_path, jint x, j
 static jint player_jni(JNIEnv *env, jobject object, jstring input_path) {
     int ret = 0;
     const char *input_data_source = (*env)->GetStringUTFChars(env, input_path, 0);
-//    ret = player(input_data_source);
+    ret = player(input_data_source);
     return ret;
 }
 
