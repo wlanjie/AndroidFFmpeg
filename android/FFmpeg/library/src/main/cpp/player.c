@@ -8,14 +8,15 @@
 
 int initPlayer() {
     int result = 0;
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
+        LOGE("can't initialize SDL - %s", SDL_GetError());
         return AVERROR(ENOMEM);
     }
 
     return result;
 }
 
-int player(const char *file_path) {
+int player(const char *url) {
     AVFormatContext *pFormatCtx;
     AVCodecContext *pCodecCtx;
     AVCodec *pCodec;
@@ -36,12 +37,12 @@ int player(const char *file_path) {
     pFormatCtx = avformat_alloc_context();
 
     SDL_SetMainReady();
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
         LOGE("Could not initialize SDL - %s. \n", SDL_GetError());
         return -1;
     }
 
-    if (avformat_open_input(&pFormatCtx, file_path, NULL, NULL) != 0) {
+    if (avformat_open_input(&pFormatCtx, url, NULL, NULL) != 0) {
         LOGE("can't open the file. \n");
         return -1;
     }
@@ -82,7 +83,7 @@ int player(const char *file_path) {
 
     //---------------------------init sdl---------------------------//
     screen = SDL_CreateWindow("My Player Window", SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED, pCodecCtx->width, pCodecCtx->height,
+                              SDL_WINDOWPOS_UNDEFINED, 1280, 720,
                               SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL);
 
     SDL_Renderer *renderer = SDL_CreateRenderer(screen, -1, 0);
@@ -112,7 +113,7 @@ int player(const char *file_path) {
     packet = (AVPacket *) malloc(sizeof(AVPacket));
     av_new_packet(packet, y_size);
 
-    av_dump_format(pFormatCtx, 0, file_path, 0);
+    av_dump_format(pFormatCtx, 0, url, 0);
 
     while (av_read_frame(pFormatCtx, packet) >= 0) {
         if (packet->stream_index == videoStream) {
@@ -124,7 +125,6 @@ int player(const char *file_path) {
                 return -1;
             }
 
-            LOGI("got_picture:%d", got_picture);
             if (got_picture) {
                 sws_scale(img_convert_ctx,
                           (uint8_t const * const *) pFrame->data,
