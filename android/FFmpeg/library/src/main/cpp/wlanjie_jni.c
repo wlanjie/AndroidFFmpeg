@@ -152,12 +152,13 @@ static void release_ffmpeg(JNIEnv *env, jobject object) {
 }
 
 void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
-    FILE *fp = fopen("/sdcard/av_log.txt", "a+");
-    if (fp) {
-        vfprintf(fp, fmt, vl);
-        fflush(fp);
-        fclose(fp);
-    }
+//    FILE *fp = fopen("/sdcard/av_log.txt", "a+");
+//    if (fp) {
+//        vfprintf(fp, fmt, vl);
+//        fflush(fp);
+//        fclose(fp);
+//    }
+    LOGD("wlanjie", fmt, vl);
 }
 
 static JNINativeMethod g_methods[] = {
@@ -175,6 +176,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     }
     av_register_all();
     avfilter_register_all();
+    avformat_network_init();
     av_log_set_level(AV_LOG_ERROR);
     av_log_set_callback(log_callback);
     jclass clazz = (*env)->FindClass(env, CLASS_NAME);
@@ -183,7 +185,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
-    LOGE("JNI OnUnLoad");
+    avformat_network_deinit();
 }
 
 #ifdef __cplusplus

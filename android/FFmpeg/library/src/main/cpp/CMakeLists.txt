@@ -10,7 +10,6 @@ set(STDC_HEADERS 1)
 set(SDL_SHARED ON)
 set(CMAKE_SYSTEM_NAME Linux)
 include(CMakeForceCompiler)
-#set(HAVE_SDL_TIMERS TRUE)
 option(OPT_DEF_LIBC "" ON)
 set(ANDROID TRUE)
 #add SDL2 library
@@ -27,14 +26,8 @@ include_directories(${PROJECT_SOURCE_DIR}/SDL2/include)
 #add libyuv header
 include_directories(${PROJECT_SOURCE_DIR}/libyuv/include)
 
-set(wlanjie_SRCS ffmpeg.c
-                    filter.c
-                    openfile.c
-                    utils.c
-                    player.c
-                    SDL_sample.c
-                    wlanjie_jni.c)
-add_library(wlanjie SHARED ${wlanjie_SRCS})
+file(GLOB WLANJIE_SOURCE *.c)
+add_library(wlanjie SHARED ${WLANJIE_SOURCE})
 
 message(STATUS "cmake build dir : ${CMAKE_CURRENT_LIST_DIR}")
 message(STATUS "ffmpeg lib: ${FFMPEG_LIB_DIR}")

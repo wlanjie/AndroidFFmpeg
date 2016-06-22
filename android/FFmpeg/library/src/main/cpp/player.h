@@ -10,6 +10,6 @@
 //#include "SDL_main.h"
 
 int initPlayer();
-int player(const char *file_path);
+int player(const char *url);
 
 #endif //FFMPEG_PLAYER_H
