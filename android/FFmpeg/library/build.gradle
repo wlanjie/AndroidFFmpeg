@@ -15,8 +15,10 @@ android {
         targetSdkVersion 22
         versionCode 1
         versionName "1.0"
-        cmake {
-            abiFilters 'x86'
+        externalNativeBuild {
+            cmake {
+                abiFilters 'x86'
+            }
         }
     }
     buildTypes {

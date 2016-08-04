@@ -70,14 +70,14 @@ public class SDLActivity extends Activity {
      */
     protected String[] getLibraries() {
         return new String[] {
-                "SDL2",
-                "wlanjie",
-                "ffmpeg"
+            "SDL2",
             // "SDL2_image",
             // "SDL2_mixer",
             // "SDL2_net",
             // "SDL2_ttf",
 //            "main"
+                "wlanjie",
+                "ffmpeg"
         };
     }
 
@@ -95,7 +95,7 @@ public class SDLActivity extends Activity {
      * @return arguments for the native application.
      */
     protected String[] getArguments() {
-        return new String[]{"/sdcard/crop.mp4"};
+        return new String[]{"rtmp://live.hkstv.hk.lxdns.com/live/hks"};
     }
 
     public static void initialize() {
@@ -321,6 +321,7 @@ public class SDLActivity extends Activity {
 
     /* The native thread has finished */
     public static void handleNativeExit() {
+        System.out.println("handleNativeExit");
         SDLActivity.mSDLThread = null;
         mSingleton.finish();
     }
@@ -1148,12 +1149,15 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
                     try {
                         sdlThread.join();
                     }
-                    catch(Exception e){}
+                    catch(Exception e){
+                        e.printStackTrace();
+                    }
                     finally{
                         // Native thread has finished
                         if (! SDLActivity.mExitCalledFromJava) {
                             SDLActivity.handleNativeExit();
                         }
+                        System.out.println("surface change hadleNativeExit");
                     }
                 }
             }, "SDLThreadListener");

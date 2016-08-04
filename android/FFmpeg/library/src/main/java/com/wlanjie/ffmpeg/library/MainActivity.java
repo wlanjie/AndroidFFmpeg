@@ -6,6 +6,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Looper;
 import android.provider.MediaStore;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Toast;
 
@@ -59,6 +61,24 @@ public class MainActivity extends Activity {
                         player("/sdcard/crop.mp4");
                     }
                 });
+        SurfaceView surfaceView = (SurfaceView) findViewById(R.id.surface_view);
+        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
+                FFmpeg.getInstance().setSurface(holder.getSurface());
+                FFmpeg.getInstance().player("rtmp://live.hkstv.hk.lxdns.com/live/hks");
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {
+
+            }
+        });
     }
 
     private void startRecoderVideoIntent(int requestCode) {

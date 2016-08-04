@@ -34,7 +34,8 @@ message(STATUS "ffmpeg lib: ${FFMPEG_LIB_DIR}")
 message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 
 #link SDL2 library
-set(SDL2_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/../../obj)
+set(SDL2_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../.externalNativeBuild/cmake/debug/obj)
+message(STATUS "SDL2_LIB_DIR: ${SDL2_LIB_DIR}")
 add_library(SDL2_LIB SHARED IMPORTED)
 set_target_properties(SDL2_LIB PROPERTIES IMPORTED_LOCATION ${SDL2_LIB_DIR}/${ANDROID_ABI}/libSDL2.so)
 

@@ -6,11 +6,15 @@
 #ifndef _Included_com_wlanjie_ffmpeg_library_FFmpeg
 #define _Included_com_wlanjie_ffmpeg_library_FFmpeg
 
+#include "SDL2/src/SDL_internal.h"
+#include "SDL_main.h"
 #include <jni.h>
 #include <stdio.h>
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
 #include "utils.h"
 #include "openfile.h"
-#include "player.h"
+//#include "ffplay.h"
 #include "log.h"
 
 #ifndef NELEM
@@ -20,6 +24,71 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+int main(int arc, char **argv) {
+//    init_ffplay("rtmp://live.hkstv.hk.lxdns.com/live/hks");
+    return 0;
+}
+/* Called before SDL_main() to initialize JNI bindings in SDL library */
+extern void SDL_Android_Init(JNIEnv* env, jclass cls);
+
+/* Start up the SDL app */
+JNIEXPORT int JNICALL Java_org_libsdl_app_SDLActivity_nativeInit(JNIEnv* env, jclass cls, jobject array)
+{
+    int i;
+    int argc;
+    int status;
+
+    /* This interface could expand with ABI negotiation, callbacks, etc. */
+    SDL_Android_Init(env, cls);
+
+    SDL_SetMainReady();
+
+    /* Prepare the arguments. */
+
+    int len = (*env)->GetArrayLength(env, array);
+    char* argv[1 + len + 1];
+    argc = 0;
+    /* Use the name "app_process" so PHYSFS_platformCalcBaseDir() works.
+       https://bitbucket.org/MartinFelis/love-android-sdl2/issue/23/release-build-crash-on-start
+     */
+    argv[argc++] = SDL_strdup("app_process");
+    for (i = 0; i < len; ++i) {
+        const char* utf;
+        char* arg = NULL;
+        jstring string = (*env)->GetObjectArrayElement(env, array, i);
+        if (string) {
+            utf = (*env)->GetStringUTFChars(env, string, 0);
+            if (utf) {
+                arg = SDL_strdup(utf);
+                (*env)->ReleaseStringUTFChars(env, string, utf);
+            }
+            (*env)->DeleteLocalRef(env, string);
+        }
+        if (!arg) {
+            arg = SDL_strdup("");
+        }
+        argv[argc++] = arg;
+    }
+    argv[argc] = NULL;
+
+
+    /* Run the application. */
+
+    status = SDL_main(argc, argv);
+
+    /* Release the arguments. */
+
+    for (i = 0; i < argc; ++i) {
+        SDL_free(argv[i]);
+    }
+
+    /* Do not issue an exit or the whole application will terminate instead of just the SDL thread */
+    /* exit(status); */
+
+    return status;
+}
+
 
 MediaSource mediaSource = {NULL, NULL, NULL, NULL};
 
@@ -136,10 +205,19 @@ static jint crop_jni(JNIEnv *env, jobject object, jstring output_path, jint x, j
     return ret;
 }
 
-static jint player_jni(JNIEnv *env, jobject object, jstring input_path) {
+/* Called before SDL_main() to initialize JNI bindings in SDL library */
+extern void SDL_Android_Init(JNIEnv* env, jclass cls);
+
+static jint player_jni(JNIEnv *env, jclass cls, jstring input_path) {
     int ret = 0;
+    SDL_Android_Init(env, cls);
+
+    SDL_SetMainReady();
     const char *input_data_source = (*env)->GetStringUTFChars(env, input_path, 0);
-    ret = player(input_data_source);
+//    ret = init_ffplay(input_data_source);
+    if (ret < 0) {
+        release();
+    }
     return ret;
 }
 
@@ -166,6 +244,7 @@ static JNINativeMethod g_methods[] = {
         {"compress", "(Ljava/lang/String;II)I", compress},
         {"crop", "(Ljava/lang/String;IIII)I", crop_jni},
         {"player", "(Ljava/lang/String;)I", player_jni},
+//        {"setSurface", "(Landroid/view/Surface;)V", set_surface_jni},
         {"release", "()V", release_ffmpeg},
 };
 
