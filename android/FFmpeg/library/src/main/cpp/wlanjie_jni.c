@@ -16,6 +16,7 @@
 #include "openfile.h"
 //#include "ffplay.h"
 #include "log.h"
+#include "ffplay.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -26,7 +27,7 @@ extern "C" {
 #endif
 
 int main(int arc, char **argv) {
-//    init_ffplay("rtmp://live.hkstv.hk.lxdns.com/live/hks");
+    init_ffplay("rtmp://live.hkstv.hk.lxdns.com/live/hks");
     return 0;
 }
 /* Called before SDL_main() to initialize JNI bindings in SDL library */
@@ -236,7 +237,6 @@ void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
 //        fflush(fp);
 //        fclose(fp);
 //    }
-    LOGD("wlanjie", fmt, vl);
 }
 
 static JNINativeMethod g_methods[] = {
