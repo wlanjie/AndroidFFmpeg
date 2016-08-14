@@ -161,6 +161,7 @@ typedef struct PacketQueue {
     int nb_packets;
     int size;
     AVPacketList *first_pkt, *last_pkt;
+    int serial;
 } PacketQueue;
 
 typedef struct FrameQueue {
