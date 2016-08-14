@@ -3,28 +3,19 @@ cmake_minimum_required(VERSION 3.4.1)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -DANDROID_NDK -DDISABLE_IMPORTGL")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -UNDEBUG")
 
-#SDL2 build options
-set(EXTRA_LIBS android log dl GLESv2)
-set(SDL_STATIC ON)
-set(STDC_HEADERS 1)
-set(SDL_SHARED ON)
-set(CMAKE_SYSTEM_NAME Linux)
-include(CMakeForceCompiler)
-option(OPT_DEF_LIBC "" ON)
-set(ANDROID TRUE)
-#add SDL2 library
-add_subdirectory(SDL2)
-
-#add libyuv library
-add_subdirectory(libyuv)
-
 #add ffmpeg header
 set(FFMPEG_HEADER ${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/ffmpeg-build/${ANDROID_ABI}/output/include)
 include_directories(${FFMPEG_HEADER})
 #add SDL2 header
-include_directories(${PROJECT_SOURCE_DIR}/SDL2/include)
+include_directories(${PROJECT_SOURCE_DIR}/SDL/include)
 #add libyuv header
 include_directories(${PROJECT_SOURCE_DIR}/libyuv/include)
+
+#add SDL2 library
+add_subdirectory(SDL)
+
+#add libyuv library
+add_subdirectory(libyuv)
 
 file(GLOB WLANJIE_SOURCE *.c)
 add_library(wlanjie SHARED ${WLANJIE_SOURCE})

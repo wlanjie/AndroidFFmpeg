@@ -6,7 +6,6 @@
 #ifndef _Included_com_wlanjie_ffmpeg_library_FFmpeg
 #define _Included_com_wlanjie_ffmpeg_library_FFmpeg
 
-#include "SDL2/src/SDL_internal.h"
 #include "SDL_main.h"
 #include <jni.h>
 #include <stdio.h>

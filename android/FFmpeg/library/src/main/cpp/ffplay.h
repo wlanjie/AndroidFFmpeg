@@ -32,9 +32,10 @@
 #define VIDEO_PICTURE_QUEUE_SIZE 6
 #define SUBPICTURE_QUEUE_SIZE 16
 #define SAMPLE_QUEUE_SIZE 9
-#define FRAME_QUEUE_SIZE FFMAX(SAMPLE_QUEUE_SIZE, FFMAX(VIDEO_PICTURE_QUEUE_SIZE, SUBPICTURE_QUEUE_SIZE))
+#define FRAME_QUEUE_SIZE 1
 
 #define FF_ALLOC_EVENT   (SDL_USEREVENT)
+#define FF_REFRESH_EVENT (SDL_USEREVENT + 1)
 #define FF_QUIT_EVENT    (SDL_USEREVENT + 2)
 
 /* Minimum SDL audio buffer size, in samples. */
@@ -69,7 +70,7 @@
 #define EXTERNAL_CLOCK_SPEED_STEP 0.001
 
 /* no AV sync correction is done if below the minimum AV sync threshold */
-#define AV_SYNC_THRESHOLD_MIN 0.04
+#define AV_SYNC_THRESHOLD_MIN 0.01
 /* AV sync correction is done if above the maximum AV sync threshold */
 #define AV_SYNC_THRESHOLD_MAX 0.1
 /* If a frame duration is longer than this, it will not be duplicated to compensate AV sync */
@@ -81,6 +82,8 @@
 
 /* maximum audio speed change to get correct sync */
 #define SAMPLE_CORRECTION_PERCENT_MAX 10
+
+#define MAX_AUDIO_FRAME_SIZE 192000
 
 #define DEBUG 1
 
@@ -191,7 +194,14 @@ typedef struct VideoState {
     PacketQueue videoq;
     PacketQueue subtitleq;
     PacketQueue audioq;
-    
+
+    uint8_t *audio_pkt_data;
+    int audio_pkt_size;
+    double video_current_pts;
+    double video_current_pts_time;
+    double frame_last_delay;
+    double frame_last_pts;
+
     SDL_cond *continue_read_thread;
     int audio_clock_serial;
     int audio_volume;
@@ -199,7 +209,7 @@ typedef struct VideoState {
     unsigned int audio_buf_index;
     unsigned int audio_buf_size;
     unsigned int audio_buf1_size;
-    uint8_t *audio_buf;
+    uint8_t audio_buf[(MAX_AUDIO_FRAME_SIZE * 3) / 2];
     uint8_t *audio_buf1;
     int audio_write_buf_size;
     struct AudioParams audio_src;
