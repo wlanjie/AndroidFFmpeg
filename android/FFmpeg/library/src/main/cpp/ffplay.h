@@ -25,6 +25,7 @@
 #include "libswresample/swresample.h"
 #include "libswscale/swscale.h"
 #include "libavcodec/avfft.h"
+#include "ffmpeg.h"
 
 #define MAX_QUEUE_SIZE (15 * 1024 * 1024)
 #define MIN_FRAMES 25
@@ -32,19 +33,15 @@
 #define VIDEO_PICTURE_QUEUE_SIZE 6
 #define SUBPICTURE_QUEUE_SIZE 16
 #define SAMPLE_QUEUE_SIZE 9
-#define FRAME_QUEUE_SIZE 1
+#define FRAME_QUEUE_SIZE FFMAX(SAMPLE_QUEUE_SIZE, FFMAX(VIDEO_PICTURE_QUEUE_SIZE, SUBPICTURE_QUEUE_SIZE))
 
 #define FF_ALLOC_EVENT   (SDL_USEREVENT)
-#define FF_REFRESH_EVENT (SDL_USEREVENT + 1)
 #define FF_QUIT_EVENT    (SDL_USEREVENT + 2)
 
 /* Minimum SDL audio buffer size, in samples. */
 #define SDL_AUDIO_MIN_BUFFER_SIZE 512
 /* Calculate actual buffer size keeping in mind not cause too frequent audio callbacks */
 #define SDL_AUDIO_MAX_CALLBACKS_PER_SEC 30
-
-/* Step size for volume control */
-#define SDL_VOLUME_STEP (SDL_MIX_MAXVOLUME / 50)
 
 /* NOTE: the size must be big enough to compensate the hardware audio buffersize size */
 /* TODO: We assume that a decoded and resampled frame fits into this buffer */
@@ -55,8 +52,6 @@
 
 /* we use about AUDIO_DIFF_AVG_NB A-V differences to make the average */
 #define AUDIO_DIFF_AVG_NB   20
-
-#define CURSOR_HIDE_DELAY 1000000
 
 /* polls for possible required screen refresh at least this often, should be less than 1/fps */
 #define REFRESH_RATE 0.01
@@ -70,7 +65,7 @@
 #define EXTERNAL_CLOCK_SPEED_STEP 0.001
 
 /* no AV sync correction is done if below the minimum AV sync threshold */
-#define AV_SYNC_THRESHOLD_MIN 0.01
+#define AV_SYNC_THRESHOLD_MIN 0.04
 /* AV sync correction is done if above the maximum AV sync threshold */
 #define AV_SYNC_THRESHOLD_MAX 0.1
 /* If a frame duration is longer than this, it will not be duplicated to compensate AV sync */
@@ -78,12 +73,8 @@
 /* no AV correction is done if too big error */
 #define AV_NOSYNC_THRESHOLD 10.0
 
-#define USE_ONEPASS_SUBTITLE_RENDER 1
-
 /* maximum audio speed change to get correct sync */
 #define SAMPLE_CORRECTION_PERCENT_MAX 10
-
-#define MAX_AUDIO_FRAME_SIZE 192000
 
 #define DEBUG 1
 
@@ -93,6 +84,14 @@ enum {
     AV_SYNC_AUDIO_MASTER, /* default choice */
     AV_SYNC_VIDEO_MASTER,
     AV_SYNC_EXTERNAL_CLOCK, /* synchronize to an external clock */
+};
+
+enum ShowMode {
+    SHOW_MODE_NONE = -1,
+    SHOW_MODE_VIDEO = 0,
+    SHOW_MODE_WAVES,
+    SHOW_MODE_RDFT,
+    SHOW_MODE_NB
 };
 
 typedef struct MyAVPacketList {
@@ -144,10 +143,8 @@ typedef struct Frame {
     int serial;
     AVRational sar;
     AVSubtitle sub;
-    AVSubtitleRect **subrects;
     SDL_Texture *bmp;
     int allocated;
-    int reallocated;
     int width;
     int height;
     int uploaded;
@@ -158,10 +155,10 @@ typedef struct PacketQueue {
     SDL_mutex *mutex;
     SDL_cond *cond;
     int abort_request;
+    int serial;
     int nb_packets;
     int size;
-    AVPacketList *first_pkt, *last_pkt;
-    int serial;
+    MyAVPacketList *first_pkt, *last_pkt;
 } PacketQueue;
 
 typedef struct FrameQueue {
@@ -181,27 +178,16 @@ typedef struct VideoState {
     char *filename;
     int width;
     int height;
-    int ytop;
-    int xleft;
-    
+
     Clock audclk;
     Clock vidclk;
     Clock extclk;
-    
-    FrameQueue pictq;
-    FrameQueue subpq;
-    FrameQueue sampq;
-    
-    PacketQueue videoq;
-    PacketQueue subtitleq;
-    PacketQueue audioq;
 
-    uint8_t *audio_pkt_data;
-    int audio_pkt_size;
-    double video_current_pts;
-    double video_current_pts_time;
-    double frame_last_delay;
-    double frame_last_pts;
+    FrameQueue pictq;
+    FrameQueue sampq;
+
+    PacketQueue videoq;
+    PacketQueue audioq;
 
     SDL_cond *continue_read_thread;
     int audio_clock_serial;
@@ -210,7 +196,7 @@ typedef struct VideoState {
     unsigned int audio_buf_index;
     unsigned int audio_buf_size;
     unsigned int audio_buf1_size;
-    uint8_t audio_buf[(MAX_AUDIO_FRAME_SIZE * 3) / 2];
+    uint8_t *audio_buf;
     uint8_t *audio_buf1;
     int audio_write_buf_size;
     struct AudioParams audio_src;
@@ -224,34 +210,28 @@ typedef struct VideoState {
     SDL_Thread *read_tid;
     AVStream *audio_st;
     Decoder auddec;
-    
+
     AVStream *video_st;
-    int viddec_width;
-    int viddec_height;
     Decoder viddec;
     int queue_attachments_req;
-    
+
     int video_stream;
     int audio_stream;
-    int subtitle_stream;
-    
-    int last_video_stream;
-    int last_audio_stream;
-    int last_subtitle_stream;
+
     int eof;
     int paused;
     int last_paused;
     int read_pause_return;
-    
+
     AVFormatContext *ic;
     AudioParams audio_filter_src;
     AudioParams audio_tgt;
     struct SwrContext *swr_ctx;
-    
+
     int abort_request;
     double max_frame_duration;
     int realtime;
-    
+
     double frame_last_filter_delay;
     int vfilter_idx;
     double frame_last_returned_time;
@@ -263,43 +243,26 @@ typedef struct VideoState {
     double frame_timer;
     int force_refresh;
     double last_vis_time;
-    int last_i_start;
-    int reft_bits;
-    RDFTContext *rdft;
-    FFTSample *rdft_data;
-    int rdft_bits;
-    int xpos;
-    AVStream *subtitle_st;
-    SDL_Texture *sub_texture;
     SDL_Texture *vis_texture;
-    
-    struct SwsContext *sub_convert_ctx;
+
     struct SwsContext *img_convert_ctx;
-    
+
     AVFilterContext *in_video_filter;
     AVFilterContext *out_video_filter;
     AVFilterContext *in_audio_filter;
     AVFilterContext *out_audio_filter;
     AVFilterGraph *agraph;
-    
+
     int16_t sample_array[SAMPLE_ARRAY_SIZE];
     int sample_array_index;
-    
-    enum ShowMode {
-        SHOW_MODE_NONE = -1,
-        SHOW_MODE_VIDEO = 0,
-        SHOW_MODE_WAVES,
-        SHOW_MODE_RDFT,
-        SHOW_MODE_NB
-    } show_mode;
+
+    enum ShowMode show_mode;
 } VideoState;
 
 static char *wanted_stream_spec[AVMEDIA_TYPE_NB] = {0};
 static int av_sync_type = AV_SYNC_AUDIO_MASTER;
 static int64_t start_time = AV_NOPTS_VALUE; /* 如果不是AV_NOPTS_VALUE, 则从这个时间开始播放*/
 static enum ShowMode show_mode = SHOW_MODE_NONE;
-static int default_width = 640;
-static int default_height = 480;
 static int lowres;
 static int fast = 0;
 static AVPacket flush_pkt;
@@ -311,9 +274,6 @@ static int autoexit;
 static int64_t duration = AV_NOPTS_VALUE;
 static int display_disable;
 static double rdftspeed = 0.02;
-static int screen_width = 0;
-static int screen_height = 0;
-static int is_full_screen;
 
 static SDL_Window *window;
 static SDL_Renderer *renderer;
