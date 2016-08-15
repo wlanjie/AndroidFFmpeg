@@ -213,7 +213,6 @@ typedef struct VideoState {
 
     AVStream *video_st;
     Decoder viddec;
-    int queue_attachments_req;
 
     int video_stream;
     int audio_stream;

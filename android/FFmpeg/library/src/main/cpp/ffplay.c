@@ -1316,10 +1316,6 @@ int stream_component_open(VideoState *is, int stream_index) {
                 avcodec_free_context(&avctx);
                 return ret;
             }
-            is->queue_attachments_req = 1;
-            break;
-
-        case AVMEDIA_TYPE_SUBTITLE:
             break;
         default:
             break;
@@ -1379,10 +1375,7 @@ int read_thread(void *arg) {
     int ret;
     int st_index[AVMEDIA_TYPE_NB];
     AVPacket pkt1, *pkt = &pkt1;
-    int64_t stream_start_time;
-    int pkt_in_play_range = 0;
     SDL_mutex *wait_mutex = SDL_CreateMutex();
-    int64_t pkt_ts;
     if (!wait_mutex) {
         av_log(NULL, AV_LOG_FATAL, "Read Thread SDL_CreateMutex(): %s\n", SDL_GetError());
         read_thread_failed(is, NULL, wait_mutex);
@@ -1519,35 +1512,12 @@ int read_thread(void *arg) {
                 }
             }
             is->seek_req = 0;
-            is->queue_attachments_req = 1;
             is->eof = 0;
             if (is->paused) {
                 step_to_next_frame(is);
             }
         }
-        if (is->queue_attachments_req) {
-            if (is->video_st && is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC) {
-                AVPacket copy;
-                if ((ret = av_copy_packet(&copy, &is->video_st->attached_pic)) < 0) {
-                    read_thread_failed(is, ic, wait_mutex);
-                }
-                packet_queue_put(&is->videoq, &copy);
-                packet_queue_put_nullpacket(&is->videoq, is->video_stream);
-            }
-            is->queue_attachments_req = 0;
-        }
 
-        /* if the queue are full, no need to read more */
-        if (infinite_buffer < 1 && (is->audioq.size + is->videoq.size > MAX_QUEUE_SIZE ||
-                                    ((is->audioq.nb_packets > MIN_FRAMES || is->audio_stream < 0 || is->audioq.abort_request) &&
-                                     (is->videoq.nb_packets > MIN_FRAMES || is->video_stream < 0 || is->videoq.abort_request ||
-                                      (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))))) {
-            /* wait 10 ms */
-            SDL_LockMutex(wait_mutex);
-            SDL_CondWaitTimeout(is->continue_read_thread, wait_mutex, 10);
-            SDL_UnlockMutex(wait_mutex);
-            continue;
-        }
         if (!is->paused &&
             (!is->audio_st || (is->auddec.finished == is->audioq.serial && frame_queue_nb_remaining(&is->sampq) == 0)) &&
             (!is->video_st || (is->viddec.finished == is->videoq.serial && frame_queue_nb_remaining(&is->pictq) == 0))) {
@@ -1580,15 +1550,9 @@ int read_thread(void *arg) {
         } else {
             is->eof = 0;
         }
-        /* check if packet is in play range specified by user, then queue, otherwise discard */
-        stream_start_time = ic->streams[pkt->stream_index]->start_time;
-        pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
-        pkt_in_play_range = duration == AV_NOPTS_VALUE || (pkt_ts - (stream_start_time != AV_NOPTS_VALUE ? stream_start_time : 0)) *
-                                                          av_q2d(ic->streams[pkt->stream_index]->time_base) -
-                                                          (double)(start_time != AV_NOPTS_VALUE ? start_time : 0) / 1000000 <= ((double) duration / 1000000);
-        if (pkt->stream_index == is->audio_stream && pkt_in_play_range) {
+        if (pkt->stream_index == is->audio_stream) {
             packet_queue_put(&is->audioq, pkt);
-        } else if (pkt->stream_index == is->video_stream && pkt_in_play_range && !(is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC)) {
+        } else if (pkt->stream_index == is->video_stream) {
             packet_queue_put(&is->videoq, pkt);
         } else {
             av_packet_unref(pkt);
