@@ -279,5 +279,5 @@ static SDL_Renderer *renderer;
 static int64_t audio_callback_time;
 
 int init_ffplay(const char *filename);
-void do_exit(VideoState *is);
+void do_exit();
 #endif /* ffplay_h */

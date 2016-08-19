@@ -594,8 +594,11 @@ int audio_decoder_frame(VideoState *is) {
 void sdl_audio_callback(void *opaque, Uint8 *stream, int len) {
     VideoState *is = opaque;
     int audio_size, len1;
+    /*当前系统时间*/
     audio_callback_time = av_gettime_relative();
+    /*len为SDL中audio buffer的大小，单位是字节，该大小是我们在打开音频设备时设置*/
     while (len > 0) {
+        /*如果audiobuffer中的数据少于SDL需要的数据，则进行解码*/
         if (is->audio_buf_index >= is->audio_buf_size) {
             audio_size = audio_decoder_frame(is);
             if (audio_size < 0) {
@@ -628,6 +631,8 @@ void sdl_audio_callback(void *opaque, Uint8 *stream, int len) {
     is->audio_write_buf_size = is->audio_buf_size - is->audio_buf_index;
     /* Let's assume the audio driver that is used by SDL has two periods. */
     if (!isnan(is->audio_clock)) {
+        /*set_clock_at第二个参数是计算音频已经播放的时间，相当于video中的上一帧的播放时间，如果不同过SDL，例如直接使用linux下的dsp设备进行播放，
+         * 那么我们可以通过ioctl接口获取到驱动的audiobuffer中还有多少数据没播放，这样，我们通过音频的采样率和位深，可以很精确的算出音频播放到哪个点了*/
         set_clock_at(&is->audclk, is->audio_clock - (2 * is->audio_hw_buf_size + is->audio_write_buf_size) / is->audio_tgt.bytes_per_sec,
                      is->audio_clock_serial, audio_callback_time / 1000000.0);
         sync_clock_to_slave(&is->extclk, &is->audclk);
@@ -1518,6 +1523,20 @@ int read_thread(void *arg) {
             }
         }
 
+        /* if the queue are full, no need to read more */
+        /*如果audio的队列+video的队列大于MAX_QUEUE_SIZE, 或者audio的队列,video的队列大于MIN_FRAMES, 则等待10ms*/
+        if (infinite_buffer<1 &&
+            (is->audioq.size + is->videoq.size > MAX_QUEUE_SIZE
+             || ((is->audioq.nb_packets > MIN_FRAMES || is->audio_stream < 0 || is->audioq.abort_request)
+             && (is->videoq.nb_packets > MIN_FRAMES || is->video_stream < 0 || is->videoq.abort_request
+             || (is->video_st->disposition & AV_DISPOSITION_ATTACHED_PIC))))) {
+            /* wait 10 ms */
+            SDL_LockMutex(wait_mutex);
+            SDL_CondWaitTimeout(is->continue_read_thread, wait_mutex, 10);
+            SDL_UnlockMutex(wait_mutex);
+            continue;
+        }
+
         if (!is->paused &&
             (!is->audio_st || (is->auddec.finished == is->audioq.serial && frame_queue_nb_remaining(&is->sampq) == 0)) &&
             (!is->video_st || (is->viddec.finished == is->videoq.serial && frame_queue_nb_remaining(&is->pictq) == 0))) {
@@ -1631,7 +1650,7 @@ void stream_close(VideoState *is) {
     av_free(is);
 }
 
-void do_exit(VideoState *is) {
+void do_exit() {
     if (is) {
         stream_close(is);
     }
@@ -1653,8 +1672,6 @@ VideoState *stream_open(const char *filename) {
         return NULL;
     }
     is->filename = av_strdup(filename);
-    is->width = 1920;
-    is->height = 1080;
     if (!is->filename) {
         stream_close(is);
         return NULL;
@@ -1733,7 +1750,7 @@ void check_external_clock_speed(VideoState *is) {
 int video_open(VideoState *is, Frame *vp) {
     if (!window) {
         int flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
-        window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, is->width, is->height, flags);
+        window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 0, 0, flags);
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
         if (window) {
             SDL_RendererInfo info;
@@ -1745,7 +1762,7 @@ int video_open(VideoState *is, Frame *vp) {
             }
         }
     } else {
-        SDL_SetWindowSize(window, is->width, is->height);
+        SDL_SetWindowSize(window, 0, 0);
     }
     if (!window && !renderer) {
         av_log(NULL, AV_LOG_ERROR, "SDL: could not set video model - exiting\n");
@@ -1855,13 +1872,33 @@ double vp_duration(VideoState *is, Frame *vp, Frame *nextvp) {
     }
 }
 
+/**
+ * 视频的播放实际上是通过上一帧的播放时间加上一个延迟来计算下一帧的计算时间的，例如上一帧的播放时间pre_pts是0，
+ * 延迟delay为33ms，那么下一帧的播放时间则为0+33ms,第一帧的播放时间我们可以轻松获取，那么后续帧的播放时间的计算，
+ * 起关键点就在于delay，我们就是更具delay来控制视频播放的速度，从而达到与音频同步的目的
+ */
 double compute_target_delay(double delay, VideoState *is) {
     double sync_threshold, diff = 0;
 
+    /*如果主同步方式不是以视频为主，默认是以audio为主进行同步*/
     /* update delay to follow master synchronisation source */
     if (get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER) {
         /* if video is slave, we try to correct big delays by
          duplicating or deleting a frame */
+
+        /*get_clock(&is->vidclk)获取到的实际上是:从处理最后一帧开始到现在的时间加上最后一帧的pts,具体参考set_clock_at 和get_clock的代码
+        get_clock(&is->vidclk) ==is->vidclk.pts, av_gettime_relative() / 1000000.0 -is->vidclk.last_updated  +is->vidclk.pts*/
+
+        /*driff实际上就是已经播放的最近一个视频帧和音频帧pts的差值+ 两方系统的一个差值，用公式表达如下:
+       pre_video_pts: 最近的一个视频帧的pts
+       video_system_time_diff: 记录最近一个视频pts 到现在的时间，即av_gettime_relative()/ 1000000.0 - is->vidclk.last_updated
+       pre_audio_pts: 音频已经播放到的时间点，即已经播放的数据所代表的时间，通过已经播放的samples可以计算出已经播放的时间，在sdl_audio_callback中被设置
+       audio_system_time_diff: 同video_system_time_diff
+        最终视频和音频的diff可以用下面的公式表示:
+       diff = (pre_video_pts-pre_audio_pts) +(video_system_time_diff -  audio_system_time_diff)
+       如果diff<0, 则说明视频播放太慢了，如果diff>0,
+       则说明视频播放太快，此时需要通过计算delay来调整视频的播放速度如果
+       diff<AV_SYNC_THRESHOLD_MIN || diff>AV_SYNC_THRESHOLD_MAX 则不用调整delay?*/
         diff = get_clock(&is->vidclk) - get_master_clock(is);
 
         /* skip or repeat frame. We take into account the
@@ -1887,6 +1924,85 @@ static void update_video_pts(VideoState *is, double pts, int64_t pos, int serial
     sync_clock_to_slave(&is->extclk, &is->vidclk);
 }
 
+static void video_entry(VideoState *is, double *remaining_time, double *time) {
+    if (frame_queue_nb_remaining(&is->pictq) == 0) {
+
+    } else {
+        double last_duration, delay;
+        Frame *vp, *lastvp;
+
+        /* dequeue the picture */
+        lastvp = frame_queue_peek_last(&is->pictq);
+        vp = frame_queue_peek(&is->pictq);
+
+        if (vp->serial != is->videoq.serial) {
+            frame_queue_next(&is->pictq);
+            video_entry(is, remaining_time, time);
+            return;
+        }
+
+        if (lastvp->serial != vp->serial)
+            is->frame_timer = av_gettime_relative() / 1000000.0;
+
+        if (is->paused) {
+            if (!display_disable && is->force_refresh && is->show_mode == SHOW_MODE_VIDEO && is->pictq.rindex_shown)
+                video_display(is);
+            return;
+        }
+
+        /*通过pts计算duration，duration是一个videoframe的持续时间，当前帧的pts 减去上一帧的pts*/
+        /* compute nominal last_duration */
+        last_duration = vp_duration(is, lastvp, vp);
+        delay = compute_target_delay(last_duration, is);
+
+        /*time 为系统当前时间，av_gettime_relative拿到的是1970年1月1日到现在的时间，也就是格林威治时间*/
+        *time= av_gettime_relative()/1000000.0;
+        /*frame_timer实际上就是上一帧的播放时间，该时间是一个系统时间，而 frame_timer + delay 实际上就是当前这一帧的播放时间*/
+        if (*time < is->frame_timer + delay) {
+            /*remaining 就是在refresh_loop_wait_event 中还需要睡眠的时间，其实就是现在还没到这一帧的播放时间，我们需要睡眠等待*/
+            *remaining_time = FFMIN(is->frame_timer + delay - *time, *remaining_time);
+            if (!display_disable && is->force_refresh && is->show_mode == SHOW_MODE_VIDEO && is->pictq.rindex_shown)
+                video_display(is);
+            return;
+        }
+
+        is->frame_timer += delay;
+        /*如果下一帧的播放时间已经过了，并且其和当前系统时间的差值超过AV_SYNC_THRESHOLD_MAX，则将下一帧的播放时间改为当前系统时间，并在后续判断是否需要丢帧，其目的是立刻处理*/
+        if (delay > 0 && *time - is->frame_timer > AV_SYNC_THRESHOLD_MAX)
+            is->frame_timer = *time;
+
+        LOGE("pts = %f next-pts = %f duration = %f frame_time = %f", lastvp->pts, vp->pts, last_duration, is->frame_timer);
+        SDL_LockMutex(is->pictq.mutex);
+        /*视频帧的pts一般是从0开始，按照帧率往上增加的，此处pts是一个相对值，和系统时间没有关系，对于固定fps，一般是按照1/frame_rate的速度往上增加*/
+        /*更新视频的clock，将当前帧的pts和当前系统的时间保存起来，这2个数据将和audio  clock的pts 和系统时间一起计算delay*/
+        if (!isnan(vp->pts))
+            update_video_pts(is, vp->pts, vp->pos, vp->serial);
+
+        SDL_UnlockMutex(is->pictq.mutex);
+
+        /*如果延迟时间超过一帧，则进行丢帧处理*/
+        if (frame_queue_nb_remaining(&is->pictq) > 1) {
+            Frame *nextvp = frame_queue_peek_next(&is->pictq);
+            double duration = vp_duration(is, vp, nextvp);
+            if(get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER && *time > is->frame_timer + duration) {
+                /*丢掉延迟的帧，取下一帧*/
+                frame_queue_next(&is->pictq);
+                video_entry(is, remaining_time, time);
+                return;
+            }
+        }
+
+        frame_queue_next(&is->pictq);
+        is->force_refresh = 1;
+
+        if (is->step && !is->paused)
+            stream_toggle_pause(is);
+    }
+    /*刷新视频帧*/
+    if (!display_disable && is->force_refresh && is->show_mode == SHOW_MODE_VIDEO && is->pictq.rindex_shown)
+        video_display(is);
+}
+
 /* called to display each frame */
 static void video_refresh(void *opaque, double *remaining_time)
 {
@@ -1906,57 +2022,7 @@ static void video_refresh(void *opaque, double *remaining_time)
     }
 
     if (is->video_st) {
-        retry:
-        if (frame_queue_nb_remaining(&is->pictq) == 0) {
-            // nothing to do, no picture to display in the queue
-        } else {
-            double last_duration, delay;
-            Frame *vp, *lastvp;
-
-            /* dequeue the picture */
-            lastvp = frame_queue_peek_last(&is->pictq);
-            vp = frame_queue_peek(&is->pictq);
-
-            if (vp->serial != is->videoq.serial) {
-                frame_queue_next(&is->pictq);
-                goto retry;
-            }
-
-            if (lastvp->serial != vp->serial)
-                is->frame_timer = av_gettime_relative() / 1000000.0;
-
-            if (is->paused)
-                goto display;
-
-            /* compute nominal last_duration */
-            last_duration = vp_duration(is, lastvp, vp);
-            delay = compute_target_delay(last_duration, is);
-
-            time= av_gettime_relative()/1000000.0;
-            if (time < is->frame_timer + delay) {
-                *remaining_time = FFMIN(is->frame_timer + delay - time, *remaining_time);
-                goto display;
-            }
-
-            is->frame_timer += delay;
-            if (delay > 0 && time - is->frame_timer > AV_SYNC_THRESHOLD_MAX)
-                is->frame_timer = time;
-
-            SDL_LockMutex(is->pictq.mutex);
-            if (!isnan(vp->pts))
-                update_video_pts(is, vp->pts, vp->pos, vp->serial);
-            SDL_UnlockMutex(is->pictq.mutex);
-
-            frame_queue_next(&is->pictq);
-            is->force_refresh = 1;
-
-            if (is->step && !is->paused)
-                stream_toggle_pause(is);
-        }
-        display:
-        /* display picture */
-        if (!display_disable && is->force_refresh && is->show_mode == SHOW_MODE_VIDEO && is->pictq.rindex_shown)
-            video_display(is);
+        video_entry(is, remaining_time, &time);
     }
     is->force_refresh = 0;
 }

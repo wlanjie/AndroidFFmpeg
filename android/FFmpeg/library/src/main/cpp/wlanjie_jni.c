@@ -22,69 +22,6 @@
 extern "C" {
 #endif
 
-int main(int arc, char **argv) {
-    init_ffplay("rtmp://live.hkstv.hk.lxdns.com/live/hks");
-    return 0;
-}
-//
-///* Start up the SDL app */
-//JNIEXPORT int JNICALL Java_org_libsdl_app_SDLActivity_nativeInit(JNIEnv* env, jclass cls, jobject array)
-//{
-//    int i;
-//    int argc;
-//    int status;
-//
-//    /* This interface could expand with ABI negotiation, callbacks, etc. */
-//    SDL_Android_Init(env, cls);
-//
-//    SDL_SetMainReady();
-//
-//    /* Prepare the arguments. */
-//
-//    int len = (*env)->GetArrayLength(env, array);
-//    char* argv[1 + len + 1];
-//    argc = 0;
-//    /* Use the name "app_process" so PHYSFS_platformCalcBaseDir() works.
-//       https://bitbucket.org/MartinFelis/love-android-sdl2/issue/23/release-build-crash-on-start
-//     */
-//    argv[argc++] = SDL_strdup("app_process");
-//    for (i = 0; i < len; ++i) {
-//        const char* utf;
-//        char* arg = NULL;
-//        jstring string = (*env)->GetObjectArrayElement(env, array, i);
-//        if (string) {
-//            utf = (*env)->GetStringUTFChars(env, string, 0);
-//            if (utf) {
-//                arg = SDL_strdup(utf);
-//                (*env)->ReleaseStringUTFChars(env, string, utf);
-//            }
-//            (*env)->DeleteLocalRef(env, string);
-//        }
-//        if (!arg) {
-//            arg = SDL_strdup("");
-//        }
-//        argv[argc++] = arg;
-//    }
-//    argv[argc] = NULL;
-//
-//
-//    /* Run the application. */
-//
-//    status = SDL_main(argc, argv);
-//
-//    /* Release the arguments. */
-//
-//    for (i = 0; i < argc; ++i) {
-//        SDL_free(argv[i]);
-//    }
-//
-//    /* Do not issue an exit or the whole application will terminate instead of just the SDL thread */
-//    /* exit(status); */
-//
-//    return status;
-//}
-
-
 MediaSource mediaSource = {NULL, NULL, NULL, NULL};
 
 static void release_media_source(MediaSource *mediaSource) {
@@ -223,7 +160,7 @@ static void release_ffmpeg(JNIEnv *env, jobject object) {
     av_freep(&(mediaSource.output_data_source));
     av_freep(&mediaSource);
     (*env)->DeleteLocalRef(env, object);
-    do_exit(is);
+    do_exit();
 }
 
 void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
