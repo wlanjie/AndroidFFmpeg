@@ -1,14 +1,18 @@
 package com.wlanjie.ffmpeg.library;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Looper;
 import android.provider.MediaStore;
+import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import java.io.FileNotFoundException;
@@ -58,27 +62,58 @@ public class MainActivity extends Activity {
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        player("/sdcard/crop.mp4");
+                        Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
+
+                        startActivity(intent);
                     }
                 });
-        SurfaceView surfaceView = (SurfaceView) findViewById(R.id.surface_view);
-        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder holder) {
-                FFmpeg.getInstance().setSurface(holder.getSurface());
-                FFmpeg.getInstance().player("rtmp://live.hkstv.hk.lxdns.com/live/hks");
-            }
+//        SurfaceView surfaceView = (SurfaceView) findViewById(R.id.surface_view);
+//        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+//            @Override
+//            public void surfaceCreated(SurfaceHolder holder) {
+//                FFmpeg.getInstance().setSurface(holder.getSurface());
+//            }
+//
+//            @Override
+//            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+//                Display mDisplay = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+//                FFmpeg.getInstance().onNativeResize(1920, 1080, format, 0);
+//                FFmpeg.getInstance().onNativeSurfaceChanged();
+//                new Thread(){
+//                    @Override
+//                    public void run() {
+//                        super.run();
+//                        FFmpeg.getInstance().player("rtmp://live.hkstv.hk.lxdns.com/live/hks");
+//                    }
+//                }.start();
+////                FFmpeg.getInstance().onNativeResume();
+//            }
+//
+//            @Override
+//            public void surfaceDestroyed(SurfaceHolder holder) {
+//                FFmpeg.getInstance().onNativeSurfaceDestroyed();
+//            }
+//        });
+    }
 
-            @Override
-            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            FFmpeg.getInstance().onNativeResume();
+        }
+    }
 
-            }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        FFmpeg.getInstance().onNativeResume();
+    }
 
-            @Override
-            public void surfaceDestroyed(SurfaceHolder holder) {
-
-            }
-        });
+    @Override
+    protected void onPause() {
+        super.onPause();
+        FFmpeg.getInstance().onNativePause();
     }
 
     private void startRecoderVideoIntent(int requestCode) {

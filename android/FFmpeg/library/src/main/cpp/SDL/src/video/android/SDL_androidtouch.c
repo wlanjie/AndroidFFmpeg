@@ -56,12 +56,12 @@ static void
 SeparateEventsHintWatcher(void *userdata, const char *name,
                           const char *oldValue, const char *newValue)
 {
-    jclass mActivityClass = Android_JNI_GetActivityClass();
-    JNIEnv *env = Android_JNI_GetEnv();
-    jfieldID fid = (*env)->GetStaticFieldID(env, mActivityClass, "mSeparateMouseAndTouch", "Z");
-
-    separate_mouse_and_touch = (newValue && (SDL_strcmp(newValue, "1") == 0));
-    (*env)->SetStaticBooleanField(env, mActivityClass, fid, separate_mouse_and_touch ? JNI_TRUE : JNI_FALSE);
+//    jclass mActivityClass = Android_JNI_GetActivityClass();
+//    JNIEnv *env = Android_JNI_GetEnv();
+//    jfieldID fid = (*env)->GetStaticFieldID(env, mActivityClass, "mSeparateMouseAndTouch", "Z");
+//
+//    separate_mouse_and_touch = (newValue && (SDL_strcmp(newValue, "1") == 0));
+//    (*env)->SetStaticBooleanField(env, mActivityClass, fid, separate_mouse_and_touch ? JNI_TRUE : JNI_FALSE);
 }
 
 void Android_InitTouch(void)

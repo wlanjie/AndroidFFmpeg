@@ -1641,8 +1641,8 @@ void do_exit(VideoState *is) {
         SDL_DestroyWindow(window);
     av_lockmgr_register(NULL);
     avformat_network_deinit();
+    SDL_CloseAudio();
     SDL_Quit();
-    av_log(NULL, AV_LOG_QUIET, "%s", "");
 }
 
 VideoState *stream_open(const char *filename);
@@ -1703,10 +1703,10 @@ int lockmgr(void **mtx, enum AVLockOp op) {
             }
             return 0;
         case AV_LOCK_OBTAIN:
-            return !!SDL_LockMutex(*mtx);
+            return SDL_LockMutex(*mtx) != 0;
 
         case AV_LOCK_RELEASE:
-            return !!SDL_UnlockMutex(*mtx);
+            return SDL_UnlockMutex(*mtx) != 0;
 
         case AV_LOCK_DESTROY:
             SDL_DestroyMutex(*mtx);
@@ -2043,7 +2043,7 @@ int init_ffplay(const char *filename) {
     av_init_packet(&flush_pkt);
     flush_pkt.data = (uint8_t *)&flush_pkt;
 
-    VideoState *is = stream_open(filename);
+    is = stream_open(filename);
     if (is == NULL) {
         return AVERROR(ENOMEM);
     }

@@ -78,8 +78,6 @@
 
 #define DEBUG 1
 
-int init_ffplay(const char *filename);
-
 enum {
     AV_SYNC_AUDIO_MASTER, /* default choice */
     AV_SYNC_VIDEO_MASTER,
@@ -274,8 +272,12 @@ static int64_t duration = AV_NOPTS_VALUE;
 static int display_disable;
 static double rdftspeed = 0.02;
 
+static VideoState *is;
 static SDL_Window *window;
 static SDL_Renderer *renderer;
 
 static int64_t audio_callback_time;
+
+int init_ffplay(const char *filename);
+void do_exit(VideoState *is);
 #endif /* ffplay_h */

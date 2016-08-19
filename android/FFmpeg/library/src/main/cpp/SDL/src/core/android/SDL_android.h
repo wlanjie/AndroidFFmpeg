@@ -73,9 +73,16 @@ int Android_JNI_GetTouchDeviceIds(int **ids);
 
 /* Threads */
 #include <jni.h>
+void SDL_JNI_Init(JavaVM *vm);
 JNIEnv *Android_JNI_GetEnv(void);
 int Android_JNI_SetupThread(void);
 jclass Android_JNI_GetActivityClass(void);
+void Android_JNI_onNativeResize(int width, int height, int format, float rate);
+void Android_JNI_onNativeSurfaceChanged();
+void Android_JNI_onNativeSurfaceDestroyed();
+void Android_JNI_onNativeQuit();
+void Android_JNI_onNativePause();
+void Android_JNI_onNativeResume();
 
 /* Generic messages */
 int Android_JNI_SendMessage(int command, int param);

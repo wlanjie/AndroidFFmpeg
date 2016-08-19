@@ -68,6 +68,7 @@ static JavaVM* mJavaVM;
 
 /* Main activity */
 static jclass mActivityClass;
+static jobject mObject;
 
 /* method signatures */
 static jmethodID midGetNativeSurface;
@@ -85,15 +86,12 @@ static SDL_bool bHasNewData;
                  Functions called by JNI
 *******************************************************************************/
 
-/* Library init */
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
-{
-    JNIEnv *env;
+void SDL_JNI_Init(JavaVM *vm) {
     mJavaVM = vm;
-    LOGI("JNI_OnLoad called");
+    JNIEnv *env;
     if ((*mJavaVM)->GetEnv(mJavaVM, (void**) &env, JNI_VERSION_1_4) != JNI_OK) {
         LOGE("Failed to get the environment using GetEnv()");
-        return -1;
+        return;
     }
     /*
      * Create mThreadKey so we can keep track of the JNIEnv assigned to each thread
@@ -103,30 +101,32 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
         __android_log_print(ANDROID_LOG_ERROR, "SDL", "Error initializing pthread key");
     }
     Android_JNI_SetupThread();
-
-    return JNI_VERSION_1_4;
 }
 
 /* Called before SDL_main() to initialize JNI bindings */
-JNIEXPORT void JNICALL SDL_Android_Init(JNIEnv* mEnv, jclass cls)
+JNIEXPORT void JNICALL SDL_Android_Init(JNIEnv* mEnv, jobject object)
 {
     __android_log_print(ANDROID_LOG_INFO, "SDL", "SDL_Android_Init()");
 
     Android_JNI_SetupThread();
 
-    mActivityClass = (jclass)((*mEnv)->NewGlobalRef(mEnv, cls));
+    mObject = (*mEnv)->NewGlobalRef(mEnv, object);
 
-    midGetNativeSurface = (*mEnv)->GetStaticMethodID(mEnv, mActivityClass,
+    jclass clazz = (*mEnv)->GetObjectClass(mEnv, object);
+
+    mActivityClass = (jclass)((*mEnv)->NewGlobalRef(mEnv, clazz));
+
+    midGetNativeSurface = (*mEnv)->GetMethodID(mEnv, mActivityClass,
                                 "getNativeSurface","()Landroid/view/Surface;");
-    midAudioInit = (*mEnv)->GetStaticMethodID(mEnv, mActivityClass,
+    midAudioInit = (*mEnv)->GetMethodID(mEnv, mActivityClass,
                                 "audioInit", "(IZZI)I");
-    midAudioWriteShortBuffer = (*mEnv)->GetStaticMethodID(mEnv, mActivityClass,
+    midAudioWriteShortBuffer = (*mEnv)->GetMethodID(mEnv, mActivityClass,
                                 "audioWriteShortBuffer", "([S)V");
-    midAudioWriteByteBuffer = (*mEnv)->GetStaticMethodID(mEnv, mActivityClass,
+    midAudioWriteByteBuffer = (*mEnv)->GetMethodID(mEnv, mActivityClass,
                                 "audioWriteByteBuffer", "([B)V");
-    midAudioQuit = (*mEnv)->GetStaticMethodID(mEnv, mActivityClass,
+    midAudioQuit = (*mEnv)->GetMethodID(mEnv, mActivityClass,
                                 "audioQuit", "()V");
-    midPollInputDevices = (*mEnv)->GetStaticMethodID(mEnv, mActivityClass,
+    midPollInputDevices = (*mEnv)->GetMethodID(mEnv, mActivityClass,
                                 "pollInputDevices", "()V");
 
     bHasNewData = SDL_FALSE;
@@ -149,9 +149,7 @@ void Java_org_libsdl_app_SDLActivity_onNativeDropFile(
 }
 
 /* Resize */
-JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_onNativeResize(
-                                    JNIEnv* env, jclass jcls,
-                                    jint width, jint height, jint format, jfloat rate)
+JNIEXPORT void JNICALL Android_JNI_onNativeResize(jint width, jint height, jint format, jfloat rate)
 {
     Android_SetScreenResolution(width, height, format, rate);
 }
@@ -212,7 +210,7 @@ JNIEXPORT jint JNICALL Java_org_libsdl_app_SDLActivity_nativeRemoveJoystick(
 
 
 /* Surface Created */
-JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_onNativeSurfaceChanged(JNIEnv* env, jclass jcls)
+JNIEXPORT void JNICALL Android_JNI_onNativeSurfaceChanged()
 {
     SDL_WindowData *data;
     SDL_VideoDevice *_this;
@@ -238,7 +236,7 @@ JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_onNativeSurfaceChanged(JN
 }
 
 /* Surface Destroyed */
-JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_onNativeSurfaceDestroyed(JNIEnv* env, jclass jcls)
+JNIEXPORT void JNICALL Android_JNI_onNativeSurfaceDestroyed()
 {
     /* We have to clear the current context and destroy the egl surface here
      * Otherwise there's BAD_NATIVE_WINDOW errors coming from eglCreateWindowSurface on resume
@@ -323,8 +321,7 @@ JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_nativeLowMemory(
 }
 
 /* Quit */
-JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_nativeQuit(
-                                    JNIEnv* env, jclass cls)
+JNIEXPORT void JNICALL Android_JNI_onNativeQuit()
 {
     /* Discard previous events. The user should have handled state storage
      * in SDL_APP_WILLENTERBACKGROUND. After nativeQuit() is called, no
@@ -339,8 +336,7 @@ JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_nativeQuit(
 }
 
 /* Pause */
-JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_nativePause(
-                                    JNIEnv* env, jclass cls)
+JNIEXPORT void JNICALL Android_JNI_onNativePause()
 {
     __android_log_print(ANDROID_LOG_VERBOSE, "SDL", "nativePause()");
     if (Android_Window) {
@@ -356,8 +352,7 @@ JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_nativePause(
 }
 
 /* Resume */
-JNIEXPORT void JNICALL Java_org_libsdl_app_SDLActivity_nativeResume(
-                                    JNIEnv* env, jclass cls)
+JNIEXPORT void JNICALL Android_JNI_onNativeResume()
 {
     __android_log_print(ANDROID_LOG_VERBOSE, "SDL", "nativeResume()");
 
@@ -463,7 +458,7 @@ ANativeWindow* Android_JNI_GetNativeWindow(void)
     jobject s;
     JNIEnv *env = Android_JNI_GetEnv();
 
-    s = (*env)->CallStaticObjectMethod(env, mActivityClass, midGetNativeSurface);
+    s = (*env)->CallObjectMethod(env, mObject, midGetNativeSurface);
     anw = ANativeWindow_fromSurface(env, s);
     (*env)->DeleteLocalRef(env, s);
   
@@ -572,7 +567,7 @@ int Android_JNI_OpenAudioDevice(int sampleRate, int is16Bit, int channelCount, i
     audioBuffer16Bit = is16Bit;
     audioBufferStereo = channelCount > 1;
 
-    if ((*env)->CallStaticIntMethod(env, mActivityClass, midAudioInit, sampleRate, audioBuffer16Bit, audioBufferStereo, desiredBufferFrames) != 0) {
+    if ((*env)->CallIntMethod(env, mObject, midAudioInit, sampleRate, audioBuffer16Bit, audioBufferStereo, desiredBufferFrames) != 0) {
         /* Error during audio initialization */
         __android_log_print(ANDROID_LOG_WARN, "SDL", "SDL audio: error on AudioTrack initialization!");
         return 0;
@@ -627,10 +622,10 @@ void Android_JNI_WriteAudioBuffer(void)
 
     if (audioBuffer16Bit) {
         (*mAudioEnv)->ReleaseShortArrayElements(mAudioEnv, (jshortArray)audioBuffer, (jshort *)audioBufferPinned, JNI_COMMIT);
-        (*mAudioEnv)->CallStaticVoidMethod(mAudioEnv, mActivityClass, midAudioWriteShortBuffer, (jshortArray)audioBuffer);
+        (*mAudioEnv)->CallVoidMethod(mAudioEnv, mObject, midAudioWriteShortBuffer, (jshortArray)audioBuffer);
     } else {
         (*mAudioEnv)->ReleaseByteArrayElements(mAudioEnv, (jbyteArray)audioBuffer, (jbyte *)audioBufferPinned, JNI_COMMIT);
-        (*mAudioEnv)->CallStaticVoidMethod(mAudioEnv, mActivityClass, midAudioWriteByteBuffer, (jbyteArray)audioBuffer);
+        (*mAudioEnv)->CallVoidMethod(mAudioEnv, mObject, midAudioWriteByteBuffer, (jbyteArray)audioBuffer);
     }
 
     /* JNI_COMMIT means the changes are committed to the VM but the buffer remains pinned */
@@ -640,7 +635,7 @@ void Android_JNI_CloseAudioDevice(void)
 {
     JNIEnv *env = Android_JNI_GetEnv();
 
-    (*env)->CallStaticVoidMethod(env, mActivityClass, midAudioQuit);
+    (*env)->CallVoidMethod(env, mObject, midAudioQuit);
 
     if (audioBuffer) {
         (*env)->DeleteGlobalRef(env, audioBuffer);
@@ -1309,8 +1304,8 @@ int Android_JNI_GetTouchDeviceIds(int **ids) {
 
 void Android_JNI_PollInputDevices(void)
 {
-    JNIEnv *env = Android_JNI_GetEnv();
-    (*env)->CallStaticVoidMethod(env, mActivityClass, midPollInputDevices);    
+//    JNIEnv *env = Android_JNI_GetEnv();
+//    (*env)->CallVoidMethod(env, mActivityClass, midPollInputDevices);
 }
 
 /* See SDLActivity.java for constants. */
@@ -1319,16 +1314,17 @@ void Android_JNI_PollInputDevices(void)
 /* sends message to be handled on the UI event dispatch thread */
 int Android_JNI_SendMessage(int command, int param)
 {
-    JNIEnv *env = Android_JNI_GetEnv();
-    if (!env) {
-        return -1;
-    }
-    jmethodID mid = (*env)->GetStaticMethodID(env, mActivityClass, "sendMessage", "(II)Z");
-    if (!mid) {
-        return -1;
-    }
-    jboolean success = (*env)->CallStaticBooleanMethod(env, mActivityClass, mid, command, param);
-    return success ? 0 : -1;
+//    JNIEnv *env = Android_JNI_GetEnv();
+//    if (!env) {
+//        return -1;
+//    }
+//    jmethodID mid = (*env)->GetMethodID(env, mActivityClass, "sendMessage", "(II)Z");
+//    if (!mid) {
+//        return -1;
+//    }
+//    jboolean success = (*env)->CallBooleanMethod(env, mObject, mid, command, param);
+//    return success ? 0 : -1;
+    return -1;
 }
 
 void Android_JNI_SuspendScreenSaver(SDL_bool suspend)
