@@ -1,6 +1,13 @@
 package com.wlanjie.ffmpeg.library;
 
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
+import android.util.Log;
 import android.view.InputDevice;
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -11,13 +18,16 @@ import java.util.Arrays;
  */
 public class FFmpeg {
 
+    private static final String TAG = "FFmpeg";
+
     static {
         System.loadLibrary("ffmpeg");
-        System.loadLibrary("SDL2");
         System.loadLibrary("wlanjie");
     }
 
+    private Surface surface;
     private volatile static FFmpeg instance;
+    private AudioTrack mAudioTrack;
 
     protected FFmpeg() {}
 
@@ -82,8 +92,8 @@ public class FFmpeg {
      * 如果需要缩放,指定高度的值,宽度-1,则宽度根据指定的高度自动计算而得
      * 如果指定宽度的值,高度为-1,则高度根据指定的宽度自动计算而得
      * 如果宽和高同时为-1,则不缩放
-     * @param newWidth 压缩的视频宽,如果需要保持原来的宽,则是0,如果指定高度为原视频的一半,宽度传入-1,则根据高度自动计算而得
-     * @param newHeight 压缩的视频高,如果需要保持原来的高,则是0, 如果指定宽度为原视频的一半,高度传入-1,则根据宽度自动计算而得
+     * @param width 压缩的视频宽,如果需要保持原来的宽,则是0,如果指定高度为原视频的一半,宽度传入-1,则根据高度自动计算而得
+     * @param height 压缩的视频高,如果需要保持原来的高,则是0, 如果指定宽度为原视频的一半,高度传入-1,则根据宽度自动计算而得
      * @throws FileNotFoundException 如果文件不存在抛出此异常
      * @throws IllegalStateException
      */
@@ -110,11 +120,58 @@ public class FFmpeg {
 
     public native int player(String url);
 
-    /**
-     * 释放资源
-     */
-    public native void release();
+    public void setSurface(Surface surface) {
+        if (surface == null) {
+            throw new IllegalArgumentException("surface can't be null");
+        }
+        this.surface = surface;
+    }
 
+    public native void onNativePause();
+
+    public native void onNativeResume();
+
+    public native void onNativeResize(int width, int height, int format, float rate);
+
+    public native void onNativeSurfaceChanged();
+
+    public native void onNativeSurfaceDestroyed();
+
+    public native void onNativeLowMemory();
+
+    public native void pollInputDevices();
+
+    public void setSurfaceView(SurfaceView surfaceView) {
+        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
+                setSurface(holder.getSurface());
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        player("rtmp://live.hkstv.hk.lxdns.com/live/hks");
+                    }
+                });
+                thread.start();
+                onNativeResize(width, height, format, 0);
+                onNativeResume();
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {
+                onNativeSurfaceDestroyed();
+            }
+        });
+    }
+
+    /**
+     * This method is called by SDL using JNI.
+     * @return an array which may be empty but is never null.
+     */
     public static int[] inputGetInputDeviceIds(int sources) {
         int[] ids = InputDevice.getDeviceIds();
         int[] filtered = new int[ids.length];
@@ -128,34 +185,115 @@ public class FFmpeg {
         return Arrays.copyOf(filtered, used);
     }
 
-    // C functions we call
-    public static native int nativeInit(Object arguments);
-    public static native void nativeLowMemory();
-    public static native void nativeQuit();
-    public static native void nativePause();
-    public static native void nativeResume();
-    public static native void onNativeDropFile(String filename);
-    public static native void onNativeResize(int x, int y, int format, float rate);
-    public static native int onNativePadDown(int device_id, int keycode);
-    public static native int onNativePadUp(int device_id, int keycode);
-    public static native void onNativeJoy(int device_id, int axis,
-                                          float value);
-    public static native void onNativeHat(int device_id, int hat_id,
-                                          int x, int y);
-    public static native void onNativeKeyDown(int keycode);
-    public static native void onNativeKeyUp(int keycode);
-    public static native void onNativeKeyboardFocusLost();
-    public static native void onNativeMouse(int button, int action, float x, float y);
-    public static native void onNativeTouch(int touchDevId, int pointerFingerId,
-                                            int action, float x,
-                                            float y, float p);
-    public static native void onNativeAccel(float x, float y, float z);
-    public static native void onNativeSurfaceChanged();
-    public static native void onNativeSurfaceDestroyed();
-    public static native int nativeAddJoystick(int device_id, String name,
-                                               int is_accelerometer, int nbuttons,
-                                               int naxes, int nhats, int nballs);
-    public static native int nativeRemoveJoystick(int device_id);
-    public static native String nativeGetHint(String name);
+
+    public void setSurfaceHolder(SurfaceHolder holder) {
+        setSurface(holder.getSurface());
+    }
+
+    /**
+     * native call method
+     * @return
+     */
+    public Surface getNativeSurface() {
+        if (surface == null) {
+            throw new IllegalArgumentException("surface can't be null, please use setSurface or setSurfaceHolder");
+        }
+        return surface;
+    }
+
+
+    /**
+     * This method is called by SDL using JNI.
+     */
+    public int audioInit(int sampleRate, boolean is16Bit, boolean isStereo, int desiredFrames) {
+        int channelConfig = isStereo ? AudioFormat.CHANNEL_CONFIGURATION_STEREO : AudioFormat.CHANNEL_CONFIGURATION_MONO;
+        int audioFormat = is16Bit ? AudioFormat.ENCODING_PCM_16BIT : AudioFormat.ENCODING_PCM_8BIT;
+        int frameSize = (isStereo ? 2 : 1) * (is16Bit ? 2 : 1);
+
+        Log.v(TAG, "SDL audio: wanted " + (isStereo ? "stereo" : "mono") + " " + (is16Bit ? "16-bit" : "8-bit") + " " + (sampleRate / 1000f) + "kHz, " + desiredFrames + " frames buffer");
+
+        // Let the user pick a larger buffer if they really want -- but ye
+        // gods they probably shouldn't, the minimums are horrifyingly high
+        // latency already
+        desiredFrames = Math.max(desiredFrames, (AudioTrack.getMinBufferSize(sampleRate, channelConfig, audioFormat) + frameSize - 1) / frameSize);
+
+        if (mAudioTrack == null) {
+            mAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate,
+                    channelConfig, audioFormat, desiredFrames * frameSize, AudioTrack.MODE_STREAM);
+
+            // Instantiating AudioTrack can "succeed" without an exception and the track may still be invalid
+            // Ref: https://android.googlesource.com/platform/frameworks/base/+/refs/heads/master/media/java/android/media/AudioTrack.java
+            // Ref: http://developer.android.com/reference/android/media/AudioTrack.html#getState()
+
+            if (mAudioTrack.getState() != AudioTrack.STATE_INITIALIZED) {
+                Log.e(TAG, "Failed during initialization of Audio Track");
+                mAudioTrack = null;
+                return -1;
+            }
+
+            mAudioTrack.play();
+        }
+
+        Log.v(TAG, "SDL audio: got " + ((mAudioTrack.getChannelCount() >= 2) ? "stereo" : "mono") + " " + ((mAudioTrack.getAudioFormat() == AudioFormat.ENCODING_PCM_16BIT) ? "16-bit" : "8-bit") + " " + (mAudioTrack.getSampleRate() / 1000f) + "kHz, " + desiredFrames + " frames buffer");
+
+        return 0;
+    }
+
+
+    /**
+     * This method is called by SDL using JNI.
+     */
+    public void audioWriteShortBuffer(short[] buffer) {
+        for (int i = 0; i < buffer.length; ) {
+            int result = mAudioTrack.write(buffer, i, buffer.length - i);
+            if (result > 0) {
+                i += result;
+            } else if (result == 0) {
+                try {
+                    Thread.sleep(1);
+                } catch(InterruptedException e) {
+                    // Nom nom
+                }
+            } else {
+                return;
+            }
+        }
+    }
+
+    /**
+     * This method is called by SDL using JNI.
+     */
+    public void audioWriteByteBuffer(byte[] buffer) {
+        for (int i = 0; i < buffer.length; ) {
+            int result = mAudioTrack.write(buffer, i, buffer.length - i);
+            if (result > 0) {
+                i += result;
+            } else if (result == 0) {
+                try {
+                    Thread.sleep(1);
+                } catch(InterruptedException e) {
+                    // Nom nom
+                }
+            } else {
+                return;
+            }
+        }
+    }
+
+    /**
+     * This method is called by SDL using JNI.
+     */
+    public void audioQuit() {
+        if (mAudioTrack != null) {
+            mAudioTrack.stop();
+            mAudioTrack = null;
+        }
+    }
+
+
+    /**
+     * 释放资源
+     */
+    public native void release();
 
 }

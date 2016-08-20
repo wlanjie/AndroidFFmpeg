@@ -1,30 +1,22 @@
 cmake_minimum_required(VERSION 3.4.1)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -DANDROID_NDK -DDISABLE_IMPORTGL")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -UNDEBUG")
-
-#SDL2 build options
-set(EXTRA_LIBS android log dl GLESv2)
-set(SDL_STATIC ON)
-set(STDC_HEADERS 1)
-set(SDL_SHARED ON)
-set(CMAKE_SYSTEM_NAME Linux)
-include(CMakeForceCompiler)
-option(OPT_DEF_LIBC "" ON)
-set(ANDROID TRUE)
-#add SDL2 library
-add_subdirectory(SDL2)
-
-#add libyuv library
-add_subdirectory(libyuv)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -DANDROID_NDK -DDISABLE_IMPORTGL -DGL_GLEXT_PROTOTYPES=1")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -UNDEBUG -DGL_GLEXT_PROTOTYPES")
 
 #add ffmpeg header
 set(FFMPEG_HEADER ${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/ffmpeg-build/${ANDROID_ABI}/output/include)
 include_directories(${FFMPEG_HEADER})
 #add SDL2 header
-include_directories(${PROJECT_SOURCE_DIR}/SDL2/include)
+include_directories(${PROJECT_SOURCE_DIR}/SDL/include)
+include_directories(${PROJECT_SOURCE_DIR}/SDL/src/core/android)
 #add libyuv header
 include_directories(${PROJECT_SOURCE_DIR}/libyuv/include)
+
+#add SDL2 library
+add_subdirectory(SDL)
+
+#add libyuv library
+add_subdirectory(libyuv)
 
 file(GLOB WLANJIE_SOURCE *.c)
 add_library(wlanjie SHARED ${WLANJIE_SOURCE})
@@ -34,9 +26,10 @@ message(STATUS "ffmpeg lib: ${FFMPEG_LIB_DIR}")
 message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 
 #link SDL2 library
-set(SDL2_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/../../obj)
-add_library(SDL2_LIB SHARED IMPORTED)
-set_target_properties(SDL2_LIB PROPERTIES IMPORTED_LOCATION ${SDL2_LIB_DIR}/${ANDROID_ABI}/libSDL2.so)
+set(SDL2_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/SDL)
+message(STATUS "SDL2_LIB_DIR: ${SDL2_LIB_DIR}")
+add_library(SDL2_LIB STATIC IMPORTED)
+set_target_properties(SDL2_LIB PROPERTIES IMPORTED_LOCATION ${SDL2_LIB_DIR}/libSDL2.a)
 
 #link libyuv library
 set(YUV_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/libyuv)
@@ -48,4 +41,4 @@ set(FFMPEG_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/../jniLibs)
 add_library(ffmpeg SHARED IMPORTED)
 set_target_properties(ffmpeg PROPERTIES IMPORTED_LOCATION ${FFMPEG_LIB_DIR}/${ANDROID_ABI}/libffmpeg.so)
 
-target_link_libraries(wlanjie SDL2_LIB YUV_LIB android log dl m GLESv1_CM ffmpeg)
+target_link_libraries(wlanjie SDL2_LIB YUV_LIB android log dl m GLESv1_CM GLESv2 ffmpeg)

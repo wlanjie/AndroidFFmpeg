@@ -30,4 +30,10 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/crop"
         android:text="播放视频"/>
+
+    <SurfaceView
+        android:id="@+id/surface_view"
+        android:layout_below="@id/player"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </RelativeLayout>

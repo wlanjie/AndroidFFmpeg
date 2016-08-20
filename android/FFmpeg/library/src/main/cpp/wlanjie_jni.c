@@ -6,12 +6,13 @@
 #ifndef _Included_com_wlanjie_ffmpeg_library_FFmpeg
 #define _Included_com_wlanjie_ffmpeg_library_FFmpeg
 
+#include "SDL_main.h"
 #include <jni.h>
-#include <stdio.h>
 #include "utils.h"
 #include "openfile.h"
-#include "player.h"
 #include "log.h"
+#include "SDL_android.h"
+#include "ffplay.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -57,7 +58,7 @@ static void call_set_input_data_source_exception(JNIEnv *env, MediaSource *media
     release_media_source(mediaSource);
 }
 
-static jint open_input_jni(JNIEnv *env, jobject object, jstring input_path) {
+static jint Android_JNI_open_input(JNIEnv *env, jobject object, jstring input_path) {
     int ret = 0;
     const char *input_data_source = (*env)->GetStringUTFChars(env, input_path, NULL);
     //判断文件是否存在
@@ -91,7 +92,7 @@ static jint open_input_jni(JNIEnv *env, jobject object, jstring input_path) {
     return ret;
 }
 
-static jint compress(JNIEnv *env, jobject object, jstring output_path, jint new_width, jint new_height) {
+static jint Android_JNI_compress(JNIEnv *env, jobject object, jstring output_path, jint new_width, jint new_height) {
     int ret = 0;
     const char *output_data_source = (*env)->GetStringUTFChars(env, output_path, 0);
     mediaSource.video_avfilter = av_strdup("null");
@@ -114,7 +115,7 @@ static jint compress(JNIEnv *env, jobject object, jstring output_path, jint new_
     return ret;
 }
 
-static jint crop_jni(JNIEnv *env, jobject object, jstring output_path, jint x, jint y, jint width, jint height) {
+static jint Android_JNI_crop(JNIEnv *env, jobject object, jstring output_path, jint x, jint y, jint width, jint height) {
     int ret = 0;
     const char *output_data_source = (*env)->GetStringUTFChars(env, output_path, 0);
     char crop_avfilter[128];
@@ -136,10 +137,20 @@ static jint crop_jni(JNIEnv *env, jobject object, jstring output_path, jint x, j
     return ret;
 }
 
-static jint player_jni(JNIEnv *env, jobject object, jstring input_path) {
+/* Called before SDL_main() to initialize JNI bindings in SDL library */
+extern void SDL_Android_Init(JNIEnv* env, jobject cls);
+
+static jint Android_JNI_player(JNIEnv *env, jobject object, jstring input_path) {
     int ret = 0;
+
+    SDL_Android_Init(env, object);
+    SDL_SetMainReady();
     const char *input_data_source = (*env)->GetStringUTFChars(env, input_path, 0);
-    ret = player(input_data_source);
+    ret = init_ffplay(input_data_source);
+    if (ret < 0) {
+        release();
+    }
+    (*env)->ReleaseStringUTFChars(env, input_path, input_data_source);
     return ret;
 }
 
@@ -149,6 +160,7 @@ static void release_ffmpeg(JNIEnv *env, jobject object) {
     av_freep(&(mediaSource.output_data_source));
     av_freep(&mediaSource);
     (*env)->DeleteLocalRef(env, object);
+    do_exit();
 }
 
 void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
@@ -158,14 +170,22 @@ void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
 //        fflush(fp);
 //        fclose(fp);
 //    }
-    LOGD("wlanjie", fmt, vl);
+}
+
+void Android_JNI_nativeResize(JNIEnv *env, jobject object, jint width, jint height, jint format, jfloat rate) {
+    Android_JNI_onNativeResize(width, height, format, rate);
 }
 
 static JNINativeMethod g_methods[] = {
-        {"openInput", "(Ljava/lang/String;)I", open_input_jni},
-        {"compress", "(Ljava/lang/String;II)I", compress},
-        {"crop", "(Ljava/lang/String;IIII)I", crop_jni},
-        {"player", "(Ljava/lang/String;)I", player_jni},
+        {"openInput", "(Ljava/lang/String;)I", Android_JNI_open_input},
+        {"compress", "(Ljava/lang/String;II)I", Android_JNI_compress},
+        {"crop", "(Ljava/lang/String;IIII)I", Android_JNI_crop},
+        {"player", "(Ljava/lang/String;)I", Android_JNI_player},
+        {"onNativePause", "()V", Android_JNI_onNativePause},
+        {"onNativeResume", "()V", Android_JNI_onNativeResume},
+        {"onNativeSurfaceChanged", "()V", Android_JNI_onNativeSurfaceChanged},
+        {"onNativeSurfaceDestroyed", "()V", Android_JNI_onNativeSurfaceDestroyed},
+        {"onNativeResize", "(IIIF)V", Android_JNI_nativeResize},
         {"release", "()V", release_ffmpeg},
 };
 
@@ -181,6 +201,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     av_log_set_callback(log_callback);
     jclass clazz = (*env)->FindClass(env, CLASS_NAME);
     (*env)->RegisterNatives(env, clazz, g_methods, NELEM(g_methods));
+    SDL_JNI_Init(vm);
     return JNI_VERSION_1_6;
 }
 
