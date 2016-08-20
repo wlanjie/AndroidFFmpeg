@@ -216,6 +216,7 @@ void set_clock_at(Clock *c, double pts, int serial, double time) {
 }
 
 void set_clock(Clock *c, double pts, int serial) {
+    LOGE("pts = %f", pts);
     double time = av_gettime_relative() / 1000000.0;
     set_clock_at(c, pts, serial, time);
 }
@@ -233,6 +234,7 @@ double get_clock(Clock *c) {
 }
 
 void set_clock_speed(Clock *c, double speed) {
+    LOGE("set_clock_speed");
     set_clock(c, get_clock(c), c->serial);
     c->speed = speed;
 }
@@ -241,6 +243,7 @@ void sync_clock_to_slave(Clock *c, Clock *slave) {
     double clock = get_clock(c);
     double slave_clock = get_clock(slave);
     if (!isnan(slave_clock) && (isnan(clock) || fabs(clock - slave_clock) > AV_NOSYNC_THRESHOLD)) {
+        LOGE("sync_clock_to_slave");
         set_clock(c, slave_clock, slave->serial);
     }
 }
@@ -887,7 +890,6 @@ int audio_thread(void *arg) {
     int64_t dec_channel_layout;
     int reconfigure;
     int got_frame;
-    AVRational tb;
     int ret = 0;
     if (!frame) {
         return AVERROR(ENOMEM);
@@ -899,7 +901,6 @@ int audio_thread(void *arg) {
             return ret;
         }
         if (got_frame) {
-            tb = (AVRational) { 1, frame->sample_rate };
             dec_channel_layout = get_valid_channel_layout(frame->channel_layout, av_frame_get_channels(frame));
             reconfigure = cmp_audio_fmts(is->audio_filter_src.fmt, is->audio_filter_src.channels, frame->format, av_frame_get_channels(frame));
             if (reconfigure) {
@@ -928,12 +929,14 @@ int audio_thread(void *arg) {
                 return ret;
             }
             while ((ret = av_buffersink_get_frame_flags(is->out_audio_filter, frame, 0)) >= 0) {
-                tb = is->out_audio_filter->inputs[0]->time_base;
+                AVRational tb = is->out_audio_filter->inputs[0]->time_base;
                 if (!(af = frame_queue_peek_writable(&is->sampq))) {
                     avfilter_graph_free(&is->agraph);
                     av_frame_free(&frame);
                     return ret;
                 }
+                // frame->pts = av_rescale_q(frame->pkt_pts, av_codec_get_pkt_timebase(d->avctx), tb)
+                // pts = frame->pts * (1 / sample_rates (音频的采样率))
                 af->pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
                 af->pos = av_frame_get_pkt_pos(frame);
                 af->serial = is->auddec.pkt_serial;
@@ -1096,7 +1099,6 @@ int video_thread(void *arg) {
     AVFrame *frame = av_frame_alloc();
     double pts;
     double duration;
-    AVRational tb = is->video_st->time_base;
     AVRational frame_rate = av_guess_frame_rate(is->ic, is->video_st, NULL);
     AVFilterGraph *graph = avfilter_graph_alloc();
     AVFilterContext *filt_out = NULL, *filt_in = NULL;
@@ -1162,6 +1164,7 @@ int video_thread(void *arg) {
             return ret;
         }
         while (ret >= 0) {
+            /*当前帧的时间*/
             is->frame_last_returned_time = av_gettime_relative() / 1000000.0;
             ret = av_buffersink_get_frame_flags(filt_out, frame, 0);
             if (ret < 0) {
@@ -1175,8 +1178,9 @@ int video_thread(void *arg) {
             if (fabs(is->frame_last_filter_delay) > AV_NOSYNC_THRESHOLD / 10.0) {
                 is->frame_last_filter_delay = 0;
             }
-            tb = filt_out->inputs[0]->time_base;
+            AVRational tb = filt_out->inputs[0]->time_base;
             duration = (frame_rate.num && frame_rate.den ? av_q2d((AVRational) { frame_rate.den, frame_rate.num }) : 0);
+            //pts = frame->pts * (is->video_st.num / is->video_st.den)
             pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
             ret = queue_picture(is, frame, pts, duration, av_frame_get_pkt_pos(frame), is->viddec.pkt_serial);
             av_frame_unref(frame);
@@ -1881,7 +1885,6 @@ double compute_target_delay(double delay, VideoState *is) {
     double sync_threshold, diff = 0;
 
     /*如果主同步方式不是以视频为主，默认是以audio为主进行同步*/
-    /* update delay to follow master synchronisation source */
     if (get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER) {
         /* if video is slave, we try to correct big delays by
          duplicating or deleting a frame */
@@ -1890,15 +1893,15 @@ double compute_target_delay(double delay, VideoState *is) {
         get_clock(&is->vidclk) ==is->vidclk.pts, av_gettime_relative() / 1000000.0 -is->vidclk.last_updated  +is->vidclk.pts*/
 
         /*driff实际上就是已经播放的最近一个视频帧和音频帧pts的差值+ 两方系统的一个差值，用公式表达如下:
-       pre_video_pts: 最近的一个视频帧的pts
-       video_system_time_diff: 记录最近一个视频pts 到现在的时间，即av_gettime_relative()/ 1000000.0 - is->vidclk.last_updated
-       pre_audio_pts: 音频已经播放到的时间点，即已经播放的数据所代表的时间，通过已经播放的samples可以计算出已经播放的时间，在sdl_audio_callback中被设置
-       audio_system_time_diff: 同video_system_time_diff
-        最终视频和音频的diff可以用下面的公式表示:
-       diff = (pre_video_pts-pre_audio_pts) +(video_system_time_diff -  audio_system_time_diff)
-       如果diff<0, 则说明视频播放太慢了，如果diff>0,
-       则说明视频播放太快，此时需要通过计算delay来调整视频的播放速度如果
-       diff<AV_SYNC_THRESHOLD_MIN || diff>AV_SYNC_THRESHOLD_MAX 则不用调整delay?*/
+               pre_video_pts: 最近的一个视频帧的pts
+               video_system_time_diff: 记录最近一个视频pts 到现在的时间，即av_gettime_relative()/ 1000000.0 - is->vidclk.last_updated
+               pre_audio_pts: 音频已经播放到的时间点，即已经播放的数据所代表的时间，通过已经播放的samples可以计算出已经播放的时间，在sdl_audio_callback中被设置
+               audio_system_time_diff: 同video_system_time_diff
+                最终视频和音频的diff可以用下面的公式表示:
+               diff = (pre_video_pts-pre_audio_pts) +(video_system_time_diff -  audio_system_time_diff)
+               如果diff<0, 则说明视频播放太慢了，如果diff>0,
+               则说明视频播放太快，此时需要通过计算delay来调整视频的播放速度如果
+               diff<AV_SYNC_THRESHOLD_MIN || diff>AV_SYNC_THRESHOLD_MAX 则不用调整delay?*/
         diff = get_clock(&is->vidclk) - get_master_clock(is);
 
         /* skip or repeat frame. We take into account the
@@ -1951,12 +1954,11 @@ static void video_entry(VideoState *is, double *remaining_time, double *time) {
         }
 
         /*通过pts计算duration，duration是一个videoframe的持续时间，当前帧的pts 减去上一帧的pts*/
-        /* compute nominal last_duration */
         last_duration = vp_duration(is, lastvp, vp);
         delay = compute_target_delay(last_duration, is);
 
-        /*time 为系统当前时间，av_gettime_relative拿到的是1970年1月1日到现在的时间，也就是格林威治时间*/
-        *time= av_gettime_relative()/1000000.0;
+        /*time 为系统当前时间，av_gettime_relative拿到的是1970年1月1日到现在的时间*/
+        *time= av_gettime_relative() / 1000000.0;
         /*frame_timer实际上就是上一帧的播放时间，该时间是一个系统时间，而 frame_timer + delay 实际上就是当前这一帧的播放时间*/
         if (*time < is->frame_timer + delay) {
             /*remaining 就是在refresh_loop_wait_event 中还需要睡眠的时间，其实就是现在还没到这一帧的播放时间，我们需要睡眠等待*/
@@ -1971,7 +1973,6 @@ static void video_entry(VideoState *is, double *remaining_time, double *time) {
         if (delay > 0 && *time - is->frame_timer > AV_SYNC_THRESHOLD_MAX)
             is->frame_timer = *time;
 
-        LOGE("pts = %f next-pts = %f duration = %f frame_time = %f", lastvp->pts, vp->pts, last_duration, is->frame_timer);
         SDL_LockMutex(is->pictq.mutex);
         /*视频帧的pts一般是从0开始，按照帧率往上增加的，此处pts是一个相对值，和系统时间没有关系，对于固定fps，一般是按照1/frame_rate的速度往上增加*/
         /*更新视频的clock，将当前帧的pts和当前系统的时间保存起来，这2个数据将和audio  clock的pts 和系统时间一起计算delay*/

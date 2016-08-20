@@ -59,8 +59,12 @@ if (result < 0) {
 }
 ```
 
+### 播放
+采用FFmpeg + SDL2来进行解码和播放
+###### note 目前还没有做快进和暂停操作,还有一些细节操作需要调整,不建议用在项目中
+![播放状态](https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/player.png)
+
 ### About me:
 
 wlanjie,任职于teambition Android工程师
 联系方式:qq:153920981
-
