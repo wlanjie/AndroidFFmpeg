@@ -19,10 +19,10 @@ if [ ! -d "${FFMPEG_LOCAL_REPO}" ]; then
 fi
 
 cd tools
-#./compile-x264.sh armeabi
-#./compile-x264.sh armeabi-v7a
+./compile-x264.sh armeabi
+./compile-x264.sh armeabi-v7a
 ./compile-x264.sh x86
-#./compile-ffmpeg.sh armeabi
-#./compile-ffmpeg.sh armeabi-v7a
+./compile-ffmpeg.sh armeabi
+./compile-ffmpeg.sh armeabi-v7a
 ./compile-ffmpeg.sh x86
 cd -

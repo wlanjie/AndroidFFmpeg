@@ -256,6 +256,11 @@ echo "[*] configurate ffmpeg"
 echo "--------------------"
 cd ../extra/ffmpeg
 
+if [ -f "compat/strtod.o" ]; then
+  #statements
+  rm -rf compat/strtod.o
+fi
+
 if [ -f "./config.h" ]; then
     make clean
     rm -rf config.h
