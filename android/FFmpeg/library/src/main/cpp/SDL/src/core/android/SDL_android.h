@@ -83,6 +83,7 @@ void Android_JNI_onNativeSurfaceDestroyed();
 void Android_JNI_onNativeQuit();
 void Android_JNI_onNativePause();
 void Android_JNI_onNativeResume();
+void Android_JNI_Release();
 
 /* Generic messages */
 int Android_JNI_SendMessage(int command, int param);

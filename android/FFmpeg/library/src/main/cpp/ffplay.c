@@ -115,9 +115,9 @@ void frame_queue_signal(FrameQueue *f) {
 }
 
 void frame_queue_destory(FrameQueue *f) {
-    int i;
-    for (i = 0; i < f->max_size; i++) {
+    for (int i = 0; i < f->max_size; i++) {
         Frame *vp = &f->queue[i];
+        vp->allocated = 0;
         frame_queue_unref_item(vp);
         av_frame_free(&vp->frame);
         free_picture(vp);
@@ -806,6 +806,7 @@ int decoder_decode_frame(Decoder *d, AVFrame *frame) {
                     } else {
                         frame->pts = frame->pkt_dts;
                     }
+                    LOGE("pts = %lld", frame->pkt_dts);
                 }
                 break;
 
@@ -955,6 +956,9 @@ int audio_thread(void *arg) {
     return ret;
 }
 
+/**
+ * 解码音频和视频
+ */
 int get_video_frame(VideoState *is, AVFrame *frame) {
     int got_picture;
     if ((got_picture = decoder_decode_frame(&is->viddec, frame)) < 0) {
@@ -1116,12 +1120,14 @@ int video_thread(void *arg) {
         return AVERROR(ENOMEM);
     }
     while(1) {
+        // 循环解码 video
         ret = get_video_frame(is, frame);
         if (ret < 0) {
             avfilter_graph_free(&graph);
             av_frame_free(&frame);
             return 0;
         }
+        // 如果解码出错,继续解码下一帧
         if (!ret) {
             continue;
         }
@@ -1138,10 +1144,6 @@ int video_thread(void *arg) {
             avfilter_graph_free(&graph);
             graph = avfilter_graph_alloc();
             if ((ret = configure_video_filters(graph, is, NULL, frame)) < 0) {
-                SDL_Event event;
-                event.type = FF_QUIT_EVENT;
-                event.user.data1 = is;
-                SDL_PushEvent(&event);
                 avfilter_graph_free(&graph);
                 av_frame_free(&frame);
                 return ret;
@@ -1156,6 +1158,7 @@ int video_thread(void *arg) {
             frame_rate = filt_out->inputs[0]->frame_rate;
         }
 
+        // 添加解码出来的AVFrame到filter
         ret = av_buffersrc_add_frame(filt_in, frame);
         if (ret < 0) {
             av_err2str(ret);
@@ -1166,6 +1169,7 @@ int video_thread(void *arg) {
         while (ret >= 0) {
             /*当前帧的时间*/
             is->frame_last_returned_time = av_gettime_relative() / 1000000.0;
+            // 获取添加到filter中的AVFrame
             ret = av_buffersink_get_frame_flags(filt_out, frame, 0);
             if (ret < 0) {
                 if (ret == AVERROR_EOF) {
@@ -1174,13 +1178,11 @@ int video_thread(void *arg) {
                 ret = 0;
                 break;
             }
-            is->frame_last_filter_delay = av_gettime_relative() / 1000000.0 - is->frame_last_returned_time;
-            if (fabs(is->frame_last_filter_delay) > AV_NOSYNC_THRESHOLD / 10.0) {
-                is->frame_last_filter_delay = 0;
-            }
+            // tb = is->vidoe_st->time_base.num, is->video_st->time_base.den
             AVRational tb = filt_out->inputs[0]->time_base;
+            // duration = frame_rate.den / frame_rate.num 当前这一帧的持续时间
             duration = (frame_rate.num && frame_rate.den ? av_q2d((AVRational) { frame_rate.den, frame_rate.num }) : 0);
-            //pts = frame->pts * (is->video_st.num / is->video_st.den)
+            //pts = frame->pts * (is->video_st->time_base.num / is->video_st->time_base.den)
             pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
             ret = queue_picture(is, frame, pts, duration, av_frame_get_pkt_pos(frame), is->viddec.pkt_serial);
             av_frame_unref(frame);
@@ -1371,10 +1373,6 @@ void read_thread_failed(VideoState *is, AVFormatContext *ic, SDL_mutex *wait_mut
     if (ic && !is->ic) {
         avformat_close_input(&ic);
     }
-    SDL_Event event;
-    event.type = FF_QUIT_EVENT;
-    event.user.data1 = is;
-    SDL_PushEvent(&event);
     SDL_DestroyMutex(wait_mutex);
 }
 
@@ -1658,10 +1656,14 @@ void do_exit() {
     if (is) {
         stream_close(is);
     }
-    if (renderer)
+    if (renderer) {
         SDL_DestroyRenderer(renderer);
-    if (window)
+        renderer = NULL;
+    }
+    if (window) {
         SDL_DestroyWindow(window);
+        window = NULL;
+    }
     av_lockmgr_register(NULL);
     avformat_network_deinit();
     SDL_CloseAudio();
@@ -1953,7 +1955,7 @@ static void video_entry(VideoState *is, double *remaining_time, double *time) {
             return;
         }
 
-        /*通过pts计算duration，duration是一个videoframe的持续时间，当前帧的pts 减去上一帧的pts*/
+        // 通过pts计算duration，duration是一个AVFrame的持续时间，当前帧的pts 减去上一帧的pts
         last_duration = vp_duration(is, lastvp, vp);
         delay = compute_target_delay(last_duration, is);
 
@@ -1976,6 +1978,7 @@ static void video_entry(VideoState *is, double *remaining_time, double *time) {
         SDL_LockMutex(is->pictq.mutex);
         /*视频帧的pts一般是从0开始，按照帧率往上增加的，此处pts是一个相对值，和系统时间没有关系，对于固定fps，一般是按照1/frame_rate的速度往上增加*/
         /*更新视频的clock，将当前帧的pts和当前系统的时间保存起来，这2个数据将和audio  clock的pts 和系统时间一起计算delay*/
+        //vp->pts = frame->pts * (is->video_st->time_base.num / is->video_st->time_base.den)
         if (!isnan(vp->pts))
             update_video_pts(is, vp->pts, vp->pos, vp->serial);
 
@@ -2070,12 +2073,12 @@ void alloc_picture(VideoState *is) {
     SDL_UnlockMutex(is->pictq.mutex);
 }
 
-void event_loop(VideoState *cur_stream) {
+void event_loop(VideoState *is) {
     SDL_Event event;
     while (1) {
-        if (cur_stream->abort_request)
+        if (is->abort_request)
             break;
-        refresh_loop_wait_event(cur_stream, &event);
+        refresh_loop_wait_event(is, &event);
         switch (event.type) {
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {

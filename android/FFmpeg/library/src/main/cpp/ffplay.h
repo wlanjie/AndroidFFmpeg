@@ -36,7 +36,6 @@
 #define FRAME_QUEUE_SIZE FFMAX(SAMPLE_QUEUE_SIZE, FFMAX(VIDEO_PICTURE_QUEUE_SIZE, SUBPICTURE_QUEUE_SIZE))
 
 #define FF_ALLOC_EVENT   (SDL_USEREVENT)
-#define FF_QUIT_EVENT    (SDL_USEREVENT + 2)
 
 /* Minimum SDL audio buffer size, in samples. */
 #define SDL_AUDIO_MIN_BUFFER_SIZE 512
@@ -229,7 +228,6 @@ typedef struct VideoState {
     double max_frame_duration;
     int realtime;
 
-    double frame_last_filter_delay;
     int vfilter_idx;
     double frame_last_returned_time;
     int seek_req;

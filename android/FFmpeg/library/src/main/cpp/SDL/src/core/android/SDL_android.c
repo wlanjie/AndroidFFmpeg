@@ -1614,6 +1614,12 @@ jclass Android_JNI_GetActivityClass(void)
     return mActivityClass;
 }
 
+void Android_JNI_Release() {
+    JNIEnv *env = Android_JNI_GetEnv();
+    (*env)->DeleteGlobalRef(env, mObject);
+//    (*env)->DeleteLocalRef(env, mActivityClass);
+}
+
 #endif /* __ANDROID__ */
 
 /* vi: set ts=4 sw=4 expandtab: */

@@ -159,8 +159,9 @@ static void release_ffmpeg(JNIEnv *env, jobject object) {
     av_freep(&(mediaSource.input_data_source));
     av_freep(&(mediaSource.output_data_source));
     av_freep(&mediaSource);
-    (*env)->DeleteLocalRef(env, object);
     do_exit();
+    Android_JNI_Release();
+    (*env)->DeleteLocalRef(env, object);
 }
 
 void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
