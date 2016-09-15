@@ -10,9 +10,11 @@
 #include <jni.h>
 #include "utils.h"
 #include "openfile.h"
-#include "log.h"
 #include "SDL_android.h"
 #include "ffplay.h"
+#include "recorder.h"
+#include "librtmp.h"
+#include "color_convert.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -165,16 +167,129 @@ static void release_ffmpeg(JNIEnv *env, jobject object) {
 }
 
 void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
-//    FILE *fp = fopen("/sdcard/av_log.txt", "a+");
-//    if (fp) {
-//        vfprintf(fp, fmt, vl);
-//        fflush(fp);
-//        fclose(fp);
-//    }
+    FILE *fp = fopen("/sdcard/av_log.txt", "a+");
+    if (fp) {
+        vfprintf(fp, fmt, vl);
+        fflush(fp);
+        fclose(fp);
+    }
 }
 
 void Android_JNI_nativeResize(JNIEnv *env, jobject object, jint width, jint height, jint format, jfloat rate) {
     Android_JNI_onNativeResize(width, height, format, rate);
+}
+
+void Android_JNI_initRecorder(JNIEnv *env, jobject object, jstring path) {
+    const char *url = (*env)->GetStringUTFChars(env, path, 0);
+    int ret = recorder_init(url);
+    if (ret < 0) {
+
+    }
+    (*env)->ReleaseStringUTFChars(env, path, url);
+}
+
+void Android_JNI_onRecordSamples(JNIEnv *env, jobject object, jshortArray buffer) {
+    jshort *in = (*env)->GetShortArrayElements(env, buffer, JNI_FALSE);
+    record_samples((const uint8_t **) &in);
+}
+
+jlong Android_JNI_rtmp_open(JNIEnv *env, jclass clazz, jstring _url, jboolean isPublishMode) {
+    const char *url = (*env)->GetStringUTFChars(env, _url, 0);
+    RTMP *rtmp = rtmp_open(url, isPublishMode);
+    (*env)->ReleaseStringUTFChars(env, _url, url);
+    return rtmp;
+}
+
+int Android_JNI_rtmp_read(JNIEnv *env, jobject object, jlong pointer, jbyteArray data, int offset, int size) {
+
+}
+
+int Android_JNI_rtmp_write(JNIEnv *env, jobject object, jlong pointer, jbyteArray data, int size, int type, int ts) {
+    jbyte *buffer = (*env)->GetByteArrayElements(env, data, 0);
+    int res = rtmp_write(pointer, buffer, size, type, ts);
+    (*env)->ReleaseByteArrayElements(env, data, buffer, 0);
+    return res;
+}
+
+int Android_JNI_rtmp_close(JNIEnv *env, jobject object, jlong pointer) {
+    return rtmp_close(pointer);
+}
+
+jstring Android_JNI_rtmp_getIpAddress(JNIEnv *env, jobject object, jlong pointer) {
+    return NULL;
+}
+
+void Android_JNI_color_convert_NV21ToYUV420SP(JNIEnv *env, jobject object, jbyteArray srcArray, jbyteArray dstArray, jint ySize) {
+    unsigned char *src = (unsigned char *)(*env)->GetByteArrayElements(env, srcArray, 0);
+    unsigned char *dst = (unsigned char *)(*env)->GetByteArrayElements(env, dstArray, 0);
+    NV21ToYUV420SP(src , dst, ySize);
+    (*env)->ReleaseByteArrayElements(env, srcArray, src, JNI_ABORT);
+    (*env)->ReleaseByteArrayElements(env, dstArray, dst, JNI_ABORT);
+}
+
+void Android_JNI_color_convert_NV21ToYUV420P(JNIEnv *env, jobject object, jbyteArray srcArray, jbyteArray dstArray, jint ySize) {
+    unsigned char *src = (unsigned char *)(*env)->GetByteArrayElements(env, srcArray, 0);
+    unsigned char *dst = (unsigned char *)(*env)->GetByteArrayElements(env, dstArray, 0);
+    NV21ToYUV420P(src, dst, ySize);
+    (*env)->ReleaseByteArrayElements(env, srcArray, src, JNI_ABORT);
+    (*env)->ReleaseByteArrayElements(env, dstArray, dst, JNI_ABORT);
+}
+
+void Android_JNI_color_convert_YUV420SPToYUV420P(JNIEnv *env, jobject object, jbyteArray srcArray, jbyteArray dstArray, jint ySize) {
+    unsigned char *src = (unsigned char *)(*env)->GetByteArrayElements(env, srcArray, 0);
+    unsigned char *dst = (unsigned char *)(*env)->GetByteArrayElements(env, dstArray, 0);
+    YUV420SPToYUV420P(src, dst, ySize);
+    (*env)->ReleaseByteArrayElements(env, srcArray, src, JNI_ABORT);
+    (*env)->ReleaseByteArrayElements(env, dstArray, dst, JNI_ABORT);
+}
+
+void Android_JNI_color_convert_NV21ToARGB(JNIEnv *env, jobject object, jbyteArray srcArray, jintArray dstArray, jint width, jint height) {
+    unsigned char *src = (unsigned char *) (*env)->GetByteArrayElements(env, srcArray, 0);
+    unsigned int *dst = (unsigned int *) (*env)->GetIntArrayElements(env, dstArray, 0);
+    NV21ToARGB(src, dst, width, height);
+    (*env)->ReleaseByteArrayElements(env, srcArray, src, JNI_ABORT);
+    (*env)->ReleaseIntArrayElements(env, dstArray, dst, JNI_ABORT);
+}
+
+void Android_JNI_color_convert_FIXGLPIXEL(JNIEnv *env, jobject object, jintArray srcArray, jintArray dstArray, jint width, jint height) {
+    unsigned int *src = (unsigned int *) (*env)->GetIntArrayElements(env, srcArray, 0);
+    unsigned int *dst = (unsigned int *) (*env)->GetIntArrayElements(env, dstArray, 0);
+    FIXGLPIXEL(src, dst, width, height);
+    (*env)->ReleaseIntArrayElements(env, srcArray, src, JNI_ABORT);
+    (*env)->ReleaseIntArrayElements(env, dstArray, dst, JNI_ABORT);
+}
+
+void Android_JNI_color_convert_NV21Transform(JNIEnv *env, jobject object, jbyteArray srcArray, jbyteArray dstArray, jint width, jint height, jint dirctionFlag) {
+    unsigned char *src = (unsigned char *) (*env)->GetByteArrayElements(env, srcArray, 0);
+    unsigned char *dst = (unsigned char *) (*env)->GetByteArrayElements(env, dstArray, 0);
+    NV21Transform(src, dst, width, height, dirctionFlag);
+    (*env)->ReleaseByteArrayElements(env, srcArray, src, JNI_ABORT);
+    (*env)->ReleaseByteArrayElements(env, dstArray, dst, JNI_ABORT);
+}
+
+#define COLOR_FORMAT_NV21 17
+
+void Android_JNI_native_render(JNIEnv *env, jobject object, jobject surfaceObject, jbyteArray pixelsArray, jint width, jint height, jint size) {
+    ANativeWindow *window = ANativeWindow_fromSurface(env, surfaceObject);
+    if (window != NULL) {
+        ANativeWindow_setBuffersGeometry(window, width, height, COLOR_FORMAT_NV21 );
+        ANativeWindow_Buffer buffer;
+        if (ANativeWindow_lock(window, &buffer, NULL) == 0) {
+            unsigned char *pixels = (*env)->GetByteArrayElements(env, pixelsArray, 0);
+            if (buffer.width == buffer.stride) {
+                memcpy(buffer.bits, pixels, size);
+            } else {
+                int h = height * 3 / 2;
+                int w = width;
+                for (int i = 0; i < h; ++i) {
+                    memcpy(buffer.bits + buffer.stride * i, pixels + w * i, w);
+                }
+            }
+            (*env)->ReleaseByteArrayElements(env, pixelsArray, pixels, JNI_ABORT);
+            ANativeWindow_unlockAndPost(window);
+        }
+        ANativeWindow_release(window);
+    }
 }
 
 static JNINativeMethod g_methods[] = {
@@ -187,7 +302,30 @@ static JNINativeMethod g_methods[] = {
         {"onNativeSurfaceChanged", "()V", Android_JNI_onNativeSurfaceChanged},
         {"onNativeSurfaceDestroyed", "()V", Android_JNI_onNativeSurfaceDestroyed},
         {"onNativeResize", "(IIIF)V", Android_JNI_nativeResize},
+        {"initRecorder", "(Ljava/lang/String;)V", Android_JNI_initRecorder},
+        {"recordSamples", "([S)I", Android_JNI_onRecordSamples},
         {"release", "()V", release_ffmpeg},
+};
+
+static JNINativeMethod rtmp_methods[] = {
+        {"open", "(Ljava/lang/String;Z)J", Android_JNI_rtmp_open},
+        {"read", "(J[BII)I", Android_JNI_rtmp_read},
+        {"write", "(J[BIII)I", Android_JNI_rtmp_write},
+        {"close", "(J)I", Android_JNI_rtmp_close},
+        {"getIpAddress", "(J)Ljava/lang/String;", Android_JNI_rtmp_getIpAddress},
+};
+
+static JNINativeMethod color_convert_methods[] = {
+        {"NV21ToYUV420SP", "([B[BI)V", Android_JNI_color_convert_NV21ToYUV420SP},
+        {"NV21ToYUV420P", "([B[BI)V", Android_JNI_color_convert_NV21ToYUV420P},
+        {"YUV420SPToYUV420P", "([B[BI)V", Android_JNI_color_convert_YUV420SPToYUV420P},
+        {"NV21ToARGB", "([B[III)V", Android_JNI_color_convert_NV21ToARGB},
+        {"FIXGLPIXEL", "([I[III)V", Android_JNI_color_convert_FIXGLPIXEL},
+        {"NV21Transform", "([B[BIII)V", Android_JNI_color_convert_NV21Transform}
+};
+
+static JNINativeMethod native_render_methods[] = {
+        {"renderingSurface", "(Landroid/view/Surface;[BIII)V", Android_JNI_native_render}
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
@@ -202,7 +340,42 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     av_log_set_callback(log_callback);
     jclass clazz = (*env)->FindClass(env, CLASS_NAME);
     (*env)->RegisterNatives(env, clazz, g_methods, NELEM(g_methods));
+    jclass rtmp_clazz = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/RtmpClient");
+    (*env)->RegisterNatives(env, rtmp_clazz, rtmp_methods, NELEM(rtmp_methods));
+    jclass color_convert_clazz = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/ColorConvert");
+    (*env)->RegisterNatives(env, color_convert_clazz, color_convert_methods, NELEM(color_convert_methods));
+    jclass render_class = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/NativeRender");
+    (*env)->RegisterNatives(env, render_class, native_render_methods, NELEM(native_render_methods));
     SDL_JNI_Init(vm);
+
+    if (DEBUG) {
+        remove("/sdcard/av_log.txt");
+        char *info = malloc(1000);
+        memset(info, 0, 1000);
+        AVCodec *temp = av_codec_next(NULL);
+        while (temp != NULL) {
+            if (temp->decode != NULL) {
+                strcat(info, "[Decode]");
+            } else {
+                strcat(info, "[Encode]");
+            }
+            switch (temp->type) {
+                case AVMEDIA_TYPE_VIDEO:
+                    strcat(info, "[Video]");
+                    break;
+                case AVMEDIA_TYPE_AUDIO:
+                    strcat(info, "[Audio]");
+                    break;
+                default:
+                    break;
+            }
+            sprintf(info, "%s %10s\n", info, temp->name);
+            av_log(NULL, AV_LOG_ERROR, "%s", info);
+            temp = temp->next;
+        }
+        free(info);
+    }
+//    return (*env)->GetVersion(env);
     return JNI_VERSION_1_6;
 }
 

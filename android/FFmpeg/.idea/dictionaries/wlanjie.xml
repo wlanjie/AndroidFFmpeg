@@ -4,9 +4,11 @@
       <w>avcodec</w>
       <w>avctx</w>
       <w>avformat</w>
+      <w>collecter</w>
       <w>ffplay</w>
       <w>fmpeg</w>
       <w>lockmgr</w>
+      <w>rtmp</w>
     </words>
   </dictionary>
 </component>

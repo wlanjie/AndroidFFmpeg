@@ -97,45 +97,8 @@ include_directories(${ly_inc_dir})
 
 add_library(${ly_lib_name} STATIC ${ly_source_files})
 
-add_executable(convert ${ly_base_dir}/util/convert.cc)
-target_link_libraries(convert ${ly_lib_name})
-
-include(FindJPEG)
-if (JPEG_FOUND)
-  include_directories(${JPEG_INCLUDE_DIR})
-  target_link_libraries(convert ${JPEG_LIBRARY})
-  add_definitions(-DHAVE_JPEG)
-endif()
-
-if(TEST)
-  find_library(GTEST_LIBRARY gtest)
-  if(GTEST_LIBRARY STREQUAL "GTEST_LIBRARY-NOTFOUND")
-    set(GTEST_SRC_DIR /usr/src/gtest CACHE STRING "Location of gtest sources")
-    if(EXISTS ${GTEST_SRC_DIR}/src/gtest-all.cc)
-      message(STATUS "building gtest from sources in ${GTEST_SRC_DIR}")
-      set(gtest_sources ${GTEST_SRC_DIR}/src/gtest-all.cc)
-      add_library(gtest STATIC ${gtest_sources})
-      include_directories(${GTEST_SRC_DIR})
-      include_directories(${GTEST_SRC_DIR}/include)
-      set(GTEST_LIBRARY gtest)
-    else()
-      message(FATAL_ERROR "TEST is set but unable to find gtest library")
-    endif()
-  endif()
-
-  add_executable(libyuv_unittest ${ly_unittest_sources})
-  target_link_libraries(libyuv_unittest ${ly_lib_name} ${GTEST_LIBRARY} pthread)
-  if (JPEG_FOUND)
-    target_link_libraries(libyuv_unittest ${JPEG_LIBRARY})
-  endif()
-  
-  if(NACL AND NACL_LIBC STREQUAL "newlib")
-    target_link_libraries(libyuv_unittest glibc-compat)
-  endif()
-
-  target_link_libraries(libyuv_unittest gflags)
-  
-endif()
+#add_executable(convert ${ly_base_dir}/util/convert.cc)
+#target_link_libraries(convert ${ly_lib_name})
 
 install(TARGETS ${ly_lib_name} DESTINATION lib)
 install(FILES ${ly_header_files} DESTINATION include/libyuv)

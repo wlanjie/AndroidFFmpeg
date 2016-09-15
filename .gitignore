@@ -4,6 +4,7 @@
 /tools/sdl2-build/*
 /android/FFmpeg/.idea/misc.xml
 /extra/SDL2/build/*
+/tools/openssl-build/*
 
 android/FFmpeg/.idea/misc.xml
 

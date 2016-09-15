@@ -17,7 +17,7 @@ android {
         versionName "1.0"
         externalNativeBuild {
             cmake {
-                abiFilters 'x86'
+                abiFilters 'x86', 'armeabi', 'armeabi-v7a'
             }
         }
     }

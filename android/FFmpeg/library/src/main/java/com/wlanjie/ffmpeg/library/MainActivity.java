@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
                     @Override
                     public void onClick(View v) {
 //                        startRecoderVideoIntent(CROP);
-                        crop("/sdcard/Download/a.mp4");
+                        crop("/sdcard/crop.mp4");
                     }
                 });
 
@@ -56,6 +56,14 @@ public class MainActivity extends Activity {
                     @Override
                     public void onClick(View v) {
                         compress("/sdcard/Download/a.mp4");
+                    }
+                });
+        findViewById(R.id.push_stream)
+                .setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Intent intent = new Intent(MainActivity.this, RecorderActivity.class);
+                        startActivity(intent);
                     }
                 });
         findViewById(R.id.player)
