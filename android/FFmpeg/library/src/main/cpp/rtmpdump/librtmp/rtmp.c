@@ -1382,8 +1382,8 @@ RTMP_ClientPacket(RTMP *r, RTMPPacket *packet)
 }
 
 #ifdef _DEBUG
-extern FILE *netstackdump;
-extern FILE *netstackdump_read;
+//extern FILE *netstackdump;
+//extern FILE *netstackdump_read;
 #endif
 
 static int

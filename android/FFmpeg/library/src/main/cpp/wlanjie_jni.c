@@ -8,6 +8,7 @@
 
 #include "SDL_main.h"
 #include <jni.h>
+#include <librtmp/log.h>
 #include "utils.h"
 #include "openfile.h"
 #include "SDL_android.h"
@@ -15,6 +16,7 @@
 #include "recorder.h"
 #include "librtmp.h"
 #include "color_convert.h"
+#include "x264_encoder.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -193,7 +195,21 @@ void Android_JNI_onRecordSamples(JNIEnv *env, jobject object, jshortArray buffer
     record_samples((const uint8_t **) &in);
 }
 
+void rtmp_log_callback(int logLevel, const char* msg, va_list args) {
+    char log[1024];
+    vsprintf(log, msg, args);
+    LOGE("%s", log);
+}
+
 jlong Android_JNI_rtmp_open(JNIEnv *env, jclass clazz, jstring _url, jboolean isPublishMode) {
+    if (DEBUG) {
+        remove("/sdcard/rtmp_log.txt");
+        RTMP_LogSetLevel(RTMP_LOGALL);
+//        RTMP_LogSetCallback(rtmp_log_callback);
+        FILE *fp = fopen("/sdcard/rtmp_log.txt", "a+");
+        RTMP_LogSetOutput(fp);
+    }
+
     const char *url = (*env)->GetStringUTFChars(env, _url, 0);
     RTMP *rtmp = rtmp_open(url, isPublishMode);
     (*env)->ReleaseStringUTFChars(env, _url, url);
@@ -292,6 +308,23 @@ void Android_JNI_native_render(JNIEnv *env, jobject object, jobject surfaceObjec
     }
 }
 
+jint Android_JNI_x264_encoder_init(JNIEnv *env, jobject object, jint width, jint height) {
+    return x264_encoder_init(width, height);
+}
+
+jint Android_JNI_x264_encoder_start(JNIEnv *env, jobject object, int type, jbyteArray inputArray, jbyteArray outputArray) {
+    unsigned char *input = (unsigned char *) (*env)->GetByteArrayElements(env, inputArray, 0);
+    unsigned char *output = (unsigned char *) (*env)->GetByteArrayElements(env, outputArray, 0);
+    int res = x264_encoder_start(type, input, output, 0);
+    (*env)->ReleaseByteArrayElements(env, inputArray, input, 0);
+    (*env)->ReleaseByteArrayElements(env, outputArray, output, 0);
+    return res;
+}
+
+void Android_JNI_x264_encoder_close(JNIEnv *env, jobject object) {
+    x264_encoder_finish();
+}
+
 static JNINativeMethod g_methods[] = {
         {"openInput", "(Ljava/lang/String;)I", Android_JNI_open_input},
         {"compress", "(Ljava/lang/String;II)I", Android_JNI_compress},
@@ -328,6 +361,12 @@ static JNINativeMethod native_render_methods[] = {
         {"renderingSurface", "(Landroid/view/Surface;[BIII)V", Android_JNI_native_render}
 };
 
+static JNINativeMethod encoder_method[] = {
+        {"x264EncoderInit", "(II)I", Android_JNI_x264_encoder_init},
+        {"x264EncoderClose", "()V", Android_JNI_x264_encoder_close},
+        {"x264EncoderStart", "(I[B[B)I", Android_JNI_x264_encoder_start}
+};
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env = NULL;
     if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
@@ -346,6 +385,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     (*env)->RegisterNatives(env, color_convert_clazz, color_convert_methods, NELEM(color_convert_methods));
     jclass render_class = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/NativeRender");
     (*env)->RegisterNatives(env, render_class, native_render_methods, NELEM(native_render_methods));
+    jclass encoder = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/Encoder");
+    (*env)->RegisterNatives(env, encoder, encoder_method, NELEM(encoder_method));
     SDL_JNI_Init(vm);
 
     if (DEBUG) {

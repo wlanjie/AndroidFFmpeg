@@ -29,13 +29,12 @@
 #include <stdint.h>
 
 #define RTMPDUMP_VERSION "wlnajie"
-//#define _DEBUG 1
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 /* Enable this to get full debugging output */
-/* #define _DEBUG */
+#define _DEBUG
 
 #ifdef _DEBUG
 #undef NODEBUG

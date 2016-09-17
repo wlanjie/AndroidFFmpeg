@@ -27,7 +27,10 @@ cd tools
 ./compile-x264.sh armeabi
 ./compile-x264.sh armeabi-v7a
 ./compile-x264.sh x86
-./compile-ffmpeg.sh armeabi
-./compile-ffmpeg.sh armeabi-v7a
-./compile-ffmpeg.sh x86
+#./compile-openssl.sh armeabi
+#./compile-openssl.sh armeabi-v7a
+#./compile-openssl.sh x86
+#./compile-ffmpeg.sh armeabi
+#./compile-ffmpeg.sh armeabi-v7a
+#./compile-ffmpeg.sh x86
 cd -
