@@ -15,6 +15,10 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -49,6 +53,9 @@ public class SurfaceVideoCore implements VideoCore {
     private boolean isStreaming = false;
     private Render previewRender;
     private ScreenShotListener screenShotListener;
+    private FileOutputStream fileOutputStream;
+    private byte[] h264Buffer;
+    private byte[] yuv420pBuffer;
 
     public SurfaceVideoCore(Parameters parameters) {
         this.parameters = parameters;
@@ -132,6 +139,15 @@ public class SurfaceVideoCore implements VideoCore {
             int videoWidth = parameters.videoWidth;
             int videoHeight = parameters.videoHeight;
             int videoQueueNumber = parameters.videoBufferQueueNum;
+            h264Buffer = new byte[videoWidth * videoHeight];
+            yuv420pBuffer = new byte[parameters.videoHeight * parameters.videoWidth * (ImageFormat.getBitsPerPixel(parameters.previewColorFormat)) / 8];
+            Encoder.x264EncoderInit(videoWidth, videoHeight);
+            try {
+                File file = new File("/sdcard/wlanjie_h264.h264");
+                fileOutputStream = new FileOutputStream(file);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
             int originVideoBufferSize = calculator(videoWidth, videoHeight, parameters.previewColorFormat);
             originVideoBuffers = new VideoBuffer[videoQueueNumber];
             for (int i = 0; i < videoQueueNumber; i++) {
@@ -247,6 +263,14 @@ public class SurfaceVideoCore implements VideoCore {
     @Override
     public boolean stopStreaming() {
         synchronized (lock) {
+            if (fileOutputStream != null) {
+                try {
+                    fileOutputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                Encoder.x264EncoderClose();
+            }
             videoSenderThread.quit();
             synchronized (loopingLock) {
                 isStreaming = false;
@@ -314,6 +338,20 @@ public class SurfaceVideoCore implements VideoCore {
     public void queueVideo(byte[] rawVideoFrame) {
         synchronized (lock) {
             int targetIndex = (lastVideoQueueBufferIndex + 1) % originVideoBuffers.length;
+//            if (yuv420pBuffer == null) {
+//                yuv420pBuffer = new byte[rawVideoFrame.length];
+//            }
+//            byte[] yuv420p = new byte[rawVideoFrame.length];
+            ColorConvert.NV21ToYUV420P(rawVideoFrame, yuv420pBuffer, parameters.videoWidth * parameters.videoHeight);
+            int result = Encoder.x264EncoderStart(-1, yuv420pBuffer, h264Buffer);
+            if (result > 0) {
+                try {
+                    fileOutputStream.write(h264Buffer, 0, result);
+                    fileOutputStream.flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
             if (originVideoBuffers[targetIndex].isReadyToFill) {
                 acceptVideo(rawVideoFrame, originVideoBuffers[targetIndex].buffer);
                 originVideoBuffers[targetIndex].isReadyToFill = false;

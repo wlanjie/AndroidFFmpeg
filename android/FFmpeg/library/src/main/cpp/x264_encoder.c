@@ -5,6 +5,7 @@
 #include "x264_encoder.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "x264.h"
 
 typedef struct {
@@ -15,6 +16,7 @@ typedef struct {
 } x264_encoder;
 
 x264_encoder *encoder = NULL;
+FILE *out_file = NULL;
 
 int x264_encoder_init(int width, int height) {
     encoder = malloc(sizeof(x264_encoder));
@@ -45,6 +47,7 @@ int x264_encoder_init(int width, int height) {
     }
     //alloc a new picture
     x264_picture_alloc(encoder->picture, X264_CSP_I420, encoder->param->i_width, encoder->param->i_height);
+    out_file = fopen("/sdcard/wlanjie_h264_c.h264", "wb");
     return 0;
 }
 
@@ -53,13 +56,9 @@ int x264_encoder_start(int type, unsigned char *input, unsigned char *output, in
         return -1;
     }
     int picSize = encoder->param->i_width * encoder->param->i_height;
-    unsigned char *v = encoder->picture->img.plane[1];
-    unsigned char *u = encoder->picture->img.plane[2];
     memcpy(encoder->picture->img.plane[0], input, picSize);
-    for (int i = 0; i < picSize; ++i) {
-        *(u + i) = *(input + picSize + i * 2);
-        *(v + i) = *(input + picSize + i * 2 + 1);
-    }
+    memcpy(encoder->picture->img.plane[1], input + picSize, picSize >> 2);
+    memcpy(encoder->picture->img.plane[2], input + picSize + (picSize >> 2), picSize >> 2);
     switch (type) {
         case 0:
             encoder->picture->i_type = X264_TYPE_P;
@@ -76,14 +75,18 @@ int x264_encoder_start(int type, unsigned char *input, unsigned char *output, in
     }
     int pi_nal = -1;
     x264_picture_t pic_out;
-    if (x264_encoder_encode(encoder->handle, &encoder->nal, &pi_nal, encoder->picture, &pic_out) < 0) {
+    int i_frame_size;
+    if ((i_frame_size = x264_encoder_encode(encoder->handle, &encoder->nal, &pi_nal, encoder->picture, &pic_out)) < 0) {
         return -2;
     }
-    for (int i = 0; i < pi_nal; ++i) {
-        memcpy(output, encoder->nal[i].p_payload, encoder->nal[i].i_payload);
-        output += encoder->nal[i].i_payload;
+    if (i_frame_size > 0) {
+        memcpy(output, encoder->nal->p_payload, i_frame_size);
+        if (out_file) {
+            fwrite(encoder->nal->p_payload, i_frame_size, 1, out_file);
+            fflush(out_file);
+        }
     }
-    return 0;
+    return i_frame_size;
 }
 
 void x264_encoder_finish() {

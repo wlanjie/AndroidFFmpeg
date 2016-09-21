@@ -31,9 +31,13 @@ add_subdirectory(libyuv)
 #add librtmp library
 #add_subdirectory(librtmp)
 
+#add fdk-aac library
+add_subdirectory(fdk-aac)
+
 file(GLOB WLANJIE_SOURCE *.c rtmpdump/rtmpdump.c rtmpdump/thread.c rtmpdump/librtmp/*.c)
 add_library(wlanjie SHARED ${WLANJIE_SOURCE})
 
+message(STATUS "source dir: ${PROJECT_SOURCE_DIR}")
 message(STATUS "cmake build dir : ${CMAKE_CURRENT_LIST_DIR}")
 message(STATUS "ffmpeg lib: ${FFMPEG_LIB_DIR}")
 message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
@@ -69,4 +73,8 @@ set(LIBX264_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/x264-build
 add_library(X264 STATIC IMPORTED)
 set_target_properties(X264 PROPERTIES IMPORTED_LOCATION ${LIBX264_LIB_DIR}/${ANDROID_ABI}/output/lib/libx264.a)
 
-target_link_libraries(wlanjie SDL2_LIB YUV_LIB OPENSSL X264 android log dl m z GLESv1_CM GLESv2 ffmpeg)
+#link fdk-aac library
+set(AAC_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/fdk-aac)
+add_library(AAC STATIC IMPORTED)
+set_target_properties(AAC PROPERTIES IMPORTED_LOCATION ${AAC_LIB_DIR}/libaac.a)
+target_link_libraries(wlanjie SDL2_LIB YUV_LIB OPENSSL X264 AAC android log dl m z GLESv1_CM GLESv2 ffmpeg)

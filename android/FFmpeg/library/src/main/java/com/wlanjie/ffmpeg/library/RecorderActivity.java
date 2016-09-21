@@ -63,7 +63,7 @@ public class RecorderActivity extends Activity {
         config.setVideoFPS(20);
         config.setDefaultCamera(Camera.CameraInfo.CAMERA_FACING_FRONT);
         config.setRenderingMode(Config.RenderingMode.NativeWindow);
-        config.setRtmpAddress("rtmp://192.168.1.101/live/test");
+        config.setRtmpAddress("rtmp://192.168.0.68/live/test");
         Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
         Camera.getCameraInfo(Camera.CameraInfo.CAMERA_FACING_FRONT, cameraInfo);
         int frontDirection = cameraInfo.orientation;
