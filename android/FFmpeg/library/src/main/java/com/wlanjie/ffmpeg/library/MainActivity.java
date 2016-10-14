@@ -1,21 +1,14 @@
 package com.wlanjie.ffmpeg.library;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
-import android.graphics.PixelFormat;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Looper;
 import android.provider.MediaStore;
-import android.view.Display;
-import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Toast;
 
-import java.io.FileNotFoundException;
+import net.ossrs.yasea.rtmp.RtmpPublisher;
 
 import rx.Observable;
 import rx.Subscriber;
@@ -28,11 +21,17 @@ public class MainActivity extends Activity {
     private static final int COMPRESS = 0;
     private static final int CROP = 1;
 
+    private SurfaceView surfaceView;
+    private Encoder encoder;
+
+    SrsPublisher publisher;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        surfaceView = (SurfaceView) findViewById(R.id.surface_view);
         findViewById(R.id.rotation)
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -58,21 +57,81 @@ public class MainActivity extends Activity {
                         compress("/sdcard/Download/a.mp4");
                     }
                 });
+
+        publisher = new SrsPublisher((SrsCameraView) findViewById(R.id.surface_view));
+        publisher.setPublishEventHandler(new RtmpPublisher.EventHandler() {
+            @Override
+            public void onRtmpConnecting(String msg) {
+
+            }
+
+            @Override
+            public void onRtmpConnected(String msg) {
+
+            }
+
+            @Override
+            public void onRtmpVideoStreaming(String msg) {
+
+            }
+
+            @Override
+            public void onRtmpAudioStreaming(String msg) {
+
+            }
+
+            @Override
+            public void onRtmpStopped(String msg) {
+
+            }
+
+            @Override
+            public void onRtmpDisconnected(String msg) {
+
+            }
+
+            @Override
+            public void onRtmpOutputFps(double fps) {
+
+            }
+
+            @Override
+            public void onRtmpVideoBitrate(double bitrate) {
+
+            }
+
+            @Override
+            public void onRtmpAudioBitrate(double bitrate) {
+
+            }
+        });
         findViewById(R.id.push_stream)
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        Intent intent = new Intent(MainActivity.this, RecorderActivity.class);
-                        startActivity(intent);
+//                        Intent intent = new Intent(MainActivity.this, RecorderActivity.class);
+//                        startActivity(intent);
+//                        flvMuxer.start("rtmp://192.168.1.102/live/test");
+//                        flvMuxer.setVideoResolution(480, 840);
+//                        encoder = new Encoder(new Parameters(), flvMuxer);
+//                        try {
+//                            encoder.start(surfaceView);
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        }
+                        publisher.setPreviewResolution(1280, 720);
+                        publisher.setOutputResolution(384, 640);
+                        publisher.setVideoSmoothMode();
+                        publisher.startPublish("rtmp://192.168.1.102/live/test");
                     }
                 });
         findViewById(R.id.player)
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
+//                        Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
 
-                        startActivity(intent);
+//                        startActivity(intent);
                     }
                 });
 //        SurfaceView surfaceView = (SurfaceView) findViewById(R.id.surface_view);
@@ -102,6 +161,62 @@ public class MainActivity extends Activity {
 //                FFmpeg.getInstance().onNativeSurfaceDestroyed();
 //            }
 //        });
+    }
+
+    final FLVMuxer flvMuxer = new FLVMuxer(new RtmpPublisher.EventHandler() {
+        @Override
+        public void onRtmpConnecting(String msg) {
+
+        }
+
+        @Override
+        public void onRtmpConnected(String msg) {
+
+        }
+
+        @Override
+        public void onRtmpVideoStreaming(String msg) {
+
+        }
+
+        @Override
+        public void onRtmpAudioStreaming(String msg) {
+
+        }
+
+        @Override
+        public void onRtmpStopped(String msg) {
+
+        }
+
+        @Override
+        public void onRtmpDisconnected(String msg) {
+
+        }
+
+        @Override
+        public void onRtmpOutputFps(double fps) {
+
+        }
+
+        @Override
+        public void onRtmpVideoBitrate(double bitrate) {
+
+        }
+
+        @Override
+        public void onRtmpAudioBitrate(double bitrate) {
+
+        }
+    });
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+//        if (encoder != null) {
+//            encoder.stop();
+//        }
+//        flvMuxer.stop();
     }
 
     @Override

@@ -1,117 +1,24 @@
 package com.wlanjie.ffmpeg.library;
 
-import android.util.Log;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import android.graphics.ImageFormat;
+import android.media.AudioFormat;
 
 /**
- * Created by wlanjie on 16/9/10.
+ * Created by wlanjie on 2016/10/9.
  */
 
 public class Parameters {
-    public static final int FILTER_MODE_HARD = 1;
-    public static final int FILTER_MODE_SOFT = 2;
-
-    public static final int RENDERING_MODE_NATIVE_WINDOW = 1;
-    public static final int RENDERING_MODE_OPENGLES = 2;
-    /**
-     * same with jni
-     */
-    public static final int FLAG_DIRECTION_FLIP_HORIZONTAL = 0x01;
-    public static final int FLAG_DIRECTION_FLIP_VERTICAL = 0x02;
-    public static final int FLAG_DIRECTION_ROATATION_0 = 0x10;
-    public static final int FLAG_DIRECTION_ROATATION_90 = 0x20;
-    public static final int FLAG_DIRECTION_ROATATION_180 = 0x40;
-    public static final int FLAG_DIRECTION_ROATATION_270 = 0x80;
-
-    public boolean done;
-    public boolean printDetailMsg;
-    public int filterMode;
-    public int renderingMode;
-    public String rtmpAddress;
-    public int frontCameraDirectionMode;
-    public int backCameraDirectionMode;
-    public boolean isPortrait;
-    public int previewVideoWidth;
-    public int previewVideoHeight;
-    public int videoWidth;
-    public int videoHeight;
-    public int videoFPS;
-    public float cropRatio;
-    public int previewColorFormat;
-    public int previewBufferSize;
-    public int mediacodecAVCColorFormat;
-    public int mediacdoecAVCBitRate;
-    public int videoBufferQueueNum;
-    public int audioBufferQueueNum;
-    public int audioRecoderFormat;
-    public int audioRecoderSampleRate;
-    public int audioRecoderChannelConfig;
-    public int audioRecoderSliceSize;
-    public int audioRecoderSource;
-    public int audioRecoderBufferSize;
-    public int previewMaxFps;
-    public int previewMinFps;
-    public int mediacodecAVCFrameRate;
-    public int mediacodecAVCIFrameInterval;
-    public int mediacodecAVCProfile;
-    public int mediacodecAVClevel;
-
-    public int mediacodecAACProfile;
-    public int mediacodecAACSampleRate;
-    public int mediacodecAACChannelCount;
-    public int mediacodecAACBitRate;
-    public int mediacodecAACMaxInputSize;
-
-    //sender
-    public int senderQueueLength;
-
-    public Parameters() {
-        done = false;
-        printDetailMsg = false;
-        filterMode=-1;
-        videoWidth = -1;
-        videoHeight = -1;
-        videoFPS=-1;
-        previewColorFormat = -1;
-        mediacodecAVCColorFormat = -1;
-        mediacdoecAVCBitRate = -1;
-        videoBufferQueueNum = -1;
-        audioBufferQueueNum = -1;
-        mediacodecAVCFrameRate = -1;
-        mediacodecAVCIFrameInterval = -1;
-        mediacodecAVCProfile = -1;
-        mediacodecAVClevel = -1;
-        mediacodecAACProfile = -1;
-        mediacodecAACSampleRate = -1;
-        mediacodecAACChannelCount = -1;
-        mediacodecAACBitRate = -1;
-        mediacodecAACMaxInputSize = -1;
-    }
-
-    public void dump() {
-        Log.e("Parameters", this.toString());
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("ResParameter:");
-        Field[] fields = this.getClass().getDeclaredFields();
-        for (Field field : fields) {
-            if (Modifier.isStatic(field.getModifiers())) {
-                continue;
-            }
-            field.setAccessible(true);
-            try {
-                sb.append(field.getName());
-                sb.append('=');
-                sb.append(field.get(this));
-                sb.append(';');
-            } catch (IllegalAccessException e) {
-            }
-        }
-        return sb.toString();
-    }
+    public String url = "rtmp://192.168.1.102/live/test";
+    public int PREVIEW_WIDTH = 1280;
+    public int PREVIEW_HEIGHT = 720;
+    public int VIDEO_WIDTH = 480;
+    public int VIDEO_HEIGHT = 840;
+    public int BITRATE = 500 * 1000; // 500kbps
+    public int FPS = 24;
+    public int GOP = 48;
+    public int FORMAT = ImageFormat.NV21;
+    public int SAMPLERATE = 44100;
+    public int CHANNEL = AudioFormat.CHANNEL_IN_STEREO;
+    public int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
+    public int AUDIO_BITRATE = 32 * 1000; //32kbps
 }

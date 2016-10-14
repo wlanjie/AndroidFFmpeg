@@ -8,15 +8,12 @@
 
 #include "SDL_main.h"
 #include <jni.h>
-#include <librtmp/log.h>
 #include "utils.h"
 #include "openfile.h"
 #include "SDL_android.h"
 #include "ffplay.h"
 #include "recorder.h"
-#include "librtmp.h"
-#include "color_convert.h"
-#include "x264_encoder.h"
+#include "libenc.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -201,128 +198,54 @@ void rtmp_log_callback(int logLevel, const char* msg, va_list args) {
     LOGE("%s", log);
 }
 
-jlong Android_JNI_rtmp_open(JNIEnv *env, jclass clazz, jstring _url, jboolean isPublishMode) {
-    if (DEBUG) {
-        remove("/sdcard/rtmp_log.txt");
-        RTMP_LogSetLevel(RTMP_LOGALL);
-//        RTMP_LogSetCallback(rtmp_log_callback);
-        FILE *fp = fopen("/sdcard/rtmp_log.txt", "a+");
-        RTMP_LogSetOutput(fp);
-    }
-
-    const char *url = (*env)->GetStringUTFChars(env, _url, 0);
-    RTMP *rtmp = rtmp_open(url, isPublishMode);
-    (*env)->ReleaseStringUTFChars(env, _url, url);
-    return rtmp;
+void Android_JNI_setEncoderResolution(JNIEnv *env, jobject object, jint width, jint height) {
+    setEncoderResolution(width, height);
 }
 
-int Android_JNI_rtmp_read(JNIEnv *env, jobject object, jlong pointer, jbyteArray data, int offset, int size) {
-
+void Android_JNI_setEncoderFps(JNIEnv *env, jobject object, jint fps) {
+    setEncoderFps(fps);
 }
 
-int Android_JNI_rtmp_write(JNIEnv *env, jobject object, jlong pointer, jbyteArray data, int size, int type, int ts) {
-    jbyte *buffer = (*env)->GetByteArrayElements(env, data, 0);
-    int res = rtmp_write(pointer, buffer, size, type, ts);
-    (*env)->ReleaseByteArrayElements(env, data, buffer, 0);
-    return res;
+void Android_JNI_setEncoderGop(JNIEnv *env, jobject object, jint gop_size) {
+    setEncoderGop(gop_size);
 }
 
-int Android_JNI_rtmp_close(JNIEnv *env, jobject object, jlong pointer) {
-    return rtmp_close(pointer);
+void Android_JNI_setEncoderBitrate(JNIEnv *env, jobject object, jint bitrate) {
+    setEncoderBitrate(bitrate);
 }
 
-jstring Android_JNI_rtmp_getIpAddress(JNIEnv *env, jobject object, jlong pointer) {
-    return NULL;
+void Android_JNI_setEncoderPreset(JNIEnv *env, jobject object, jstring preset) {
+    const char *enc_preset = (*env)->GetStringUTFChars(env, preset, NULL);
+    setEncoderPreset(enc_preset);
+    (*env)->ReleaseStringUTFChars(env, preset, enc_preset);
 }
 
-void Android_JNI_color_convert_NV21ToYUV420SP(JNIEnv *env, jobject object, jbyteArray srcArray, jbyteArray dstArray, jint ySize) {
-    unsigned char *src = (unsigned char *)(*env)->GetByteArrayElements(env, srcArray, 0);
-    unsigned char *dst = (unsigned char *)(*env)->GetByteArrayElements(env, dstArray, 0);
-    NV21ToYUV420SP(src , dst, ySize);
-    (*env)->ReleaseByteArrayElements(env, srcArray, src, JNI_ABORT);
-    (*env)->ReleaseByteArrayElements(env, dstArray, dst, JNI_ABORT);
+jbyteArray Android_JNI_NV21ToI420(JNIEnv *env, jobject object, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree) {
+    jbyte *nv21_frame = (*env)->GetByteArrayElements(env, frame, NULL);
+    jbyteArray i420Frame = encoderNV21ToI420(env, nv21_frame, src_width, src_height, need_flip, rotate_degree);
+    (*env)->ReleaseByteArrayElements(env, frame, nv21_frame, JNI_ABORT);
+    return i420Frame;
 }
 
-void Android_JNI_color_convert_NV21ToYUV420P(JNIEnv *env, jobject object, jbyteArray srcArray, jbyteArray dstArray, jint ySize) {
-    unsigned char *src = (unsigned char *)(*env)->GetByteArrayElements(env, srcArray, 0);
-    unsigned char *dst = (unsigned char *)(*env)->GetByteArrayElements(env, dstArray, 0);
-    NV21ToYUV420P(src, dst, ySize);
-    (*env)->ReleaseByteArrayElements(env, srcArray, src, JNI_ABORT);
-    (*env)->ReleaseByteArrayElements(env, dstArray, dst, JNI_ABORT);
+jbyteArray Android_JNI_NV21ToNV12(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
+                            jint src_height, jboolean need_flip, jint rotate_degree) {
+    jbyte *nv21_frame = (*env)->GetByteArrayElements(env, frame, NULL);
+    jbyteArray nv12Frame = NV21ToNV12(env, nv21_frame, src_width, src_height, need_flip, rotate_degree);
+    (*env)->ReleaseByteArrayElements(env, frame, nv21_frame, NULL);
+    return nv12Frame;
 }
 
-void Android_JNI_color_convert_YUV420SPToYUV420P(JNIEnv *env, jobject object, jbyteArray srcArray, jbyteArray dstArray, jint ySize) {
-    unsigned char *src = (unsigned char *)(*env)->GetByteArrayElements(env, srcArray, 0);
-    unsigned char *dst = (unsigned char *)(*env)->GetByteArrayElements(env, dstArray, 0);
-    YUV420SPToYUV420P(src, dst, ySize);
-    (*env)->ReleaseByteArrayElements(env, srcArray, src, JNI_ABORT);
-    (*env)->ReleaseByteArrayElements(env, dstArray, dst, JNI_ABORT);
+jboolean Android_JNI_openSoftEncoder(JNIEnv* env, jobject thiz) {
+    return openSoftEncoder();
 }
 
-void Android_JNI_color_convert_NV21ToARGB(JNIEnv *env, jobject object, jbyteArray srcArray, jintArray dstArray, jint width, jint height) {
-    unsigned char *src = (unsigned char *) (*env)->GetByteArrayElements(env, srcArray, 0);
-    unsigned int *dst = (unsigned int *) (*env)->GetIntArrayElements(env, dstArray, 0);
-    NV21ToARGB(src, dst, width, height);
-    (*env)->ReleaseByteArrayElements(env, srcArray, src, JNI_ABORT);
-    (*env)->ReleaseIntArrayElements(env, dstArray, dst, JNI_ABORT);
+void Android_JNI_closeSoftEncoder(JNIEnv* env, jobject thiz) {
+    closeSoftEncoder();
 }
 
-void Android_JNI_color_convert_FIXGLPIXEL(JNIEnv *env, jobject object, jintArray srcArray, jintArray dstArray, jint width, jint height) {
-    unsigned int *src = (unsigned int *) (*env)->GetIntArrayElements(env, srcArray, 0);
-    unsigned int *dst = (unsigned int *) (*env)->GetIntArrayElements(env, dstArray, 0);
-    FIXGLPIXEL(src, dst, width, height);
-    (*env)->ReleaseIntArrayElements(env, srcArray, src, JNI_ABORT);
-    (*env)->ReleaseIntArrayElements(env, dstArray, dst, JNI_ABORT);
-}
-
-void Android_JNI_color_convert_NV21Transform(JNIEnv *env, jobject object, jbyteArray srcArray, jbyteArray dstArray, jint width, jint height, jint dirctionFlag) {
-    unsigned char *src = (unsigned char *) (*env)->GetByteArrayElements(env, srcArray, 0);
-    unsigned char *dst = (unsigned char *) (*env)->GetByteArrayElements(env, dstArray, 0);
-    NV21Transform(src, dst, width, height, dirctionFlag);
-    (*env)->ReleaseByteArrayElements(env, srcArray, src, JNI_ABORT);
-    (*env)->ReleaseByteArrayElements(env, dstArray, dst, JNI_ABORT);
-}
-
-#define COLOR_FORMAT_NV21 17
-
-void Android_JNI_native_render(JNIEnv *env, jobject object, jobject surfaceObject, jbyteArray pixelsArray, jint width, jint height, jint size) {
-    ANativeWindow *window = ANativeWindow_fromSurface(env, surfaceObject);
-    if (window != NULL) {
-        ANativeWindow_setBuffersGeometry(window, width, height, COLOR_FORMAT_NV21 );
-        ANativeWindow_Buffer buffer;
-        if (ANativeWindow_lock(window, &buffer, NULL) == 0) {
-            unsigned char *pixels = (*env)->GetByteArrayElements(env, pixelsArray, 0);
-            if (buffer.width == buffer.stride) {
-                memcpy(buffer.bits, pixels, size);
-            } else {
-                int h = height * 3 / 2;
-                int w = width;
-                for (int i = 0; i < h; ++i) {
-                    memcpy(buffer.bits + buffer.stride * i, pixels + w * i, w);
-                }
-            }
-            (*env)->ReleaseByteArrayElements(env, pixelsArray, pixels, JNI_ABORT);
-            ANativeWindow_unlockAndPost(window);
-        }
-        ANativeWindow_release(window);
-    }
-}
-
-jint Android_JNI_x264_encoder_init(JNIEnv *env, jobject object, jint width, jint height) {
-    return x264_encoder_init(width, height);
-}
-
-jint Android_JNI_x264_encoder_start(JNIEnv *env, jobject object, int type, jbyteArray inputArray, jbyteArray outputArray) {
-    unsigned char *input = (unsigned char *) (*env)->GetByteArrayElements(env, inputArray, 0);
-    unsigned char *output = (unsigned char *) (*env)->GetByteArrayElements(env, outputArray, 0);
-    int res = x264_encoder_start(type, input, output, 0);
-    (*env)->ReleaseByteArrayElements(env, inputArray, input, 0);
-    (*env)->ReleaseByteArrayElements(env, outputArray, output, 0);
-    return res;
-}
-
-void Android_JNI_x264_encoder_close(JNIEnv *env, jobject object) {
-    x264_encoder_finish();
+jint Android_JNI_NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
+                           jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
+    return NV21SoftEncode(env, thiz, frame, src_width, src_height, need_flip, rotate_degree, pts);
 }
 
 static JNINativeMethod g_methods[] = {
@@ -340,31 +263,19 @@ static JNINativeMethod g_methods[] = {
         {"release", "()V", release_ffmpeg},
 };
 
-static JNINativeMethod rtmp_methods[] = {
-        {"open", "(Ljava/lang/String;Z)J", Android_JNI_rtmp_open},
-        {"read", "(J[BII)I", Android_JNI_rtmp_read},
-        {"write", "(J[BIII)I", Android_JNI_rtmp_write},
-        {"close", "(J)I", Android_JNI_rtmp_close},
-        {"getIpAddress", "(J)Ljava/lang/String;", Android_JNI_rtmp_getIpAddress},
-};
-
-static JNINativeMethod color_convert_methods[] = {
-        {"NV21ToYUV420SP", "([B[BI)V", Android_JNI_color_convert_NV21ToYUV420SP},
-        {"NV21ToYUV420P", "([B[BI)V", Android_JNI_color_convert_NV21ToYUV420P},
-        {"YUV420SPToYUV420P", "([B[BI)V", Android_JNI_color_convert_YUV420SPToYUV420P},
-        {"NV21ToARGB", "([B[III)V", Android_JNI_color_convert_NV21ToARGB},
-        {"FIXGLPIXEL", "([I[III)V", Android_JNI_color_convert_FIXGLPIXEL},
-        {"NV21Transform", "([B[BIII)V", Android_JNI_color_convert_NV21Transform}
-};
-
-static JNINativeMethod native_render_methods[] = {
-        {"renderingSurface", "(Landroid/view/Surface;[BIII)V", Android_JNI_native_render}
-};
-
-static JNINativeMethod encoder_method[] = {
-        {"x264EncoderInit", "(II)I", Android_JNI_x264_encoder_init},
-        {"x264EncoderClose", "()V", Android_JNI_x264_encoder_close},
-        {"x264EncoderStart", "(I[B[B)I", Android_JNI_x264_encoder_start}
+static JNINativeMethod libenc_methods[] = {
+        { "setEncoderResolution", "(II)V", Android_JNI_setEncoderResolution },
+        { "setEncoderFps", "(I)V", Android_JNI_setEncoderFps },
+        { "setEncoderGop", "(I)V", Android_JNI_setEncoderGop },
+        { "setEncoderBitrate", "(I)V", Android_JNI_setEncoderBitrate },
+        { "setEncoderPreset", "(Ljava/lang/String;)V", Android_JNI_setEncoderPreset },
+        { "NV21ToI420", "([BIIZI)[B", Android_JNI_NV21ToI420 },
+        { "NV21ToNV12", "([BIIZI)[B", Android_JNI_NV21ToNV12 },
+        { "openSoftEncoder", "()Z", Android_JNI_openSoftEncoder },
+        { "closeSoftEncoder", "()V", Android_JNI_closeSoftEncoder },
+        { "NV21SoftEncode", "([BIIZIJ)I", Android_JNI_NV21SoftEncode },
+//c++
+//        { "NV21SoftEncode", "([BIIZIJ)I", (void *)libenc_NV21SoftEncode },
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
@@ -379,14 +290,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     av_log_set_callback(log_callback);
     jclass clazz = (*env)->FindClass(env, CLASS_NAME);
     (*env)->RegisterNatives(env, clazz, g_methods, NELEM(g_methods));
-    jclass rtmp_clazz = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/RtmpClient");
-    (*env)->RegisterNatives(env, rtmp_clazz, rtmp_methods, NELEM(rtmp_methods));
-    jclass color_convert_clazz = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/ColorConvert");
-    (*env)->RegisterNatives(env, color_convert_clazz, color_convert_methods, NELEM(color_convert_methods));
-    jclass render_class = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/NativeRender");
-    (*env)->RegisterNatives(env, render_class, native_render_methods, NELEM(native_render_methods));
-    jclass encoder = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/Encoder");
-    (*env)->RegisterNatives(env, encoder, encoder_method, NELEM(encoder_method));
+    jclass enc_clazz = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/Encoder");
+    (*env)->RegisterNatives(env, enc_clazz, libenc_methods, NELEM(libenc_methods));
     SDL_JNI_Init(vm);
 
     if (DEBUG) {

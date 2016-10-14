@@ -34,7 +34,7 @@ add_subdirectory(libyuv)
 #add fdk-aac library
 add_subdirectory(fdk-aac)
 
-file(GLOB WLANJIE_SOURCE *.c rtmpdump/rtmpdump.c rtmpdump/thread.c rtmpdump/librtmp/*.c)
+file(GLOB WLANJIE_SOURCE *.c *.cpp *.cc)
 add_library(wlanjie SHARED ${WLANJIE_SOURCE})
 
 message(STATUS "source dir: ${PROJECT_SOURCE_DIR}")
