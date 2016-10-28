@@ -3,12 +3,9 @@ package com.wlanjie.ffmpeg.library;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Toast;
-
-import net.ossrs.yasea.rtmp.RtmpPublisher;
 
 import rx.Observable;
 import rx.Subscriber;
@@ -24,8 +21,6 @@ public class MainActivity extends Activity {
     private SurfaceView surfaceView;
     private Encoder encoder;
 
-    SrsPublisher publisher;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -36,7 +31,6 @@ public class MainActivity extends Activity {
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-//                        getRotation("/sdcard/DCIM/Camera/compress.mp4");
                         getRotation("/sdcard/crop.mp4");
                     }
                 });
@@ -45,7 +39,6 @@ public class MainActivity extends Activity {
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-//                        startRecoderVideoIntent(CROP);
                         crop("/sdcard/crop.mp4");
                     }
                 });
@@ -58,71 +51,13 @@ public class MainActivity extends Activity {
                     }
                 });
 
-        publisher = new SrsPublisher((SrsCameraView) findViewById(R.id.surface_view));
-        publisher.setPublishEventHandler(new RtmpPublisher.EventHandler() {
-            @Override
-            public void onRtmpConnecting(String msg) {
-
-            }
-
-            @Override
-            public void onRtmpConnected(String msg) {
-
-            }
-
-            @Override
-            public void onRtmpVideoStreaming(String msg) {
-
-            }
-
-            @Override
-            public void onRtmpAudioStreaming(String msg) {
-
-            }
-
-            @Override
-            public void onRtmpStopped(String msg) {
-
-            }
-
-            @Override
-            public void onRtmpDisconnected(String msg) {
-
-            }
-
-            @Override
-            public void onRtmpOutputFps(double fps) {
-
-            }
-
-            @Override
-            public void onRtmpVideoBitrate(double bitrate) {
-
-            }
-
-            @Override
-            public void onRtmpAudioBitrate(double bitrate) {
-
-            }
-        });
+        encoder = new Encoder((CameraView) findViewById(R.id.surface_view));
         findViewById(R.id.push_stream)
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-//                        Intent intent = new Intent(MainActivity.this, RecorderActivity.class);
-//                        startActivity(intent);
-//                        flvMuxer.start("rtmp://192.168.1.102/live/test");
-//                        flvMuxer.setVideoResolution(480, 840);
-//                        encoder = new Encoder(new Parameters(), flvMuxer);
-//                        try {
-//                            encoder.start(surfaceView);
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-                        publisher.setPreviewResolution(1280, 720);
-                        publisher.setOutputResolution(384, 640);
-                        publisher.setVideoSmoothMode();
-                        publisher.startPublish("rtmp://192.168.1.102/live/test");
+                        encoder.connect("rtmp://192.168.1.104/live/test");
+                        encoder.start();
                     }
                 });
         findViewById(R.id.player)
@@ -163,60 +98,13 @@ public class MainActivity extends Activity {
 //        });
     }
 
-    final FLVMuxer flvMuxer = new FLVMuxer(new RtmpPublisher.EventHandler() {
-        @Override
-        public void onRtmpConnecting(String msg) {
-
-        }
-
-        @Override
-        public void onRtmpConnected(String msg) {
-
-        }
-
-        @Override
-        public void onRtmpVideoStreaming(String msg) {
-
-        }
-
-        @Override
-        public void onRtmpAudioStreaming(String msg) {
-
-        }
-
-        @Override
-        public void onRtmpStopped(String msg) {
-
-        }
-
-        @Override
-        public void onRtmpDisconnected(String msg) {
-
-        }
-
-        @Override
-        public void onRtmpOutputFps(double fps) {
-
-        }
-
-        @Override
-        public void onRtmpVideoBitrate(double bitrate) {
-
-        }
-
-        @Override
-        public void onRtmpAudioBitrate(double bitrate) {
-
-        }
-    });
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
-//        if (encoder != null) {
-//            encoder.stop();
-//        }
-//        flvMuxer.stop();
+        if (encoder != null) {
+            encoder.stop();
+            encoder.destroy();
+        }
     }
 
     @Override
@@ -237,13 +125,6 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         FFmpeg.getInstance().onNativePause();
-    }
-
-    private void startRecoderVideoIntent(int requestCode) {
-        Intent taskVideoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
-        if (taskVideoIntent.resolveActivity(getPackageManager()) != null) {
-            startActivityForResult(taskVideoIntent, requestCode);
-        }
     }
 
     @Override

@@ -299,6 +299,8 @@ extern "C" jboolean openSoftEncoder() {
     x264_ctx.params.i_fps_num = x264_ctx.fps;
     x264_ctx.params.i_fps_den = 1;
 
+    x264_ctx.params.b_sliced_threads = false;
+
     // gop
     x264_ctx.params.i_keyint_max = x264_ctx.gop;
 

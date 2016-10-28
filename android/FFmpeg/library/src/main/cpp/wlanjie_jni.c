@@ -14,6 +14,7 @@
 #include "ffplay.h"
 #include "recorder.h"
 #include "libenc.h"
+#include "srs_librtmp.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -248,6 +249,46 @@ jint Android_JNI_NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jin
     return NV21SoftEncode(env, thiz, frame, src_width, src_height, need_flip, rotate_degree, pts);
 }
 
+srs_rtmp_t  rtmp;
+
+jint Android_JNI_connect(JNIEnv *env, jobject thiz, jstring url) {
+    const char *rtmp_url = (*env)->GetStringUTFChars(env, url, 0);
+    rtmp = srs_rtmp_create(rtmp_url);
+    if (srs_rtmp_handshake(rtmp) != 0) {
+        return -1;
+    }
+    if (srs_rtmp_connect_app(rtmp) != 0) {
+        return -1;
+    }
+    if (srs_rtmp_publish_stream(rtmp) != 0) {
+        return -1;
+    }
+    (*env)->ReleaseStringUTFChars(env, url, rtmp_url);
+
+    return 0;
+}
+
+int Android_JNI_write_video_sample(JNIEnv *env, jobject thiz, jlong timestamp, jbyteArray frame) {
+    jbyte *data = (*env)->GetByteArrayElements(env, frame, NULL);
+    jsize data_size = (*env)->GetArrayLength(env, frame);
+
+    int ret = srs_h264_write_raw_frames(rtmp, data, data_size, timestamp, timestamp);
+    (*env)->ReleaseByteArrayElements(env, frame, data, NULL);
+    return ret;
+}
+
+jint Android_JNI_write_audio_sample(JNIEnv *env, jobject thiz, jlong timestamp, jbyteArray frame, jint sampleRate, jint channel) {
+    jbyte *data = (*env)->GetByteArrayElements(env, frame, NULL);
+    jsize data_size = (*env)->GetArrayLength(env, frame);
+    int ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, data, data_size, timestamp);
+    (*env)->ReleaseByteArrayElements(env, frame, data, NULL);
+    return ret;
+}
+
+void Android_JNI_destroy(JNIEnv *env, jobject thiz) {
+    srs_rtmp_destroy(rtmp);
+}
+
 static JNINativeMethod g_methods[] = {
         {"openInput", "(Ljava/lang/String;)I", Android_JNI_open_input},
         {"compress", "(Ljava/lang/String;II)I", Android_JNI_compress},
@@ -264,6 +305,10 @@ static JNINativeMethod g_methods[] = {
 };
 
 static JNINativeMethod libenc_methods[] = {
+        { "connect", "(Ljava/lang/String;)I", Android_JNI_connect },
+        { "writeVideo", "(J[B)I", Android_JNI_write_video_sample },
+        { "writeAudio", "(J[BII)I", Android_JNI_write_audio_sample },
+        { "destroy", "()V", Android_JNI_destroy },
         { "setEncoderResolution", "(II)V", Android_JNI_setEncoderResolution },
         { "setEncoderFps", "(I)V", Android_JNI_setEncoderFps },
         { "setEncoderGop", "(I)V", Android_JNI_setEncoderGop },
