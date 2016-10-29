@@ -32,7 +32,7 @@ public class Encoder {
     private MediaCodec videoMediaCodec;
     private MediaCodec audioMediaCodec;
     private MediaCodec.BufferInfo videoBufferInfo = new MediaCodec.BufferInfo();
-    private MediaCodec.BufferInfo audiBufferInfo = new MediaCodec.BufferInfo();
+    private MediaCodec.BufferInfo audioBufferInfo = new MediaCodec.BufferInfo();
 
     private boolean mCameraFaceFront = true;
 
@@ -62,11 +62,11 @@ public class Encoder {
         public String x264Preset = "veryfast";
         public int previewWidth = 1280;
         public int previewHeight = 720;
-        public int portraitWidth = 640;
+        public int portraitWidth = 480;
         public int portraitHeight = 854;
         public int landscapeWidth = 854;
-        public int landscapeHeight = 640;
-        public int outWidth = 640;
+        public int landscapeHeight = 480;
+        public int outWidth = 480;
         public int outHeight = 854;  // Since Y component is quadruple size as U and V component, the stride must be set as 32x
         public int videoBitRate = 500 * 1000; // 500 kbps
         public int fps = 24;
@@ -133,6 +133,7 @@ public class Encoder {
         audioFormat = MediaFormat.createAudioFormat(mParameters.audioCodec, mParameters.audioSampleRate, ach);
         audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, mParameters.audioBitRate);
         audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
+        audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
         audioMediaCodec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
         // videoMediaCodec yuv to 264 es stream.
@@ -385,10 +386,29 @@ public class Encoder {
         }
 
         for (; ; ) {
-            int outBufferIndex = audioMediaCodec.dequeueOutputBuffer(audiBufferInfo, 0);
+            int outBufferIndex = audioMediaCodec.dequeueOutputBuffer(audioBufferInfo, 0);
             if (outBufferIndex >= 0) {
                 ByteBuffer bb = outBuffers[outBufferIndex];
-                onEncodedAacFrame(bb, audiBufferInfo);
+                bb.position(audioBufferInfo.offset);
+                bb.limit(audioBufferInfo.offset + audioBufferInfo.size);
+                int packetLen = audioBufferInfo.size + 7;
+                byte[] adtsData = new byte[packetLen];
+                int profile = 1; // AAC LC
+                // 39=MediaCodecInfo.CodecProfileLevel.AACObjectELD;
+                int freqIdx = 4; // 44.1KHz
+                int chanCfg = 2; // CPE
+
+                // fill in ADTS data
+                adtsData[0] = (byte) 0xFF;
+                adtsData[1] = (byte) 0xF9;
+                adtsData[2] = (byte) (((profile - 1) << 6) + (freqIdx << 2) + (chanCfg >> 2));
+                adtsData[3] = (byte) (((chanCfg & 3) << 6) + (packetLen >> 11));
+                adtsData[4] = (byte) ((packetLen & 0x7FF) >> 3);
+                adtsData[5] = (byte) (((packetLen & 7) << 5) + 0x1F);
+                adtsData[6] = (byte) 0xFC;
+                bb.get(adtsData, 7, audioBufferInfo.size);
+                bb.position(audioBufferInfo.offset);
+                writeAudio(audioBufferInfo.presentationTimeUs / 1000, adtsData, 44100, 2);
                 audioMediaCodec.releaseOutputBuffer(outBufferIndex, false);
             } else {
                 break;

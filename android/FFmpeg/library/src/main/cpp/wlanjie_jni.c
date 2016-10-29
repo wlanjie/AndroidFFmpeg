@@ -12,7 +12,6 @@
 #include "openfile.h"
 #include "SDL_android.h"
 #include "ffplay.h"
-#include "recorder.h"
 #include "libenc.h"
 #include "srs_librtmp.h"
 
@@ -179,20 +178,6 @@ void Android_JNI_nativeResize(JNIEnv *env, jobject object, jint width, jint heig
     Android_JNI_onNativeResize(width, height, format, rate);
 }
 
-void Android_JNI_initRecorder(JNIEnv *env, jobject object, jstring path) {
-    const char *url = (*env)->GetStringUTFChars(env, path, 0);
-    int ret = recorder_init(url);
-    if (ret < 0) {
-
-    }
-    (*env)->ReleaseStringUTFChars(env, path, url);
-}
-
-void Android_JNI_onRecordSamples(JNIEnv *env, jobject object, jshortArray buffer) {
-    jshort *in = (*env)->GetShortArrayElements(env, buffer, JNI_FALSE);
-    record_samples((const uint8_t **) &in);
-}
-
 void rtmp_log_callback(int logLevel, const char* msg, va_list args) {
     char log[1024];
     vsprintf(log, msg, args);
@@ -299,8 +284,6 @@ static JNINativeMethod g_methods[] = {
         {"onNativeSurfaceChanged", "()V", Android_JNI_onNativeSurfaceChanged},
         {"onNativeSurfaceDestroyed", "()V", Android_JNI_onNativeSurfaceDestroyed},
         {"onNativeResize", "(IIIF)V", Android_JNI_nativeResize},
-        {"initRecorder", "(Ljava/lang/String;)V", Android_JNI_initRecorder},
-        {"recordSamples", "([S)I", Android_JNI_onRecordSamples},
         {"release", "()V", release_ffmpeg},
 };
 

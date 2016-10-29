@@ -19,7 +19,9 @@ include_directories(${PROJECT_SOURCE_DIR}/libyuv/include)
 #add openssl header
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/openssl-build/${ANDROID_ABI}/output/include)
 #add rtmp header
-include_directories(${PROJECT_SOURCE_DIR}/rtmp)
+#include_directories(${PROJECT_SOURCE_DIR}/rtmp)
+#add fdk-aac header
+include_directories(${PROJECT_SOURCE_DIR}/fdk-aac)
 
 #add SDL2 library
 add_subdirectory(SDL)

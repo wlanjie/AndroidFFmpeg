@@ -1,7 +1,9 @@
 package com.wlanjie.ffmpeg.library;
 
+import android.annotation.TargetApi;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
+import android.os.Build;
 import android.util.Log;
 
 import java.io.IOException;
@@ -41,6 +43,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *      muxer.stop();
  *      muxer.release();
  */
+@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class FlvMuxer {
     private volatile boolean connected = false;
 

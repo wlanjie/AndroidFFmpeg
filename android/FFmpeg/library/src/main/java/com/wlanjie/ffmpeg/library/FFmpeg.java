@@ -290,10 +290,6 @@ public class FFmpeg {
         }
     }
 
-    public native void initRecorder(String url);
-
-    public native int recordSamples(short[] buffer);
-
     /**
      * 释放资源
      */

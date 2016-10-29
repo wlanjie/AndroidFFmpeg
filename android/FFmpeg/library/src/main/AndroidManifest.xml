@@ -21,7 +21,6 @@
         </activity>
 
         <activity android:name=".PlayerActivity" android:theme="@android:style/Theme.NoTitleBar" />
-        <activity android:name=".RecorderActivity" android:theme="@android:style/Theme.NoTitleBar" />
     </application>
 
 </manifest>

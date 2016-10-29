@@ -13236,7 +13236,7 @@ bool srs_aac_startswith_adts(SrsStream* stream)
     // matched 12bits 0xFFF,
     // @remark, we must cast the 0xff to char to compare.
     if (p[0] != (char)0xff || (char)(p[1] & 0xf0) != (char)0xf0) {
-        return false;
+//        return false;
     }
     
     return true;
