@@ -191,7 +191,7 @@ public class FFmpeg {
     }
 
     /**
-     * native call method
+     * This method is called by SDL using JNI.
      * @return
      */
     public Surface getNativeSurface() {
@@ -289,7 +289,6 @@ public class FFmpeg {
             mAudioTrack = null;
         }
     }
-
 
     /**
      * 释放资源

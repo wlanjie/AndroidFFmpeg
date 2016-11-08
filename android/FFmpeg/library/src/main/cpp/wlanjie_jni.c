@@ -10,9 +10,10 @@
 #include <jni.h>
 #include "utils.h"
 #include "openfile.h"
-#include "log.h"
 #include "SDL_android.h"
 #include "ffplay.h"
+#include "libenc.h"
+#include "srs_librtmp.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -165,16 +166,112 @@ static void release_ffmpeg(JNIEnv *env, jobject object) {
 }
 
 void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
-//    FILE *fp = fopen("/sdcard/av_log.txt", "a+");
-//    if (fp) {
-//        vfprintf(fp, fmt, vl);
-//        fflush(fp);
-//        fclose(fp);
-//    }
+    FILE *fp = fopen("/sdcard/av_log.txt", "a+");
+    if (fp) {
+        vfprintf(fp, fmt, vl);
+        fflush(fp);
+        fclose(fp);
+    }
 }
 
 void Android_JNI_nativeResize(JNIEnv *env, jobject object, jint width, jint height, jint format, jfloat rate) {
     Android_JNI_onNativeResize(width, height, format, rate);
+}
+
+void rtmp_log_callback(int logLevel, const char* msg, va_list args) {
+    char log[1024];
+    vsprintf(log, msg, args);
+    LOGE("%s", log);
+}
+
+void Android_JNI_setEncoderResolution(JNIEnv *env, jobject object, jint width, jint height) {
+    setEncoderResolution(width, height);
+}
+
+void Android_JNI_setEncoderFps(JNIEnv *env, jobject object, jint fps) {
+    setEncoderFps(fps);
+}
+
+void Android_JNI_setEncoderGop(JNIEnv *env, jobject object, jint gop_size) {
+    setEncoderGop(gop_size);
+}
+
+void Android_JNI_setEncoderBitrate(JNIEnv *env, jobject object, jint bitrate) {
+    setEncoderBitrate(bitrate);
+}
+
+void Android_JNI_setEncoderPreset(JNIEnv *env, jobject object, jstring preset) {
+    const char *enc_preset = (*env)->GetStringUTFChars(env, preset, NULL);
+    setEncoderPreset(enc_preset);
+    (*env)->ReleaseStringUTFChars(env, preset, enc_preset);
+}
+
+jbyteArray Android_JNI_NV21ToI420(JNIEnv *env, jobject object, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree) {
+    jbyte *nv21_frame = (*env)->GetByteArrayElements(env, frame, NULL);
+    jbyteArray i420Frame = encoderNV21ToI420(env, nv21_frame, src_width, src_height, need_flip, rotate_degree);
+    (*env)->ReleaseByteArrayElements(env, frame, nv21_frame, JNI_ABORT);
+    return i420Frame;
+}
+
+jbyteArray Android_JNI_NV21ToNV12(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
+                            jint src_height, jboolean need_flip, jint rotate_degree) {
+    jbyte *nv21_frame = (*env)->GetByteArrayElements(env, frame, NULL);
+    jbyteArray nv12Frame = NV21ToNV12(env, nv21_frame, src_width, src_height, need_flip, rotate_degree);
+    (*env)->ReleaseByteArrayElements(env, frame, nv21_frame, NULL);
+    return nv12Frame;
+}
+
+jboolean Android_JNI_openSoftEncoder(JNIEnv* env, jobject thiz) {
+    return openSoftEncoder();
+}
+
+void Android_JNI_closeSoftEncoder(JNIEnv* env, jobject thiz) {
+    closeSoftEncoder();
+}
+
+jint Android_JNI_NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
+                           jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
+    return NV21SoftEncode(env, thiz, frame, src_width, src_height, need_flip, rotate_degree, pts);
+}
+
+srs_rtmp_t  rtmp;
+
+jint Android_JNI_connect(JNIEnv *env, jobject thiz, jstring url) {
+    const char *rtmp_url = (*env)->GetStringUTFChars(env, url, 0);
+    rtmp = srs_rtmp_create(rtmp_url);
+    if (srs_rtmp_handshake(rtmp) != 0) {
+        return -1;
+    }
+    if (srs_rtmp_connect_app(rtmp) != 0) {
+        return -1;
+    }
+    if (srs_rtmp_publish_stream(rtmp) != 0) {
+        return -1;
+    }
+    (*env)->ReleaseStringUTFChars(env, url, rtmp_url);
+
+    return 0;
+}
+
+int Android_JNI_write_video_sample(JNIEnv *env, jobject thiz, jlong timestamp, jbyteArray frame) {
+    jbyte *data = (*env)->GetByteArrayElements(env, frame, NULL);
+    jsize data_size = (*env)->GetArrayLength(env, frame);
+
+    int ret = srs_h264_write_raw_frames(rtmp, data, data_size, timestamp, timestamp);
+    (*env)->ReleaseByteArrayElements(env, frame, data, NULL);
+    return ret;
+}
+
+jint Android_JNI_write_audio_sample(JNIEnv *env, jobject thiz, jlong timestamp, jbyteArray frame, jint sampleRate, jint channel) {
+    jbyte *data = (*env)->GetByteArrayElements(env, frame, NULL);
+    jsize data_size = (*env)->GetArrayLength(env, frame);
+    int ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, data, data_size, timestamp);
+    (*env)->ReleaseByteArrayElements(env, frame, data, NULL);
+    return ret;
+}
+
+void Android_JNI_destroy(JNIEnv *env, jobject thiz) {
+    srs_rtmp_destroy(rtmp);
 }
 
 static JNINativeMethod g_methods[] = {
@@ -190,6 +287,25 @@ static JNINativeMethod g_methods[] = {
         {"release", "()V", release_ffmpeg},
 };
 
+static JNINativeMethod libenc_methods[] = {
+        { "connect", "(Ljava/lang/String;)I", Android_JNI_connect },
+        { "writeVideo", "(J[B)I", Android_JNI_write_video_sample },
+        { "writeAudio", "(J[BII)I", Android_JNI_write_audio_sample },
+        { "destroy", "()V", Android_JNI_destroy },
+        { "setEncoderResolution", "(II)V", Android_JNI_setEncoderResolution },
+        { "setEncoderFps", "(I)V", Android_JNI_setEncoderFps },
+        { "setEncoderGop", "(I)V", Android_JNI_setEncoderGop },
+        { "setEncoderBitrate", "(I)V", Android_JNI_setEncoderBitrate },
+        { "setEncoderPreset", "(Ljava/lang/String;)V", Android_JNI_setEncoderPreset },
+        { "NV21ToI420", "([BIIZI)[B", Android_JNI_NV21ToI420 },
+        { "NV21ToNV12", "([BIIZI)[B", Android_JNI_NV21ToNV12 },
+        { "openSoftEncoder", "()Z", Android_JNI_openSoftEncoder },
+        { "closeSoftEncoder", "()V", Android_JNI_closeSoftEncoder },
+        { "NV21SoftEncode", "([BIIZIJ)I", Android_JNI_NV21SoftEncode },
+//c++
+//        { "NV21SoftEncode", "([BIIZIJ)I", (void *)libenc_NV21SoftEncode },
+};
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env = NULL;
     if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
@@ -202,7 +318,38 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     av_log_set_callback(log_callback);
     jclass clazz = (*env)->FindClass(env, CLASS_NAME);
     (*env)->RegisterNatives(env, clazz, g_methods, NELEM(g_methods));
+    jclass enc_clazz = (*env)->FindClass(env, "com/wlanjie/ffmpeg/library/Encoder");
+    (*env)->RegisterNatives(env, enc_clazz, libenc_methods, NELEM(libenc_methods));
     SDL_JNI_Init(vm);
+
+    if (DEBUG) {
+        remove("/sdcard/av_log.txt");
+        char *info = malloc(1000);
+        memset(info, 0, 1000);
+        AVCodec *temp = av_codec_next(NULL);
+        while (temp != NULL) {
+            if (temp->decode != NULL) {
+                strcat(info, "[Decode]");
+            } else {
+                strcat(info, "[Encode]");
+            }
+            switch (temp->type) {
+                case AVMEDIA_TYPE_VIDEO:
+                    strcat(info, "[Video]");
+                    break;
+                case AVMEDIA_TYPE_AUDIO:
+                    strcat(info, "[Audio]");
+                    break;
+                default:
+                    break;
+            }
+            sprintf(info, "%s %10s\n", info, temp->name);
+            av_log(NULL, AV_LOG_ERROR, "%s", info);
+            temp = temp->next;
+        }
+        free(info);
+    }
+//    return (*env)->GetVersion(env);
     return JNI_VERSION_1_6;
 }
 

@@ -43,7 +43,7 @@ case "$NDK_REL" in
         NDK_REL=$(grep -o '^Pkg\.Revision.*=[0-9]*.*' $ANDROID_NDK/source.properties 2>/dev/null | sed 's/[[:space:]]*//g' | cut -d "=" -f 2)
         echo "NDK_REL=$NDK_REL"
         case "$NDK_REL" in
-            11*)
+            12*)
                 if test -d ${ANDROID_NDK}/toolchains/arm-linux-androideabi-4.9
                 then
                     echo "NDKr$NDK_REL detected"

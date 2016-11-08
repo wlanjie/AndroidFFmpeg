@@ -1,21 +1,11 @@
 package com.wlanjie.ffmpeg.library;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
-import android.graphics.PixelFormat;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Looper;
-import android.provider.MediaStore;
-import android.view.Display;
-import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Toast;
-
-import java.io.FileNotFoundException;
 
 import rx.Observable;
 import rx.Subscriber;
@@ -28,16 +18,19 @@ public class MainActivity extends Activity {
     private static final int COMPRESS = 0;
     private static final int CROP = 1;
 
+    private SurfaceView surfaceView;
+    private Encoder encoder;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        surfaceView = (SurfaceView) findViewById(R.id.surface_view);
         findViewById(R.id.rotation)
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-//                        getRotation("/sdcard/DCIM/Camera/compress.mp4");
                         getRotation("/sdcard/crop.mp4");
                     }
                 });
@@ -46,8 +39,7 @@ public class MainActivity extends Activity {
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-//                        startRecoderVideoIntent(CROP);
-                        crop("/sdcard/Download/a.mp4");
+                        crop("/sdcard/crop.mp4");
                     }
                 });
 
@@ -58,13 +50,27 @@ public class MainActivity extends Activity {
                         compress("/sdcard/Download/a.mp4");
                     }
                 });
+
+        encoder = new Encoder((CameraView) findViewById(R.id.surface_view));
+        findViewById(R.id.push_stream)
+                .setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        int result = encoder.connect("rtmp://www.ossrs.net:1935/live/demo");
+                        if (result < 0) {
+                            Toast.makeText(MainActivity.this, "连接服务器失败", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        encoder.start();
+                    }
+                });
         findViewById(R.id.player)
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
+//                        Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
 
-                        startActivity(intent);
+//                        startActivity(intent);
                     }
                 });
 //        SurfaceView surfaceView = (SurfaceView) findViewById(R.id.surface_view);
@@ -97,6 +103,15 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (encoder != null) {
+            encoder.stop();
+            encoder.destroy();
+        }
+    }
+
+    @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
@@ -114,13 +129,6 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         FFmpeg.getInstance().onNativePause();
-    }
-
-    private void startRecoderVideoIntent(int requestCode) {
-        Intent taskVideoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
-        if (taskVideoIntent.resolveActivity(getPackageManager()) != null) {
-            startActivityForResult(taskVideoIntent, requestCode);
-        }
     }
 
     @Override

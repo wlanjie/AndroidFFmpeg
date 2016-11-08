@@ -2147,7 +2147,7 @@ void ARGBAffineRow_C(const uint8* src_argb, int src_argb_stride,
 }
 
 // Blend 2 rows into 1.
-static void HalfRow_C(const uint8* src_uv, ptrdiff_t src_uv_stride,
+static void HalfRow_C(const uint8* src_uv, int src_uv_stride,
                       uint8* dst_uv, int width) {
   int x;
   for (x = 0; x < width; ++x) {
@@ -2155,7 +2155,7 @@ static void HalfRow_C(const uint8* src_uv, ptrdiff_t src_uv_stride,
   }
 }
 
-static void HalfRow_16_C(const uint16* src_uv, ptrdiff_t src_uv_stride,
+static void HalfRow_16_C(const uint16* src_uv, int src_uv_stride,
                          uint16* dst_uv, int width) {
   int x;
   for (x = 0; x < width; ++x) {
@@ -2176,7 +2176,7 @@ void InterpolateRow_C(uint8* dst_ptr, const uint8* src_ptr,
     return;
   }
   if (y1_fraction == 128) {
-    HalfRow_C(src_ptr, src_stride, dst_ptr, width);
+    HalfRow_C(src_ptr, (int)(src_stride), dst_ptr, width);
     return;
   }
   for (x = 0; x < width - 1; x += 2) {
@@ -2206,7 +2206,7 @@ void InterpolateRow_16_C(uint16* dst_ptr, const uint16* src_ptr,
     return;
   }
   if (source_y_fraction == 128) {
-    HalfRow_16_C(src_ptr, src_stride, dst_ptr, width);
+    HalfRow_16_C(src_ptr, (int)(src_stride), dst_ptr, width);
     return;
   }
   for (x = 0; x < width - 1; x += 2) {
@@ -2378,19 +2378,6 @@ void ARGBCopyAlphaRow_C(const uint8* src, uint8* dst, int width) {
   }
   if (width & 1) {
     dst[3] = src[3];
-  }
-}
-
-void ARGBExtractAlphaRow_C(const uint8* src_argb, uint8* dst_a, int width) {
-  int i;
-  for (i = 0; i < width - 1; i += 2) {
-    dst_a[0] = src_argb[3];
-    dst_a[1] = src_argb[7];
-    dst_a += 2;
-    src_argb += 8;
-  }
-  if (width & 1) {
-    dst_a[0] = src_argb[3];
   }
 }
 

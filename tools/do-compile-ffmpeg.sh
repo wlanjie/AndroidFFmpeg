@@ -222,8 +222,6 @@ fi
 
 #with x264
 if [ -f "${FF_DEP_X264_LIB}/libx264.a" ]; then
-    echo "X264 detected"
-    echo "$FF_DEP_X264_LIB $FF_DEP_X264_INC"
 # FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-nonfree"
     FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-libx264"
     FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-encoder=libx264"
@@ -257,7 +255,6 @@ echo "--------------------"
 cd ../extra/ffmpeg
 
 if [ -f "compat/strtod.o" ]; then
-  #statements
   rm -rf compat/strtod.o
 fi
 

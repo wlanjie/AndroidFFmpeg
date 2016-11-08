@@ -1,10 +1,5 @@
 apply plugin: 'com.android.application'
 
-def ffmpeg_path_armeabi = rootDir.absolutePath + "/../../tools/ffmpeg-build/armeabi/output/include"
-def ffmpeg_path_armeabi_v7a = rootDir.absolutePath + "/../../tools/ffmpeg-build/armeabi-v7a/output/include"
-def ffmpeg_path_x86 = rootDir.absolutePath + "/../../tools/ffmepg-build/x86/output/include"
-def sdl_header = rootDir.absolutePath + "/libsdl/src/main/jni/include"
-
 android {
     compileSdkVersion 23
     buildToolsVersion "23.0.2"
@@ -17,7 +12,7 @@ android {
         versionName "1.0"
         externalNativeBuild {
             cmake {
-                abiFilters 'x86'
+                abiFilters 'armeabi', 'armeabi-v7a'
             }
         }
     }
