@@ -3,8 +3,6 @@ FFMPEG_UPSTREAM=git://source.ffmpeg.org/ffmpeg.git
 FFMPEG_LOCAL_REPO=extra/ffmpeg
 LIBX264_UPSTREAM=git://git.videolan.org/x264.git
 LIBX264_LOCAL_REPO=extra/x264
-OPENSSL_UPSTREAM=https://github.com/Bilibili/openssl.git
-OPENSSL_LOCAL_REPO=extra/openssl
 ROOT=`pwd`
 CONTRIB_X264_PATH=$ROOT/android/contrib/x264
 CONTRIB_FFMPEG_PATH=$ROOT/android/contrib/ffmpeg
@@ -19,18 +17,12 @@ fi
 if [ ! -d "${FFMPEG_LOCAL_REPO}" ]; then
   git clone $FFMPEG_UPSTREAM $FFMPEG_LOCAL_REPO
 fi
-if [ ! -d "${OPENSSL_LOCAL_REPO}" ]; then
-  git clone $OPENSSL_UPSTREAM $OPENSSL_LOCAL_REPO
-fi
 
 cd tools
 ./compile-x264.sh armeabi
 ./compile-x264.sh armeabi-v7a
 ./compile-x264.sh x86
-#./compile-openssl.sh armeabi
-#./compile-openssl.sh armeabi-v7a
-#./compile-openssl.sh x86
-#./compile-ffmpeg.sh armeabi
-#./compile-ffmpeg.sh armeabi-v7a
-#./compile-ffmpeg.sh x86
+./compile-ffmpeg.sh armeabi
+./compile-ffmpeg.sh armeabi-v7a
+./compile-ffmpeg.sh x86
 cd -

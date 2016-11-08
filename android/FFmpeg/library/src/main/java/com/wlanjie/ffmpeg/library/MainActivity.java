@@ -56,7 +56,11 @@ public class MainActivity extends Activity {
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        encoder.connect("rtmp://192.168.1.104/live/test");
+                        int result = encoder.connect("rtmp://www.ossrs.net:1935/live/demo");
+                        if (result < 0) {
+                            Toast.makeText(MainActivity.this, "连接服务器失败", Toast.LENGTH_LONG).show();
+                            return;
+                        }
                         encoder.start();
                     }
                 });

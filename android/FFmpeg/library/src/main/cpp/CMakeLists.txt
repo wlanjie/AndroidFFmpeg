@@ -64,11 +64,6 @@ set(FFMPEG_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/../jniLibs)
 add_library(ffmpeg SHARED IMPORTED)
 set_target_properties(ffmpeg PROPERTIES IMPORTED_LOCATION ${FFMPEG_LIB_DIR}/${ANDROID_ABI}/libffmpeg.so)
 
-#link openssl library
-set(OPENSSL_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/openssl-build)
-add_library(OPENSSL STATIC IMPORTED)
-set_target_properties(OPENSSL PROPERTIES IMPORTED_LOCATION ${OPENSSL_LIB_DIR}/${ANDROID_ABI}/output/lib/libssl.a)
-
 #link libx264 library
 set(LIBX264_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/x264-build)
 add_library(X264 STATIC IMPORTED)
@@ -84,4 +79,4 @@ set_target_properties(AAC PROPERTIES IMPORTED_LOCATION ${AAC_LIB_DIR}/libaac.a)
 #add_library(RTMP STATIC IMPORTED)
 #set_target_properties(RTMP PROPERTIES IMPORTED_LOCATION ${RTMP_LIB_DIR}/librtmp.a)
 
-target_link_libraries(wlanjie SDL2_LIB YUV_LIB OPENSSL X264 AAC android log dl m z GLESv1_CM GLESv2 ffmpeg)
+target_link_libraries(wlanjie SDL2_LIB YUV_LIB X264 AAC android log dl m z GLESv1_CM GLESv2 ffmpeg)
