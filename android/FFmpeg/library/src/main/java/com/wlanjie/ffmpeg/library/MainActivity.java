@@ -3,7 +3,6 @@ package com.wlanjie.ffmpeg.library;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Toast;
 
@@ -18,7 +17,6 @@ public class MainActivity extends Activity {
     private static final int COMPRESS = 0;
     private static final int CROP = 1;
 
-    private SurfaceView surfaceView;
     private Encoder encoder;
 
     @Override
@@ -26,7 +24,6 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        surfaceView = (SurfaceView) findViewById(R.id.surface_view);
         findViewById(R.id.rotation)
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -73,33 +70,6 @@ public class MainActivity extends Activity {
 //                        startActivity(intent);
                     }
                 });
-//        SurfaceView surfaceView = (SurfaceView) findViewById(R.id.surface_view);
-//        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
-//            @Override
-//            public void surfaceCreated(SurfaceHolder holder) {
-//                FFmpeg.getInstance().setSurface(holder.getSurface());
-//            }
-//
-//            @Override
-//            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-//                Display mDisplay = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
-//                FFmpeg.getInstance().onNativeResize(1920, 1080, format, 0);
-//                FFmpeg.getInstance().onNativeSurfaceChanged();
-//                new Thread(){
-//                    @Override
-//                    public void run() {
-//                        super.run();
-//                        FFmpeg.getInstance().player("rtmp://live.hkstv.hk.lxdns.com/live/hks");
-//                    }
-//                }.start();
-////                FFmpeg.getInstance().onNativeResume();
-//            }
-//
-//            @Override
-//            public void surfaceDestroyed(SurfaceHolder holder) {
-//                FFmpeg.getInstance().onNativeSurfaceDestroyed();
-//            }
-//        });
     }
 
     @Override
