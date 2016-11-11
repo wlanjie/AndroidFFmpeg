@@ -48,12 +48,20 @@ public class MainActivity extends Activity {
                     }
                 });
 
-        encoder = new Encoder((CameraView) findViewById(R.id.surface_view));
+        int width = getResources().getDisplayMetrics().widthPixels;
+        int height = getResources().getDisplayMetrics().heightPixels;
+        Encoder.Parameters parameters = new Encoder.Parameters();
+//        parameters.previewWidth = width;
+//        parameters.previewHeight = height;
+
+        encoder = new Encoder(parameters, (CameraView) findViewById(R.id.surface_view));
         findViewById(R.id.push_stream)
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        int result = encoder.connect("rtmp://www.ossrs.net:1935/live/demo");
+                        String url = "rtmp://www.ossrs.net:1935/live/demo";
+//                        String url = "rtmp://192.168.0.68/live/livestream";
+                        int result = encoder.connect(url);
                         if (result < 0) {
                             Toast.makeText(MainActivity.this, "连接服务器失败", Toast.LENGTH_LONG).show();
                             return;

@@ -6,14 +6,10 @@ import android.hardware.Camera;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Created by leo.ma on 2016/9/13.
- */
 @SuppressWarnings("deprecation")
 public class CameraView extends SurfaceView implements SurfaceHolder.Callback, Camera.PreviewCallback {
     private Camera mCamera;
@@ -71,9 +67,8 @@ public class CameraView extends SurfaceView implements SurfaceHolder.Callback, C
         Camera.Parameters params = mCamera.getParameters();
         Camera.Size size = mCamera.new Size(previewWidth, previewHeight);
         if (!params.getSupportedPreviewSizes().contains(size) || !params.getSupportedPictureSizes().contains(size)) {
-            Toast.makeText(getContext(), String.format("Unsupported resolution %dx%d", size.width, size.height), Toast.LENGTH_SHORT).show();
             stopCamera();
-            return false;
+            throw new IllegalArgumentException("Unsupported resolution " + size.width + "x" + size.height);
         }
 
         mYuvPreviewFrame = new byte[previewWidth * previewHeight * 3 / 2];

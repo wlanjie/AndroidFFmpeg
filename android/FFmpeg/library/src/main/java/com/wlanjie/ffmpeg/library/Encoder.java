@@ -16,9 +16,6 @@ import android.util.Log;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-/**
- * Created by Leo Ma on 4/1/2016.
- */
 @SuppressWarnings("ALL")
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class Encoder {
@@ -73,6 +70,7 @@ public class Encoder {
         public int gop = 48;
         public int audioSampleRate = 44100;
         public int audioBitRate = 32 * 1000; // 32kbps
+        private int channel;
         public boolean useSoftEncoder = true;
     }
 
@@ -109,14 +107,31 @@ public class Encoder {
         // capacity of poor cheap chips even with x264. So for the sake of quick appearance of
         // the first picture on the player, a spare lower GOP value is suggested. But note that
         // lower GOP will produce more I frames and therefore more streaming data flow.
-        // setEncoderGop(15);
         setEncoderBitrate(mParameters.videoBitRate);
         setEncoderPreset(mParameters.x264Preset);
 
-        if (mParameters.useSoftEncoder && !openSoftEncoder()) {
-            return false;
+        if (mParameters.useSoftEncoder) {
+            if (!openSoftEncoder()) {
+                return false;
+            }
+            mParameters.channel = aChannelConfig == AudioFormat.CHANNEL_IN_STEREO ? 2 : 1;
+            if (!openAacEncoder(mParameters.channel, mParameters.audioSampleRate, mParameters.audioBitRate)) {
+                return false;
+            }
+        } else {
+            if (!initHardEncoder()) {
+                return false;
+            }
         }
 
+        startPreview();
+        startAudioRecord();
+        mCameraView.startCamera(mParameters.fps);
+
+        return true;
+    }
+
+    private boolean initHardEncoder() {
         // audioMediaCodec pcm to aac raw stream.
         // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
         try {
@@ -159,11 +174,6 @@ public class Encoder {
         // start device and encoder.
         videoMediaCodec.start();
         audioMediaCodec.start();
-
-        startPreview();
-        startAudioRecord();
-        mCameraView.startCamera(mParameters.fps);
-
         return true;
     }
 
@@ -357,6 +367,15 @@ public class Encoder {
         writeVideo(pts / 1000, es);
     }
 
+    /**
+     * this method call by jni
+     * @param data aac data
+     */
+    private void onAacSoftEncodeData(byte[] data) {
+        long pts = System.nanoTime() / 1000 - mPresentTimeUs;
+        writeAudio(pts, data, mParameters.audioSampleRate, mParameters.channel);
+    }
+
     // when got encoded aac raw stream.
     private void onEncodedAacFrame(ByteBuffer es, MediaCodec.BufferInfo bi) {
         try {
@@ -373,47 +392,54 @@ public class Encoder {
     }
 
     public void onGetPcmFrame(byte[] data, int size) {
-        ByteBuffer[] inBuffers = audioMediaCodec.getInputBuffers();
-        ByteBuffer[] outBuffers = audioMediaCodec.getOutputBuffers();
+        if (mParameters.useSoftEncoder) {
+            byte[] pcm = new byte[size];
+            System.arraycopy(data, 0, pcm, 0, size);
+            encoderPcmToAac(pcm);
+        } else {
+            ByteBuffer[] inBuffers = audioMediaCodec.getInputBuffers();
+            ByteBuffer[] outBuffers = audioMediaCodec.getOutputBuffers();
 
-        int inBufferIndex = audioMediaCodec.dequeueInputBuffer(-1);
-        if (inBufferIndex >= 0) {
-            ByteBuffer bb = inBuffers[inBufferIndex];
-            bb.clear();
-            bb.put(data, 0, size);
-            long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-            audioMediaCodec.queueInputBuffer(inBufferIndex, 0, size, pts, 0);
-        }
+            int inBufferIndex = audioMediaCodec.dequeueInputBuffer(-1);
+            if (inBufferIndex >= 0) {
+                ByteBuffer bb = inBuffers[inBufferIndex];
+                bb.clear();
+                bb.put(data, 0, size);
+                long pts = System.nanoTime() / 1000 - mPresentTimeUs;
+                audioMediaCodec.queueInputBuffer(inBufferIndex, 0, size, pts, 0);
+            }
 
-        for (; ; ) {
-            int outBufferIndex = audioMediaCodec.dequeueOutputBuffer(audioBufferInfo, 0);
-            if (outBufferIndex >= 0) {
-                ByteBuffer bb = outBuffers[outBufferIndex];
-                bb.position(audioBufferInfo.offset);
-                bb.limit(audioBufferInfo.offset + audioBufferInfo.size);
-                int packetLen = audioBufferInfo.size + 7;
-                byte[] adtsData = new byte[packetLen];
-                int profile = 1; // AAC LC
-                // 39=MediaCodecInfo.CodecProfileLevel.AACObjectELD;
-                int freqIdx = 4; // 44.1KHz
-                int chanCfg = 2; // CPE
+            for (; ; ) {
+                int outBufferIndex = audioMediaCodec.dequeueOutputBuffer(audioBufferInfo, 0);
+                if (outBufferIndex >= 0) {
+                    ByteBuffer bb = outBuffers[outBufferIndex];
+                    bb.position(audioBufferInfo.offset);
+                    bb.limit(audioBufferInfo.offset + audioBufferInfo.size);
+                    int packetLen = audioBufferInfo.size + 7;
+                    byte[] adtsData = new byte[packetLen];
+                    int profile = 1; // AAC LC
+                    // 39=MediaCodecInfo.CodecProfileLevel.AACObjectELD;
+                    int freqIdx = 4; // 44.1KHz
+                    int chanCfg = 2; // CPE
 
-                // fill in ADTS data
-                adtsData[0] = (byte) 0xFF;
-                adtsData[1] = (byte) 0xF9;
-                adtsData[2] = (byte) (((profile - 1) << 6) + (freqIdx << 2) + (chanCfg >> 2));
-                adtsData[3] = (byte) (((chanCfg & 3) << 6) + (packetLen >> 11));
-                adtsData[4] = (byte) ((packetLen & 0x7FF) >> 3);
-                adtsData[5] = (byte) (((packetLen & 7) << 5) + 0x1F);
-                adtsData[6] = (byte) 0xFC;
-                bb.get(adtsData, 7, audioBufferInfo.size);
-                bb.position(audioBufferInfo.offset);
-                writeAudio(audioBufferInfo.presentationTimeUs / 1000, adtsData, 44100, 2);
-                audioMediaCodec.releaseOutputBuffer(outBufferIndex, false);
-            } else {
-                break;
+                    // fill in ADTS data
+                    adtsData[0] = (byte) 0xFF;
+                    adtsData[1] = (byte) 0xF9;
+                    adtsData[2] = (byte) (((profile - 1) << 6) + (freqIdx << 2) + (chanCfg >> 2));
+                    adtsData[3] = (byte) (((chanCfg & 3) << 6) + (packetLen >> 11));
+                    adtsData[4] = (byte) ((packetLen & 0x7FF) >> 3);
+                    adtsData[5] = (byte) (((packetLen & 7) << 5) + 0x1F);
+                    adtsData[6] = (byte) 0xFC;
+                    bb.get(adtsData, 7, audioBufferInfo.size);
+                    bb.position(audioBufferInfo.offset);
+                    writeAudio(audioBufferInfo.presentationTimeUs / 1000, adtsData, mParameters.audioSampleRate, mParameters.channel);
+                    audioMediaCodec.releaseOutputBuffer(outBufferIndex, false);
+                } else {
+                    break;
+                }
             }
         }
+
     }
 
     public void onGetYuvFrame(byte[] data) {
@@ -590,4 +616,6 @@ public class Encoder {
     private native int NV21SoftEncode(byte[] yuvFrame, int width, int height, boolean flip, int rotate, long pts);
     private native boolean openSoftEncoder();
     private native void closeSoftEncoder();
+    private native boolean openAacEncoder(int channels, int sampleRate, int bitrate);
+    private native int encoderPcmToAac(byte[] pcm);
 }

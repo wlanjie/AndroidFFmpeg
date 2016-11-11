@@ -5,9 +5,14 @@
 #include <jni.h>
 #include <libyuv.h>
 #include <x264.h>
+#include "libAACenc/include/aacenc_lib.h"
 #include "log.h"
 
 #define LIBENC_ARRAY_ELEMS(a)  (sizeof(a) / sizeof(a[0]))
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 using namespace libyuv;
 
@@ -41,8 +46,19 @@ typedef struct x264_context {
     bool is_key_frame;
 } x264_context;
 
+typedef struct fdk_aac_context {
+    HANDLE_AACENCODER aac_handle;
+    AACENC_InfoStruct info = { 0 };
+
+    int channel;
+    int sample_rate;
+    int bit_rate;
+} fdk_aac_context;
+
 struct x264_context x264_ctx;
 uint8_t h264_es[1024 * 1024];
+
+struct fdk_aac_context aac_ctx;
 
 struct YuvFrame i420_rotated_frame;
 struct YuvFrame i420_scaled_frame;
@@ -278,7 +294,7 @@ extern "C" void closeSoftEncoder() {
     }
 }
 
-extern "C" jboolean openSoftEncoder() {
+jboolean openSoftEncoder() {
     // Presetting
     x264_param_default_preset(&x264_ctx.params, "veryfast", "zerolatency");
 
@@ -313,3 +329,90 @@ extern "C" jboolean openSoftEncoder() {
     return JNI_TRUE;
 }
 
+jboolean open_aac_encoder(int channels, int sample_rate, int bitrate) {
+    aac_ctx.channel = channels;
+    aac_ctx.sample_rate = sample_rate;
+    aac_ctx.bit_rate = bitrate;
+    if (aacEncOpen(&aac_ctx.aac_handle, 0, channels) != AACENC_OK) {
+        return JNI_FALSE;
+    }
+    if (aacEncoder_SetParam(aac_ctx.aac_handle, AACENC_AOT, 2) != AACENC_OK) {
+        return JNI_FALSE;
+    }
+    if (aacEncoder_SetParam(aac_ctx.aac_handle, AACENC_SAMPLERATE, sample_rate) != AACENC_OK) {
+        return JNI_FALSE;
+    }
+    if (aacEncoder_SetParam(aac_ctx.aac_handle, AACENC_CHANNELMODE, channels == 1 ? MODE_1 : MODE_2) != AACENC_OK) {
+        return JNI_FALSE;
+    }
+    if (aacEncoder_SetParam(aac_ctx.aac_handle, AACENC_CHANNELORDER, 1) != AACENC_OK) {
+        return JNI_FALSE;
+    }
+    if (aacEncoder_SetParam(aac_ctx.aac_handle, AACENC_BITRATE, bitrate) != AACENC_OK) {
+        return JNI_FALSE;
+    }
+//    if (aacEncoder_SetParam(aac_handle, AACENC_TRANSMUX, 2) != AACENC_OK) {
+//        return JNI_FALSE;
+//    }
+    if (aacEncEncode(aac_ctx.aac_handle, NULL, NULL, NULL, NULL) != AACENC_OK) {
+        return JNI_FALSE;
+    }
+    if (aacEncInfo(aac_ctx.aac_handle, &aac_ctx.info) != AACENC_OK) {
+        return JNI_FALSE;
+    }
+    return JNI_TRUE;
+}
+
+int encoder_pcm_to_aac(JNIEnv *env, jobject object, signed char *pcm, int pcm_length) {
+    uint8_t aac_buf[pcm_length];
+    AACENC_BufDesc in_buf = { 0 };
+    AACENC_BufDesc out_buf = { 0 };
+    AACENC_InArgs in_args = { 0 };
+    AACENC_OutArgs out_args = { 0 };
+    int in_buffer_identifier = IN_AUDIO_DATA;
+    int in_buffer_size = 2 * aac_ctx.channel * pcm_length;
+    int in_buffer_element_size = 2;
+    void *in_ptr = pcm;
+
+    in_args.numInSamples = aac_ctx.channel * pcm_length;
+
+    in_buf.numBufs = 1;
+    in_buf.bufs = &in_ptr;
+    in_buf.bufferIdentifiers = &in_buffer_identifier;
+    in_buf.bufSizes = &in_buffer_size;
+    in_buf.bufElSizes = &in_buffer_element_size;
+
+    int out_buffer_identifier = OUT_BITSTREAM_DATA;
+    int out_buffer_size = pcm_length;
+    int out_buffer_element_size = 1;
+    void *out_ptr = aac_buf;
+
+    out_buf.bufs = &out_ptr;
+    out_buf.numBufs = 1;
+    out_buf.bufSizes = &out_buffer_size;
+    out_buf.bufElSizes = &out_buffer_element_size;
+    out_buf.bufferIdentifiers = &out_buffer_identifier;
+    if (aacEncEncode(aac_ctx.aac_handle, &in_buf, &out_buf, &in_args, &out_args) != AACENC_OK) {
+        return -1;
+    }
+    if (out_args.numOutBytes == 0) {
+        return -2;
+    }
+    jbyteArray outputFrame = env->NewByteArray(out_args.numOutBytes);
+    env->SetByteArrayRegion(outputFrame, 0, out_args.numOutBytes, (jbyte *) aac_buf);
+
+    jclass clz = env->GetObjectClass(object);
+    jmethodID mid = env->GetMethodID(clz, "onAacSoftEncodeData", "([B)V");
+    env->CallVoidMethod(object, mid, outputFrame);
+    return 0;
+}
+
+void close_aac_encoder() {
+    if (aac_ctx.aac_handle) {
+        aacEncClose(&aac_ctx.aac_handle);
+    }
+}
+
+#ifdef __cplusplus
+}
+#endif

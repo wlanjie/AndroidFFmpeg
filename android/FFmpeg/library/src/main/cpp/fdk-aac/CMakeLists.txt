@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.4.1)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -DANDROID_NDK -DDISABLE_IMPORTGL -DGL_GLEXT_PROTOTYPES")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-\#warnings -std=c99 -Wall -DANDROID_NDK")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++98 -Wall -UNDEBUG -DGL_GLEXT_PROTOTYPES")
 
 include_directories(.)
+include_directories(libSYS)
 include_directories(libAACdec/include)
 include_directories(libAACenc/include)
 include_directories(libPCMutils/include)

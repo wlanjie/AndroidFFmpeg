@@ -20,6 +20,9 @@ jbyteArray NV21ToNV12(JNIEnv* env, signed char *nv21_frame, int src_width,
                       int src_height, unsigned char need_flip, int rotate_degree);
 int NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
                    jint src_height, jboolean need_flip, jint rotate_degree, jlong pts);
+jboolean open_aac_encoder(int channels, int sample_rate, int bitrate);
+int encoder_pcm_to_aac(JNIEnv *env, jobject thiz, signed char *pcm, int pcm_length);
+void close_aac_encoder();
 void closeSoftEncoder();
 jboolean openSoftEncoder();
 #endif //FFMPEG_LIBENC_H

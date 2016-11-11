@@ -213,7 +213,7 @@ jbyteArray Android_JNI_NV21ToI420(JNIEnv *env, jobject object, jbyteArray frame,
     return i420Frame;
 }
 
-jbyteArray Android_JNI_NV21ToNV12(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
+jbyteArray Android_JNI_NV21ToNV12(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
                             jint src_height, jboolean need_flip, jint rotate_degree) {
     jbyte *nv21_frame = (*env)->GetByteArrayElements(env, frame, NULL);
     jbyteArray nv12Frame = NV21ToNV12(env, nv21_frame, src_width, src_height, need_flip, rotate_degree);
@@ -221,22 +221,38 @@ jbyteArray Android_JNI_NV21ToNV12(JNIEnv* env, jobject thiz, jbyteArray frame, j
     return nv12Frame;
 }
 
-jboolean Android_JNI_openSoftEncoder(JNIEnv* env, jobject thiz) {
+jboolean Android_JNI_openSoftEncoder(JNIEnv* env, jobject object) {
     return openSoftEncoder();
 }
 
-void Android_JNI_closeSoftEncoder(JNIEnv* env, jobject thiz) {
+void Android_JNI_closeSoftEncoder(JNIEnv* env, jobject object) {
     closeSoftEncoder();
+    close_aac_encoder();
 }
 
-jint Android_JNI_NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
+jint Android_JNI_NV21SoftEncode(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
                            jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
-    return NV21SoftEncode(env, thiz, frame, src_width, src_height, need_flip, rotate_degree, pts);
+    return NV21SoftEncode(env, object, frame, src_width, src_height, need_flip, rotate_degree, pts);
 }
 
-srs_rtmp_t  rtmp;
+jboolean Android_JNI_openAacEncode(JNIEnv *env, jobject object, jint channels, jint sample_rate, jint bitrate) {
+    return open_aac_encoder(channels, sample_rate, bitrate);
+}
 
-jint Android_JNI_connect(JNIEnv *env, jobject thiz, jstring url) {
+jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm) {
+    jbyte *pcm_frame = (*env)->GetByteArrayElements(env, pcm, NULL);
+    int pcm_length = (*env)->GetArrayLength(env, pcm);
+    int ret = encoder_pcm_to_aac(env, object, pcm_frame, pcm_length);
+    (*env)->ReleaseByteArrayElements(env, pcm, pcm_frame, NULL);
+    return ret;
+}
+
+srs_rtmp_t rtmp;
+
+jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
+    if (rtmp != NULL) {
+        return -1;
+    }
     const char *rtmp_url = (*env)->GetStringUTFChars(env, url, 0);
     rtmp = srs_rtmp_create(rtmp_url);
     if (srs_rtmp_handshake(rtmp) != 0) {
@@ -253,7 +269,7 @@ jint Android_JNI_connect(JNIEnv *env, jobject thiz, jstring url) {
     return 0;
 }
 
-int Android_JNI_write_video_sample(JNIEnv *env, jobject thiz, jlong timestamp, jbyteArray frame) {
+int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jlong timestamp, jbyteArray frame) {
     jbyte *data = (*env)->GetByteArrayElements(env, frame, NULL);
     jsize data_size = (*env)->GetArrayLength(env, frame);
 
@@ -262,7 +278,7 @@ int Android_JNI_write_video_sample(JNIEnv *env, jobject thiz, jlong timestamp, j
     return ret;
 }
 
-jint Android_JNI_write_audio_sample(JNIEnv *env, jobject thiz, jlong timestamp, jbyteArray frame, jint sampleRate, jint channel) {
+jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jlong timestamp, jbyteArray frame, jint sampleRate, jint channel) {
     jbyte *data = (*env)->GetByteArrayElements(env, frame, NULL);
     jsize data_size = (*env)->GetArrayLength(env, frame);
     int ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, data, data_size, timestamp);
@@ -270,8 +286,10 @@ jint Android_JNI_write_audio_sample(JNIEnv *env, jobject thiz, jlong timestamp, 
     return ret;
 }
 
-void Android_JNI_destroy(JNIEnv *env, jobject thiz) {
+void Android_JNI_destroy(JNIEnv *env, jobject object) {
     srs_rtmp_destroy(rtmp);
+    free(&rtmp);
+    rtmp = NULL;
 }
 
 static JNINativeMethod g_methods[] = {
@@ -302,6 +320,8 @@ static JNINativeMethod libenc_methods[] = {
         { "openSoftEncoder", "()Z", Android_JNI_openSoftEncoder },
         { "closeSoftEncoder", "()V", Android_JNI_closeSoftEncoder },
         { "NV21SoftEncode", "([BIIZIJ)I", Android_JNI_NV21SoftEncode },
+        { "openAacEncoder", "(III)Z", Android_JNI_openAacEncode },
+        { "encoderPcmToAac", "([B)I", Android_JNI_encoderPcmToAac},
 //c++
 //        { "NV21SoftEncode", "([BIIZIJ)I", (void *)libenc_NV21SoftEncode },
 };
