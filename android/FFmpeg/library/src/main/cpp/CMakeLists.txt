@@ -30,7 +30,7 @@ add_subdirectory(SDL)
 add_subdirectory(libyuv)
 
 #add librtmp library
-#add_subdirectory(rtmp)
+add_subdirectory(rtmp)
 
 #add fdk-aac library
 add_subdirectory(fdk-aac)
@@ -75,8 +75,8 @@ add_library(AAC STATIC IMPORTED)
 set_target_properties(AAC PROPERTIES IMPORTED_LOCATION ${AAC_LIB_DIR}/libaac.a)
 
 #link rtmp library
-#set(RTMP_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/rtmp)
-#add_library(RTMP STATIC IMPORTED)
-#set_target_properties(RTMP PROPERTIES IMPORTED_LOCATION ${RTMP_LIB_DIR}/librtmp.a)
+set(RTMP_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/rtmp)
+add_library(RTMP STATIC IMPORTED)
+set_target_properties(RTMP PROPERTIES IMPORTED_LOCATION ${RTMP_LIB_DIR}/librtmp.a)
 
-target_link_libraries(wlanjie SDL2_LIB YUV_LIB X264 AAC android log dl m z GLESv1_CM GLESv2 ffmpeg)
+target_link_libraries(wlanjie SDL2_LIB YUV_LIB X264 AAC RTMP android log dl m z GLESv1_CM GLESv2 ffmpeg)
