@@ -83,10 +83,12 @@ public class Encoder {
     // NV12 -> YUV420SP  yyyy*2 uv uv
     // NV21 -> YUV420SP  yyyy*2 vu vu
     // NV16 -> YUV422SP  yyyy uv uv
-    // YUY2 -> YUV422SP  yuyv yuyv
+    // YUY2 -> YUV422SP  yuyv yuyvo
+    FlvMuxer flvMuxer;
 
     public Encoder(CameraView cameraView) {
         this(new Parameters(), cameraView);
+        flvMuxer = new FlvMuxer(this);
     }
 
     public Encoder(Parameters parameters, CameraView cameraView) {
@@ -118,16 +120,22 @@ public class Encoder {
             if (!openAacEncoder(mParameters.channel, mParameters.audioSampleRate, mParameters.audioBitRate)) {
                 return false;
             }
-        } else {
+        }
+//        else {
             if (!initHardEncoder()) {
                 return false;
             }
-        }
+//        }
 
         startPreview();
         startAudioRecord();
         mCameraView.startCamera(mParameters.fps);
 
+        try {
+            flvMuxer.start("");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return true;
     }
 
@@ -364,7 +372,8 @@ public class Encoder {
         videoBufferInfo.size = es.length;
         videoBufferInfo.presentationTimeUs = pts;
 //        videoBufferInfo.flags = isKeyFrame ? MediaCodec.BUFFER_FLAG_KEY_FRAME : 0;
-        writeVideo(pts / 1000, es);
+//        writeVideo(pts / 1000, es);
+        flvMuxer.writeSampleData(100, bb, videoBufferInfo);
     }
 
     /**
@@ -373,7 +382,12 @@ public class Encoder {
      */
     private void onAacSoftEncodeData(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-        writeAudio(pts, data, mParameters.audioSampleRate, mParameters.channel);
+//        writeAudio(pts, data, mParameters.audioSampleRate, mParameters.channel);
+        ByteBuffer bb = ByteBuffer.wrap(data);
+        audioBufferInfo.offset = 0;
+        audioBufferInfo.size = data.length;
+        audioBufferInfo.presentationTimeUs = pts;
+        flvMuxer.writeSampleData(101, bb, audioBufferInfo);
     }
 
     // when got encoded aac raw stream.
@@ -413,26 +427,27 @@ public class Encoder {
                 int outBufferIndex = audioMediaCodec.dequeueOutputBuffer(audioBufferInfo, 0);
                 if (outBufferIndex >= 0) {
                     ByteBuffer bb = outBuffers[outBufferIndex];
-                    bb.position(audioBufferInfo.offset);
-                    bb.limit(audioBufferInfo.offset + audioBufferInfo.size);
-                    int packetLen = audioBufferInfo.size + 7;
-                    byte[] adtsData = new byte[packetLen];
-                    int profile = 1; // AAC LC
-                    // 39=MediaCodecInfo.CodecProfileLevel.AACObjectELD;
-                    int freqIdx = 4; // 44.1KHz
-                    int chanCfg = 2; // CPE
-
-                    // fill in ADTS data
-                    adtsData[0] = (byte) 0xFF;
-                    adtsData[1] = (byte) 0xF9;
-                    adtsData[2] = (byte) (((profile - 1) << 6) + (freqIdx << 2) + (chanCfg >> 2));
-                    adtsData[3] = (byte) (((chanCfg & 3) << 6) + (packetLen >> 11));
-                    adtsData[4] = (byte) ((packetLen & 0x7FF) >> 3);
-                    adtsData[5] = (byte) (((packetLen & 7) << 5) + 0x1F);
-                    adtsData[6] = (byte) 0xFC;
-                    bb.get(adtsData, 7, audioBufferInfo.size);
-                    bb.position(audioBufferInfo.offset);
-                    writeAudio(audioBufferInfo.presentationTimeUs / 1000, adtsData, mParameters.audioSampleRate, mParameters.channel);
+//                    bb.position(audioBufferInfo.offset);
+//                    bb.limit(audioBufferInfo.offset + audioBufferInfo.size);
+                    int packetLen = audioBufferInfo.size + 0;
+//                    byte[] adtsData = new byte[packetLen];
+//                    int profile = 1; // AAC LC
+//                    // 39=MediaCodecInfo.CodecProfileLevel.AACObjectELD;
+//                    int freqIdx = 4; // 44.1KHz
+//                    int chanCfg = 2; // CPE
+//
+//                    // fill in ADTS data
+//                    adtsData[0] = (byte) 0xFF;
+//                    adtsData[1] = (byte) 0xF9;
+//                    adtsData[2] = (byte) (((profile - 1) << 6) + (freqIdx << 2) + (chanCfg >> 2));
+//                    adtsData[3] = (byte) (((chanCfg & 3) << 6) + (packetLen >> 11));
+//                    adtsData[4] = (byte) ((packetLen & 0x7FF) >> 3);
+//                    adtsData[5] = (byte) (((packetLen & 7) << 5) + 0x1F);
+//                    adtsData[6] = (byte) 0xFC;
+//                    bb.get(adtsData, 0, audioBufferInfo.size);
+//                    bb.position(audioBufferInfo.offset);
+//                    writeAudio(audioBufferInfo.presentationTimeUs / 1000, adtsData, mParameters.audioSampleRate, mParameters.channel);
+                    flvMuxer.writeSampleData(101, bb, audioBufferInfo);
                     audioMediaCodec.releaseOutputBuffer(outBufferIndex, false);
                 } else {
                     break;

@@ -59,6 +59,10 @@ public class FlvMuxer {
     private static final int VIDEO_TRACK = 100;
     private static final int AUDIO_TRACK = 101;
     private static final String TAG = "FlvMuxer";
+    private Encoder encoder;
+    public FlvMuxer(Encoder encoder) {
+        this.encoder = encoder;
+    }
 
     private boolean connect(String url) {
         try {
@@ -75,13 +79,15 @@ public class FlvMuxer {
     }
 
     private void sendFlvTag(SrsFlvFrame frame) throws IllegalStateException, IOException {
-        if (!connected || frame == null) {
+        if ( frame == null) {
             return;
         }
 
         if (frame.is_video()) {
 //            publisher.publishVideoData(frame.flvTag.array(), frame.dts);
+            encoder.writeVideo(frame.dts, frame.flvTag.array());
         } else if (frame.is_audio()) {
+            encoder.writeAudio(frame.dts, frame.flvTag.array(), 44100, 2);
 //            publisher.publishAudioData(frame.flvTag.array(), frame.dts);
         }
     }
@@ -94,9 +100,9 @@ public class FlvMuxer {
         worker = new Thread(new Runnable() {
             @Override
             public void run() {
-                if (!connect(rtmpUrl)) {
-                    return;
-                }
+//                if (!connect(rtmpUrl)) {
+//                    return;
+//                }
 
                 while (!Thread.interrupted()) {
                     while (!frameCache.isEmpty()) {
@@ -717,10 +723,10 @@ public class FlvMuxer {
      * remux the annexb to flv tags.
      */
     class SrsFlv {
-        private MediaFormat videoTrack;
-        private MediaFormat audioTrack;
-        private int achannel;
-        private int asample_rate;
+//        private MediaFormat videoTrack;
+//        private MediaFormat audioTrack;
+        private int achannel = 2;
+        private int asample_rate = 44100;
 
         private SrsRawH264Stream avc;
         private ByteBuffer h264_sps;
@@ -743,11 +749,11 @@ public class FlvMuxer {
         }
 
         public void setVideoTrack(MediaFormat format) {
-            videoTrack = format;
+//            videoTrack = format;
         }
 
         public void setAudioTrack(MediaFormat format) {
-            audioTrack = format;
+//            audioTrack = format;
             achannel = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
             asample_rate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE);
         }

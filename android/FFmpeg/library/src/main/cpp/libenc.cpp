@@ -310,7 +310,7 @@ jboolean openSoftEncoder() {
     x264_ctx.params.i_fps_num = x264_ctx.fps;
     x264_ctx.params.i_fps_den = 1;
 
-    x264_ctx.params.b_sliced_threads = false;
+//    x264_ctx.params.b_sliced_threads = false;
 
     // gop
     x264_ctx.params.i_keyint_max = x264_ctx.gop;
@@ -351,9 +351,9 @@ jboolean open_aac_encoder(int channels, int sample_rate, int bitrate) {
     if (aacEncoder_SetParam(aac_ctx.aac_handle, AACENC_BITRATE, bitrate) != AACENC_OK) {
         return JNI_FALSE;
     }
-//    if (aacEncoder_SetParam(aac_handle, AACENC_TRANSMUX, 2) != AACENC_OK) {
-//        return JNI_FALSE;
-//    }
+    if (aacEncoder_SetParam(aac_ctx.aac_handle, AACENC_TRANSMUX, 0) != AACENC_OK) {
+        return JNI_FALSE;
+    }
     if (aacEncEncode(aac_ctx.aac_handle, NULL, NULL, NULL, NULL) != AACENC_OK) {
         return JNI_FALSE;
     }
