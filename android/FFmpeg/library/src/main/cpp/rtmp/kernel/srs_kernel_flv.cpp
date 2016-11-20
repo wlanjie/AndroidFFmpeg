@@ -204,7 +204,7 @@ SrsSharedPtrMessage::SrsSharedPtrPayload::~SrsSharedPtrPayload()
 #ifdef SRS_AUTO_MEM_WATCH
     srs_memory_unwatch(payload);
 #endif
-    srs_freepa(payload);
+//    srs_freepa(payload);
 }
 
 SrsSharedPtrMessage::SrsSharedPtrMessage()

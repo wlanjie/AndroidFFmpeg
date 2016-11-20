@@ -282,8 +282,8 @@ int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jlong timestamp,
 jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jlong timestamp, jbyteArray frame, jint sampleRate, jint channel) {
     jbyte *data = (*env)->GetByteArrayElements(env, frame, NULL);
     jsize data_size = (*env)->GetArrayLength(env, frame);
-    int ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, data, data_size, timestamp);
-//    int ret = srs_rtmp_write_packet(rtmp, SRS_RTMP_TYPE_AUDIO, timestamp, data, data_size);
+//    int ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, data, data_size, timestamp);
+    int ret = srs_rtmp_write_packet(rtmp, SRS_RTMP_TYPE_AUDIO, timestamp, data, data_size);
     (*env)->ReleaseByteArrayElements(env, frame, data, NULL);
     return ret;
 }

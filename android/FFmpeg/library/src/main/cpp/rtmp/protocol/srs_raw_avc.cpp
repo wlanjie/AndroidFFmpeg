@@ -463,6 +463,11 @@ int SrsRawAacStream::mux_sequence_header(SrsRawAacStreamCodec* codec, string& sh
 {
     int ret = ERROR_SUCCESS;
 
+    codec->aac_object = SrsAacObjectTypeAacLC;
+    codec->protection_absent = 1;
+    codec->sampling_frequency_index = 0x04;
+    codec->channel_configuration = 2;
+
     // only support aac profile 1-4.
     if (codec->aac_object == SrsAacObjectTypeReserved) {
         return ERROR_AAC_DATA_INVALID;
@@ -492,7 +497,7 @@ int SrsRawAacStream::mux_sequence_header(SrsRawAacStreamCodec* codec, string& sh
     // AudioSpecificConfig (), page 33
     // 1.6.2.1 AudioSpecificConfig
     // audioObjectType; 5 bslbf
-    ch = (audioObjectType << 3) & 0xf8;
+    ch = 0x10;
     // 3bits left.
         
     // samplingFrequencyIndex; 4 bslbf

@@ -40,7 +40,6 @@ using namespace std;
 #include <srs_lib_simple_socket.hpp>
 #include <srs_protocol_utility.hpp>
 #include <srs_core_autofree.hpp>
-#include <srs_rtmp_stack.hpp>
 #include <srs_kernel_utility.hpp>
 #include <srs_kernel_buffer.hpp>
 #include <srs_protocol_amf0.hpp>
