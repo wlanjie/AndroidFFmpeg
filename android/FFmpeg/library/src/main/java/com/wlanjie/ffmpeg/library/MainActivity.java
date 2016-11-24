@@ -17,8 +17,6 @@ public class MainActivity extends Activity {
     private static final int COMPRESS = 0;
     private static final int CROP = 1;
 
-    private Encoder encoder;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,30 +45,6 @@ public class MainActivity extends Activity {
                         compress("/sdcard/Download/a.mp4");
                     }
                 });
-
-        int width = getResources().getDisplayMetrics().widthPixels;
-        int height = getResources().getDisplayMetrics().heightPixels;
-//        Encoder.Parameters parameters = new Encoder.Parameters();
-//        parameters.previewWidth = width;
-//        parameters.previewHeight = height;
-
-//        encoder = new Encoder(parameters, (CameraView) findViewById(R.id.surface_view));
-        encoder = new Encoder((CameraView) findViewById(R.id.surface_view));
-        findViewById(R.id.push_stream)
-                .setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-//                        String url = "rtmp://www.ossrs.net:1935/live/demo";
-//                        String url = "rtmp://192.168.0.68/wlanjie/live";
-                        String url = "rtmp://192.168.1.100/wlanjie/live";
-                        int result = encoder.connect(url);
-                        if (result < 0) {
-                            Toast.makeText(MainActivity.this, "连接服务器失败", Toast.LENGTH_LONG).show();
-                            return;
-                        }
-                        encoder.start();
-                    }
-                });
         findViewById(R.id.player)
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -80,15 +54,6 @@ public class MainActivity extends Activity {
 //                        startActivity(intent);
                     }
                 });
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (encoder != null) {
-            encoder.stop();
-//            encoder.destroy();
-        }
     }
 
     @Override

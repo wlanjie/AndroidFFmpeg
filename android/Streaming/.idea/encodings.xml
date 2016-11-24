@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/aac_ram.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/aacdec_hcr_bit.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/aacdec_pns.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/aacdec_tns.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/aacdecoder_lib.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/channel.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/channelinfo.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/conceal.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/ldfiltbank.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/pulsedata.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/rvlcbit.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/rvlcconceal.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACdec/src/stereo.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libAACenc/src/transform.cpp" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/library/src/main/cpp/fdk-aac/libPCMutils/src/limiter.cpp" charset="UTF-8" />
+    <file url="PROJECT" charset="UTF-8" />
+  </component>
+</project>

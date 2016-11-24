@@ -1,4 +1,4 @@
-package com.wlanjie.ffmpeg.library;
+package com.wlanjie.streaming;
 
 import android.annotation.TargetApi;
 import android.content.res.Configuration;
@@ -186,6 +186,9 @@ public class Encoder {
 
     private void startAudioRecord() {
         mAudioRecord = chooseAudioRecord();
+        if (mAudioRecord == null) {
+            throw new IllegalStateException("Initialized Audio Record error");
+        }
         audioRecordThread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -365,14 +368,9 @@ public class Encoder {
      * @param pts pts
      * @param isKeyFrame is key frame
      */
-    private void onSoftEncodedData(byte[] es, int pts, boolean isKeyFrame) {
-        ByteBuffer bb = ByteBuffer.wrap(es);
-        videoBufferInfo.offset = 0;
-        videoBufferInfo.size = es.length;
-        videoBufferInfo.presentationTimeUs = pts;
-        videoBufferInfo.flags = isKeyFrame ? MediaCodec.BUFFER_FLAG_KEY_FRAME : 0;
-//        writeVideo(pts / 1000, es);
-        flvMuxer.writeVideo(bb, videoBufferInfo);
+    private void onSoftEncodedData(byte[] data, int pts, boolean isKeyFrame) {
+        ByteBuffer bb = ByteBuffer.wrap(data);
+        flvMuxer.writeVideo(bb, data.length, pts);
     }
 
     /**
@@ -381,12 +379,8 @@ public class Encoder {
      */
     private void onAacSoftEncodeData(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-//        writeAudio(pts, data, mParameters.audioSampleRate, mParameters.channel);
         ByteBuffer bb = ByteBuffer.wrap(data);
-        audioBufferInfo.offset = 0;
-        audioBufferInfo.size = data.length;
-        audioBufferInfo.presentationTimeUs = pts;
-        flvMuxer.writeAudio(bb, audioBufferInfo);
+        flvMuxer.writeAudio(bb, data.length, mParameters.audioSampleRate, mParameters.channel, (int) pts);
     }
 
     /**
@@ -627,4 +621,8 @@ public class Encoder {
     private native void closeSoftEncoder();
     private native boolean openAacEncoder(int channels, int sampleRate, int bitrate);
     private native int encoderPcmToAac(byte[] pcm);
+
+    static {
+        System.loadLibrary("wlanjie");
+    }
 }

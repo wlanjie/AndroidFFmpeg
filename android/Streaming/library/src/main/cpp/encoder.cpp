@@ -8,11 +8,9 @@
 #include "libAACenc/include/aacenc_lib.h"
 #include "log.h"
 
-#define LIBENC_ARRAY_ELEMS(a)  (sizeof(a) / sizeof(a[0]))
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+//#ifdef __cplusplus
+//extern "C" {
+//#endif
 
 using namespace libyuv;
 
@@ -64,7 +62,7 @@ struct YuvFrame i420_rotated_frame;
 struct YuvFrame i420_scaled_frame;
 struct YuvFrame nv12_frame;
 
-extern "C" unsigned char nv21_to_i420(signed char *nv21_frame, int src_width, int src_height,
+unsigned char nv21_to_i420(signed char *nv21_frame, int src_width, int src_height,
                          unsigned char need_flip, int rotate_degree) {
     int y_size = src_width * src_height;
 
@@ -120,24 +118,24 @@ extern "C" unsigned char nv21_to_i420(signed char *nv21_frame, int src_width, in
     return JNI_TRUE;
 }
 
-extern "C" void setEncoderBitrate(int bitrate) {
+void setEncoderBitrate(int bitrate) {
     // Default setting i_rc_method as X264_RC_CRF which is better than X264_RC_ABR
     x264_ctx.bitrate = bitrate / 1000;  // kbps
 }
 
-extern "C" void setEncoderFps(int fps) {
+void setEncoderFps(int fps) {
     x264_ctx.fps = fps;
 }
 
-extern "C" void setEncoderGop(int gop_size) {
+void setEncoderGop(int gop_size) {
     x264_ctx.gop = gop_size;
 }
 
-extern "C" void setEncoderPreset(const char *enc_preset) {
+void setEncoderPreset(const char *enc_preset) {
     strcpy(x264_ctx.preset, enc_preset);
 }
 
-extern "C" void setEncoderResolution(int out_width, int out_height) {
+void setEncoderResolution(int out_width, int out_height) {
     int y_size = out_width * out_height;
 
     if (i420_scaled_frame.width != out_width || i420_scaled_frame.height != out_height) {
@@ -165,7 +163,7 @@ extern "C" void setEncoderResolution(int out_width, int out_height) {
 }
 
 // For COLOR_FormatYUV420Planar
-extern "C" jbyteArray encoderNV21ToI420(JNIEnv *env, signed char *nv21_frame, int src_width,
+jbyteArray encoderNV21ToI420(JNIEnv *env, signed char *nv21_frame, int src_width,
                                     int src_height, unsigned char need_flip, int rotate_degree) {
 
     if (!nv21_to_i420(nv21_frame, src_width, src_height, need_flip, rotate_degree)) {
@@ -180,7 +178,7 @@ extern "C" jbyteArray encoderNV21ToI420(JNIEnv *env, signed char *nv21_frame, in
 }
 
 // For COLOR_FormatYUV420SemiPlanar
-extern "C" jbyteArray NV21ToNV12(JNIEnv* env, signed char *nv21_frame, int src_width,
+jbyteArray NV21ToNV12(JNIEnv* env, signed char *nv21_frame, int src_width,
                                     int src_height, unsigned char need_flip, int rotate_degree) {
 
     if (!nv21_to_i420(nv21_frame, src_width, src_height, need_flip, rotate_degree)) {
@@ -205,7 +203,7 @@ extern "C" jbyteArray NV21ToNV12(JNIEnv* env, signed char *nv21_frame, int src_w
     return nv12Frame;
 }
 
-extern "C" int encode_nals(const x264_nal_t *nals, int nnal) {
+int encode_nals(const x264_nal_t *nals, int nnal) {
     int i;
     uint8_t *p = h264_es;
 
@@ -226,7 +224,7 @@ extern "C" int encode_nals(const x264_nal_t *nals, int nnal) {
     return p - h264_es;
 }
 
-extern "C" int x264_encode(struct YuvFrame *i420_frame, long pts) {
+int x264_encode(struct YuvFrame *i420_frame, long pts) {
     int out_len, nnal;
     x264_nal_t *nal;
     x264_picture_t pic_out;
@@ -255,7 +253,7 @@ extern "C" int x264_encode(struct YuvFrame *i420_frame, long pts) {
     return encode_nals(nal, nnal);
 }
 
-extern "C" int NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
+int NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
                                   jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
     jbyte* nv21_frame = env->GetByteArrayElements(frame, NULL);
 
@@ -280,7 +278,7 @@ extern "C" int NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint 
     return JNI_OK;
 }
 
-extern "C" void closeSoftEncoder() {
+void closeSoftEncoder() {
     int nnal;
     x264_nal_t *nal;
     x264_picture_t pic_out;
@@ -413,6 +411,6 @@ void close_aac_encoder() {
     }
 }
 
-#ifdef __cplusplus
-}
-#endif
+//#ifdef __cplusplus
+//}
+//#endif

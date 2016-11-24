@@ -3,10 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-    <com.wlanjie.ffmpeg.library.CameraView
-        android:id="@+id/surface_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+
     <Button
         android:id="@+id/rotation"
         android:layout_width="wrap_content"
@@ -28,17 +25,10 @@
         android:text="裁剪视频"/>
 
     <Button
-        android:id="@+id/push_stream"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/crop"
-        android:text="推流"/>
-
-    <Button
         android:id="@+id/player"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/push_stream"
+        android:layout_below="@id/crop"
         android:text="播放视频"/>
 
 

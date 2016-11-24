@@ -1,9 +1,7 @@
-package com.wlanjie.ffmpeg.library;
+package com.wlanjie.streaming;
 
 import android.annotation.TargetApi;
-import android.media.MediaCodec;
 import android.os.Build;
-import android.util.Log;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -52,9 +50,8 @@ class FlvMuxer {
     private boolean needToFindKeyFrame = true;
     private FlvFrame videoSequenceHeader;
     private FlvFrame audioSequenceHeader;
-    private ConcurrentLinkedQueue<FlvFrame> frameCache = new ConcurrentLinkedQueue<FlvFrame>();
+    private ConcurrentLinkedQueue<FlvFrame> frameCache = new ConcurrentLinkedQueue<>();
 
-    private static final String TAG = "FlvMuxer";
     private Encoder encoder;
     FlvMuxer(Encoder encoder) {
         this.encoder = encoder;
@@ -134,42 +131,18 @@ class FlvMuxer {
             }
             frameCache.clear();
             worker = null;
-            Log.i(TAG, "worker: disconnect SRS ok.");
         }
 
         flv.reset();
         needToFindKeyFrame = true;
-        Log.i(TAG, "FlvMuxer closed");
     }
 
-    void writeVideo(ByteBuffer data, MediaCodec.BufferInfo bufferInfo) {
-        flv.writeVideoSample(data, bufferInfo);
+    void writeVideo(ByteBuffer data, int dataSize, int pts) {
+        flv.writeVideoSample(data, dataSize, pts);
     }
 
-    void writeAudio(ByteBuffer data, MediaCodec.BufferInfo bufferInfo) {
-        flv.writeAudioSample(data, bufferInfo);
-    }
-
-    /**
-     * print the size of bytes in bb
-     * @param bb the bytes to print.
-     * @param size the total size of bytes to print.
-     */
-    private void srsPrintBytes(String tag, ByteBuffer bb, int size) {
-        StringBuilder sb = new StringBuilder();
-        int i = 0;
-        int bytes_in_line = 16;
-        int max = bb.remaining();
-        for (i = 0; i < size && i < max; i++) {
-            sb.append(String.format("0x%s ", Integer.toHexString(bb.get(i) & 0xFF)));
-            if (((i + 1) % bytes_in_line) == 0) {
-                Log.i(tag, String.format("%03d-%03d: %s", i / bytes_in_line * bytes_in_line, i, sb.toString()));
-                sb = new StringBuilder();
-            }
-        }
-        if (sb.length() > 0) {
-            Log.i(tag, String.format("%03d-%03d: %s", size / bytes_in_line * bytes_in_line, i - 1, sb.toString()));
-        }
+    void writeAudio(ByteBuffer data, int dataSize, int sampleRate, int channel, int pts) {
+        flv.writeAudioSample(data, dataSize, sampleRate, channel, pts);
     }
 
     // E.4.3.1 VIDEODATA
@@ -348,12 +321,12 @@ class FlvMuxer {
      */
     private class Utils {
 
-        public AnnexbSearch avcStartsWithAnnexb(ByteBuffer bb, MediaCodec.BufferInfo bi) {
+        private AnnexbSearch avcStartsWithAnnexb(ByteBuffer bb, int dataSize) {
             AnnexbSearch as = new AnnexbSearch();
             as.match = false;
 
             int pos = bb.position();
-            while (pos < bi.size - 3) {
+            while (pos < dataSize - 3) {
                 // not match.
                 if (bb.get(pos) != 0x00 || bb.get(pos + 1) != 0x00) {
                     break;
@@ -372,9 +345,9 @@ class FlvMuxer {
             return as;
         }
 
-        public boolean aacStartsWithAdts(ByteBuffer bb, MediaCodec.BufferInfo bi) {
+        public boolean aacStartsWithAdts(ByteBuffer bb, int dataSize) {
             int pos = bb.position();
-            if (bi.size - pos < 2) {
+            if (dataSize - pos < 2) {
                 return false;
             }
 
@@ -409,29 +382,29 @@ class FlvMuxer {
      */
     private class FlvFrame {
         // the tag bytes.
-        public ByteBuffer flvTag;
+        private ByteBuffer flvTag;
         // the codec type for audio/aac and video/avc for instance.
-        public int avcAacType;
+        private int avcAacType;
         // the frame type, keyframe or not.
-        public int frameType;
+        private int frameType;
         // the tag type, audio, video or data.
-        public int type;
+        private int type;
         // the dts in ms, tbn is 1000.
-        public int dts;
+        private int dts;
 
-        public boolean isKeyFrame() {
+        private boolean isKeyFrame() {
             return isVideo() && frameType == CodecVideoAVCFrame.KeyFrame;
         }
 
-        public boolean isSequenceHeader() {
+        private boolean isSequenceHeader() {
             return avcAacType == 0;
         }
 
-        public boolean isVideo() {
+        private boolean isVideo() {
             return type == CodecFlvTag.Video;
         }
 
-        public boolean isAudio() {
+        private boolean isAudio() {
             return type == CodecFlvTag.Audio;
         }
     }
@@ -441,27 +414,26 @@ class FlvMuxer {
      */
     private class RawH264Stream {
         private Utils utils;
-        private final static String TAG = "FlvMuxer";
 
-        public RawH264Stream() {
+        private RawH264Stream() {
             utils = new Utils();
         }
 
-        public boolean isSps(FlvFrameBytes frame) {
+        private boolean isSps(FlvFrameBytes frame) {
             if (frame.size < 1) {
                 return false;
             }
             return (frame.data.get(0) & 0x1f) == AvcNaluType.SPS;
         }
 
-        public boolean isPps(FlvFrameBytes frame) {
+        private boolean isPps(FlvFrameBytes frame) {
             if (frame.size < 1) {
                 return false;
             }
             return (frame.data.get(0) & 0x1f) == AvcNaluType.PPS;
         }
 
-        public FlvFrameBytes muxIbpFrame(FlvFrameBytes frame) {
+        private FlvFrameBytes muxIbpFrame(FlvFrameBytes frame) {
             FlvFrameBytes naluHeader = new FlvFrameBytes();
             naluHeader.size = 4;
             naluHeader.data = ByteBuffer.allocate(naluHeader.size);
@@ -480,7 +452,7 @@ class FlvMuxer {
             return naluHeader;
         }
 
-        public void muxSequenceHeader(ByteBuffer sps, ByteBuffer pps, int dts, int pts, ArrayList<FlvFrameBytes> frames) {
+        private void muxSequenceHeader(ByteBuffer sps, ByteBuffer pps, int dts, int pts, ArrayList<FlvFrameBytes> frames) {
             // 5bytes sps/pps header:
             //      configurationVersion, AVCProfileIndication, profile_compatibility,
             //      AVCLevelIndication, lengthSizeMinusOne
@@ -496,6 +468,11 @@ class FlvMuxer {
             // decode the SPS:
             // @see: 7.3.2.1.1, H.264-AVC-ISO_IEC_14496-10-2012.pdf, page 62
             if (true) {
+                // for h264 in RTMP video payload, there is 5bytes header:
+                //      1bytes, FrameType | CodecID
+                //      1bytes, AVCPacketType
+                //      3bytes, CompositionTime, the cts.
+                // @see: E.4.3 Video Tags, video_file_format_spec_v10_1.pdf, page 78
                 FlvFrameBytes hdr = new FlvFrameBytes();
                 hdr.size = 5;
                 hdr.data = ByteBuffer.allocate(hdr.size);
@@ -572,7 +549,7 @@ class FlvMuxer {
             }
         }
 
-        public FlvFrameBytes muxAvc2flv(ArrayList<FlvFrameBytes> frames, int frame_type, int avc_packet_type, int dts, int pts) {
+        private FlvFrameBytes muxAvc2flv(ArrayList<FlvFrameBytes> frames, int frame_type, int avc_packet_type, int dts, int pts) {
             FlvFrameBytes flvTag = new FlvFrameBytes();
 
             // for h264 in RTMP video payload, there is 5bytes header:
@@ -619,20 +596,17 @@ class FlvMuxer {
             return flvTag;
         }
 
-        public FlvFrameBytes annexbDemux(ByteBuffer bb, MediaCodec.BufferInfo bi) throws IllegalArgumentException {
+        private FlvFrameBytes annexbDemux(ByteBuffer bb, int dataSize) throws IllegalArgumentException {
             FlvFrameBytes tbb = new FlvFrameBytes();
 
-            while (bb.position() < bi.size) {
+            while (bb.position() < dataSize) {
                 // each frame must prefixed by annexb format.
                 // about annexb, @see H.264-AVC-ISO_IEC_14496-10.pdf, page 211.
-                AnnexbSearch tbbsc = utils.avcStartsWithAnnexb(bb, bi);
+                AnnexbSearch tbbsc = utils.avcStartsWithAnnexb(bb, dataSize);
                 if (!tbbsc.match || tbbsc.nb_start_code < 3) {
-                    Log.e(TAG, "annexb not match.");
-                    srsPrintBytes(TAG, bb, 16);
-                    throw new IllegalArgumentException(String.format("annexb not match for %dB, pos=%d", bi.size, bb.position()));
+                    throw new IllegalArgumentException(String.format("annexb not match for %d, pos=%d", dataSize, bb.position()));
                 }
                 // the start codes.
-                ByteBuffer tbbs = bb.slice();
                 for (int i = 0; i < tbbsc.nb_start_code; i++) {
                     bb.get();
                 }
@@ -640,8 +614,8 @@ class FlvMuxer {
                 // find out the frame size.
                 tbb.data = bb.slice();
                 int pos = bb.position();
-                while (bb.position() < bi.size) {
-                    AnnexbSearch bsc = utils.avcStartsWithAnnexb(bb, bi);
+                while (bb.position() < dataSize) {
+                    AnnexbSearch bsc = utils.avcStartsWithAnnexb(bb, dataSize);
                     if (bsc.match) {
                         break;
                     }
@@ -678,8 +652,6 @@ class FlvMuxer {
      * remux the annexb to flv tags.
      */
     private class Flv {
-        private int achannel = 2;
-        private int asampleTate = 44100;
 
         private RawH264Stream avc;
         private ByteBuffer h264Sps;
@@ -689,23 +661,21 @@ class FlvMuxer {
         private boolean h264SpsPpsSent;
         private byte[] aacSpecificConfig;
 
-        public Flv() {
+        private Flv() {
             avc = new RawH264Stream();
             reset();
         }
 
-        public void reset() {
+        private void reset() {
             h264SpsChanged = false;
             h264PpsChanged = false;
             h264SpsPpsSent = false;
             aacSpecificConfig = null;
         }
 
-        void writeAudioSample(final ByteBuffer bb, MediaCodec.BufferInfo bi) {
-            int pts = (int)(bi.presentationTimeUs / 1000);
-            int dts = pts;
+        private void writeAudioSample(final ByteBuffer data, int dataSize, int sampleRate, int channel, int pts) {
 
-            byte[] frame = new byte[bi.size + 2];
+            byte[] frame = new byte[dataSize + 2];
             byte aacPacketType = 1; // 1 = AAC raw
             if (aacSpecificConfig == null) {
                 frame = new byte[4];
@@ -714,15 +684,20 @@ class FlvMuxer {
                 // AudioSpecificConfig (), page 33
                 // 1.6.2.1 AudioSpecificConfig
                 // audioObjectType; 5 bslbf
-                byte ch = (byte)(bb.get(0) & 0xf8);
+                byte ch = (byte)(data.get(0) & 0xf8);
                 // 3bits left.
 
                 // samplingFrequencyIndex; 4 bslbf
                 byte samplingFrequencyIndex = 0x04;
-                if (asampleTate == CodecAudioSampleRate.R22050) {
-                    samplingFrequencyIndex = 0x07;
-                } else if (asampleTate == CodecAudioSampleRate.R11025) {
-                    samplingFrequencyIndex = 0x0a;
+                switch (sampleRate) {
+                    case CodecAudioSampleRate.R22050:
+                        samplingFrequencyIndex = 0x07;
+                        break;
+                    case CodecAudioSampleRate.R11025:
+                        samplingFrequencyIndex = 0x0a;
+                        break;
+                    case CodecAudioSampleRate.R44100:
+                        samplingFrequencyIndex = 0x04;
                 }
                 ch |= (samplingFrequencyIndex >> 1) & 0x07;
                 frame[2] = ch;
@@ -732,7 +707,7 @@ class FlvMuxer {
 
                 // channelConfiguration; 4 bslbf
                 byte channelConfiguration = 1;
-                if (achannel == 2) {
+                if (sampleRate == 2) {
                     channelConfiguration = 2;
                 }
                 ch |= (channelConfiguration << 3) & 0x78;
@@ -748,19 +723,19 @@ class FlvMuxer {
                 aacSpecificConfig = frame;
                 aacPacketType = 0; // 0 = AAC sequence header
             } else {
-                bb.get(frame, 2, frame.length - 2);
+                data.get(frame, 2, frame.length - 2);
             }
 
             byte soundFormat = 10; // AAC
             byte soundType = 0; // 0 = Mono sound
-            if (achannel == 2) {
+            if (channel == 2) {
                 soundType = 1; // 1 = Stereo sound
             }
             byte soundSize = 1; // 1 = 16-bit samples
             byte soundRate = 3; // 44100, 22050, 11025
-            if (asampleTate == 22050) {
+            if (sampleRate == 22050) {
                 soundRate = 2;
-            } else if (asampleTate == 11025) {
+            } else if (sampleRate == 11025) {
                 soundRate = 1;
             }
 
@@ -779,18 +754,19 @@ class FlvMuxer {
             tag.data = ByteBuffer.wrap(frame);
             tag.size = frame.length;
 
-            rtmpWritePacket(CodecFlvTag.Audio, dts, 0, aacPacketType, tag);
+            rtmpWritePacket(CodecFlvTag.Audio, pts, 0, aacPacketType, tag);
         }
 
-        public void writeVideoSample(final ByteBuffer bb, MediaCodec.BufferInfo bi) throws IllegalArgumentException {
-            int pts = (int)(bi.presentationTimeUs / 1000);
+        private void writeVideoSample(final ByteBuffer bb, int dataSize, int pts) throws IllegalArgumentException {
 
-            ArrayList<FlvFrameBytes> ibps = new ArrayList<FlvFrameBytes>();
+            ArrayList<FlvFrameBytes> ibps = new ArrayList<>();
             int frameType = CodecVideoAVCFrame.InterFrame;
 
             // send each frame.
-            while (bb.position() < bi.size) {
-                FlvFrameBytes frame = avc.annexbDemux(bb, bi);
+            while (bb.position() < dataSize) {
+                // 查找开始码,开始始一般为3个字节或者4个字节,3个字节为 00 00 01, 4个字节为 00 00 00 01
+                // 查找到开始码之后,需要把开始码忽略掉
+                FlvFrameBytes frame = avc.annexbDemux(bb, dataSize);
 
                 // 5bits, 7.3.1 NAL unit syntax,
                 // H.264-AVC-ISO_IEC_14496-10.pdf, page 44.
@@ -829,13 +805,31 @@ class FlvMuxer {
                     continue;
                 }
 
-                // ibp frame.
-                FlvFrameBytes naluHeader = avc.muxIbpFrame(frame);
-                ibps.add(naluHeader);
-                ibps.add(frame);
+                FlvFrameBytes bytes = new FlvFrameBytes();
+                // 4 + frame.size 为这一帧数据加上 nal_unit_length 4个字节
+                bytes.size = 4 + frame.size;
+
+                ByteBuffer data = ByteBuffer.allocate(bytes.size);
+
+                // 每一帧必须先设置unit_length告诉服务器本次数据的长度 4个字节
+                // 5.3.4.2.1 Syntax, H.264-AVC-ISO_IEC_14496-15.pdf, page 16
+                // lengthSizeMinusOne, or NAL_unit_length, always use 4bytes size
+                int NAL_unit_length = frame.size;
+
+                // mux the avc NALU in "ISO Base Media File Format"
+                // from H.264-AVC-ISO_IEC_14496-15.pdf, page 20
+                // NALUnitLength
+                data.putInt(NAL_unit_length);
+
+                byte[] frameArray = new byte[frame.size];
+                frame.data.get(frameArray, 0, frame.size);
+                data.put(frameArray);
+                data.rewind();
+                bytes.data = data;
+
+                ibps.add(bytes);
 
             }
-
             writeH264SpsPps(pts, pts);
 
             writeH264IpbFrame(ibps, frameType, pts, pts);
@@ -855,7 +849,7 @@ class FlvMuxer {
             }
 
             // h264 raw to h264 packet.
-            ArrayList<FlvFrameBytes> frames = new ArrayList<FlvFrameBytes>();
+            ArrayList<FlvFrameBytes> frames = new ArrayList<>();
             avc.muxSequenceHeader(h264Sps, h264Pps, dts, pts, frames);
 
             // h264 packet to flv packet.
@@ -870,12 +864,10 @@ class FlvMuxer {
             h264SpsChanged = false;
             h264PpsChanged = false;
             h264SpsPpsSent = true;
-//            Log.i(TAG, String.format("flv: h264 sps/pps sent, sps=%dB, pps=%dB", h264Sps.array().length, h264Pps.array().length));
         }
 
         private void writeH264IpbFrame(ArrayList<FlvFrameBytes> ibps, int frame_type, int dts, int pts) {
             // when sps or pps not sent, ignore the packet.
-            // @see https://github.com/simple-rtmp-server/srs/issues/203
             if (!h264SpsPpsSent) {
                 return;
             }

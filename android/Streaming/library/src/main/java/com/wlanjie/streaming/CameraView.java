@@ -1,4 +1,4 @@
-package com.wlanjie.ffmpeg.library;
+package com.wlanjie.streaming;
 
 import android.content.Context;
 import android.graphics.ImageFormat;
