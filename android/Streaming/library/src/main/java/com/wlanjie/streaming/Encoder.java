@@ -6,7 +6,6 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
-import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.media.MediaRecorder;
 import android.os.Build;
@@ -16,16 +15,14 @@ import android.util.Log;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-@SuppressWarnings("ALL")
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class Encoder {
     private static final String TAG = "Encoder";
 
-    public static int aChannelConfig = AudioFormat.CHANNEL_IN_STEREO;
+    private int aChannelConfig = AudioFormat.CHANNEL_IN_STEREO;
 
     private int mOrientation = Configuration.ORIENTATION_PORTRAIT;
 
-    private MediaCodecInfo videoCodecInfo;
     private MediaCodec videoMediaCodec;
     private MediaCodec audioMediaCodec;
     private MediaCodec.BufferInfo videoBufferInfo = new MediaCodec.BufferInfo();
@@ -34,10 +31,6 @@ public class Encoder {
     private boolean mCameraFaceFront = true;
 
     private long mPresentTimeUs;
-
-    private int mVideoColorFormat;
-
-    private MediaFormat audioFormat;
 
     private Parameters mParameters;
 
@@ -48,10 +41,6 @@ public class Encoder {
     private Thread audioRecordThread;
 
     private boolean audioRecordLoop;
-
-    private long mLastTimeMillis;
-
-    private int mVideoFrameCount;
 
     public static class Parameters {
         public String videoCodec = "video/avc";
@@ -66,8 +55,8 @@ public class Encoder {
         public int outWidth = 480;
         public int outHeight = 854;  // Since Y component is quadruple size as U and V component, the stride must be set as 32x
         public int videoBitRate = 500 * 1000; // 500 kbps
-        public int fps = 24;
-        public int gop = 48;
+        private int fps = 24;
+        private int gop = 48;
         public int audioSampleRate = 44100;
         public int audioBitRate = 32 * 1000; // 32kbps
         private int channel;
@@ -84,17 +73,16 @@ public class Encoder {
     // NV21 -> YUV420SP  yyyy*2 vu vu
     // NV16 -> YUV422SP  yyyy uv uv
     // YUY2 -> YUV422SP  yuyv yuyvo
-    FlvMuxer flvMuxer;
+    private FlvMuxer flvMuxer;
 
     public Encoder(CameraView cameraView) {
         this(new Parameters(), cameraView);
-        flvMuxer = new FlvMuxer(this);
     }
 
     public Encoder(Parameters parameters, CameraView cameraView) {
         this.mParameters = parameters;
         this.mCameraView = cameraView;
-        mVideoColorFormat = chooseVideoEncoder();
+        flvMuxer = new FlvMuxer(this);
     }
 
     public boolean start() {
@@ -139,8 +127,6 @@ public class Encoder {
     }
 
     private boolean initHardEncoder() {
-        // audioMediaCodec pcm to aac raw stream.
-        // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
         try {
             audioMediaCodec = MediaCodec.createEncoderByType(mParameters.audioCodec);
         } catch (IOException e) {
@@ -149,29 +135,24 @@ public class Encoder {
             return false;
         }
 
-        // setup the audioMediaCodec.
-        // @see https://developer.android.com/reference/android/media/MediaCodec.html
         int ach = aChannelConfig == AudioFormat.CHANNEL_IN_STEREO ? 2 : 1;
-        audioFormat = MediaFormat.createAudioFormat(mParameters.audioCodec, mParameters.audioSampleRate, ach);
+        MediaFormat audioFormat = MediaFormat.createAudioFormat(mParameters.audioCodec, mParameters.audioSampleRate, ach);
         audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, mParameters.audioBitRate);
         audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
         audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
         audioMediaCodec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
-        // videoMediaCodec yuv to 264 es stream.
-        // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
         try {
-            videoMediaCodec = MediaCodec.createByCodecName(videoCodecInfo.getName());
+            videoMediaCodec = MediaCodec.createByCodecName(mParameters.videoCodec);
         } catch (IOException e) {
             Log.e(TAG, "create videoMediaCodec failed.");
             e.printStackTrace();
             return false;
         }
 
-        // setup the videoMediaCodec.
         // Note: landscape to portrait, 90 degree rotation, so we need to switch width and height in configuration
         MediaFormat videoFormat = MediaFormat.createVideoFormat(mParameters.videoCodec, mParameters.outWidth, mParameters.outHeight);
-        videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, mVideoColorFormat);
+        videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
         videoFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
         videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, mParameters.videoBitRate);
         videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mParameters.fps);
@@ -200,7 +181,7 @@ public class Encoder {
                     if (size <= 0) {
                         continue;
                     }
-                    onGetPcmFrame(pcmBuffer, size);
+                    convertPcmToAac(pcmBuffer, size);
                 }
             }
         });
@@ -213,15 +194,7 @@ public class Encoder {
         mCameraView.setPreviewCallback(new CameraView.PreviewCallback() {
             @Override
             public void onGetYuvFrame(byte[] data) {
-                if (mVideoFrameCount == 0) {
-                    mLastTimeMillis = System.nanoTime() / 1000000;
-                    mVideoFrameCount++;
-                } else {
-                    if (++mVideoFrameCount >= 48) {
-
-                    }
-                }
-                Encoder.this.onGetYuvFrame(data);
+                convertYuvFrame(data);
             }
         });
     }
@@ -352,9 +325,10 @@ public class Encoder {
             int outBufferIndex = videoMediaCodec.dequeueOutputBuffer(videoBufferInfo, 0);
             if (outBufferIndex >= 0) {
                 ByteBuffer bb = outBuffers[outBufferIndex];
-                byte[] data = new byte[bb.limit()];
-                bb.get(data);
-                writeVideo(videoBufferInfo.presentationTimeUs / 1000, data);
+//                byte[] data = new byte[bb.limit()];
+//                bb.get(data);
+//                writeVideo(videoBufferInfo.presentationTimeUs / 1000, data);
+                flvMuxer.writeVideo(bb, bb.limit(), (int) (videoBufferInfo.presentationTimeUs / 1000));
                 videoMediaCodec.releaseOutputBuffer(outBufferIndex, false);
             } else {
                 break;
@@ -406,7 +380,7 @@ public class Encoder {
         packet[6] = (byte)0xFC;
     }
 
-    public void onGetPcmFrame(byte[] data, int size) {
+    private void convertPcmToAac(byte[] data, int size) {
         if (mParameters.useSoftEncoder) {
             byte[] pcm = new byte[size];
             System.arraycopy(data, 0, pcm, 0, size);
@@ -434,8 +408,8 @@ public class Encoder {
                     byte[] adtsData = new byte[packetLen];
                     bb.get(adtsData, 0, audioBufferInfo.size);
 //                    bb.position(audioBufferInfo.offset);
-                    writeAudio(audioBufferInfo.presentationTimeUs / 1000, adtsData, mParameters.audioSampleRate, mParameters.channel);
-//                    flvMuxer.writeSampleData(101, bb, audioBufferInfo);
+//                    writeAudio(audioBufferInfo.presentationTimeUs / 1000, adtsData, mParameters.audioSampleRate, mParameters.channel);
+                    flvMuxer.writeAudio(bb, audioBufferInfo.size, mParameters.audioSampleRate, mParameters.channel, (int) (audioBufferInfo.presentationTimeUs / 1000));
                     audioMediaCodec.releaseOutputBuffer(outBufferIndex, false);
                 } else {
                     break;
@@ -445,19 +419,19 @@ public class Encoder {
 
     }
 
-    public void onGetYuvFrame(byte[] data) {
+    private void convertYuvFrame(byte[] data) {
         // Check video frame cache number to judge the networking situation.
         // Just cache GOP / FPS seconds data according to latency.
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
         if (mParameters.useSoftEncoder) {
             if (mOrientation == Configuration.ORIENTATION_PORTRAIT) {
-                swPortraitYuvFrame(data, pts);
+                portraitYuvFrameX264(data, pts);
             } else {
-                swLandscapeYuvFrame(data, pts);
+                landscapeYuvFrameX264(data, pts);
             }
         } else {
             byte[] processedData = mOrientation == Configuration.ORIENTATION_PORTRAIT ?
-                    hwPortraitYuvFrame(data) : hwLandscapeYuvFrame(data);
+                    portraitYuvFrameMediaCodec(data) : landscapeYuvFrameMediaCodec(data);
             if (processedData != null) {
                 onProcessedYuvFrame(processedData, pts);
             } else {
@@ -467,67 +441,28 @@ public class Encoder {
         }
     }
 
-    private byte[] hwPortraitYuvFrame(byte[] data) {
-        if (mCameraFaceFront) {
-            switch (mVideoColorFormat) {
-                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
-                    return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, true, 270);
-                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
-                    return NV21ToNV12(data, mParameters.previewWidth, mParameters.previewHeight, true, 270);
-                default:
-                    throw new IllegalStateException("Unsupported color format!");
-            }
-        } else {
-            switch (mVideoColorFormat) {
-                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
-                    return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, false, 90);
-                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
-                    return NV21ToNV12(data, mParameters.previewWidth, mParameters.previewHeight, false, 90);
-                default:
-                    throw new IllegalStateException("Unsupported color format!");
-            }
-        }
+    // COLOR_FormatYUV420Planar COLOR_FormatYUV420SemiPlanar
+    // 二者的区别 http://blog.csdn.net/yuxiatongzhi/article/details/48708639
+    private byte[] portraitYuvFrameMediaCodec(byte[] data) {
+        // NV12
+        // return NV21ToNV12(data, mParameters.previewWidth, mParameters.previewHeight, true, 270);
+        // NV21 Color format
+        return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, mCameraFaceFront ? true : false, mCameraFaceFront ? 270 : 90);
     }
 
-    private byte[] hwLandscapeYuvFrame(byte[] data) {
-        if (mCameraFaceFront) {
-            switch (mVideoColorFormat) {
-                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
-                    return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, true, 0);
-                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
-                    return NV21ToNV12(data, mParameters.previewWidth, mParameters.previewHeight, true, 0);
-                default:
-                    throw new IllegalStateException("Unsupported color format!");
-            }
-        } else {
-            switch (mVideoColorFormat) {
-                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
-                    return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, false, 0);
-                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
-                    return NV21ToNV12(data, mParameters.previewWidth, mParameters.previewHeight, false, 0);
-                default:
-                    throw new IllegalStateException("Unsupported color format!");
-            }
-        }
+    private byte[] landscapeYuvFrameMediaCodec(byte[] data) {
+        return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, mCameraFaceFront ? true : false, 0);
     }
 
-    private void swPortraitYuvFrame(byte[] data, long pts) {
-        if (mCameraFaceFront) {
-            NV21SoftEncode(data, mParameters.previewWidth, mParameters.previewHeight, true, 270, pts);
-        } else {
-            NV21SoftEncode(data, mParameters.previewWidth, mParameters.previewHeight, false, 90, pts);
-        }
+    private void portraitYuvFrameX264(byte[] data, long pts) {
+        NV21SoftEncode(data, mParameters.previewWidth, mParameters.previewHeight, mCameraFaceFront ? true : false, mCameraFaceFront ? 270 : 90, pts);
     }
 
-    private void swLandscapeYuvFrame(byte[] data, long pts) {
-        if (mCameraFaceFront) {
-            NV21SoftEncode(data, mParameters.previewWidth, mParameters.previewHeight, true, 0, pts);
-        } else {
-            NV21SoftEncode(data, mParameters.previewWidth, mParameters.previewHeight, false, 0, pts);
-        }
+    private void landscapeYuvFrameX264(byte[] data, long pts) {
+        NV21SoftEncode(data, mParameters.previewWidth, mParameters.previewHeight, mCameraFaceFront ? true : false, 0, pts);
     }
 
-    public AudioRecord chooseAudioRecord() {
+    private AudioRecord chooseAudioRecord() {
         int minBufferSize = AudioRecord.getMinBufferSize(mParameters.audioSampleRate, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
         AudioRecord mic = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, mParameters.audioSampleRate, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT, minBufferSize);
         if (mic.getState() != AudioRecord.STATE_INITIALIZED) {
@@ -535,74 +470,13 @@ public class Encoder {
             if (mic.getState() != AudioRecord.STATE_INITIALIZED) {
                 mic = null;
             } else {
-                Encoder.aChannelConfig = AudioFormat.CHANNEL_IN_MONO;
+                aChannelConfig = AudioFormat.CHANNEL_IN_MONO;
             }
         } else {
-            Encoder.aChannelConfig = AudioFormat.CHANNEL_IN_STEREO;
+            aChannelConfig = AudioFormat.CHANNEL_IN_STEREO;
         }
 
         return mic;
-    }
-
-    // choose the video encoder by name.
-    private MediaCodecInfo chooseVideoEncoder(String name) {
-        int codecCount = MediaCodecList.getCodecCount();
-        for (int i = 0; i < codecCount; i++) {
-            MediaCodecInfo mci = MediaCodecList.getCodecInfoAt(i);
-            if (!mci.isEncoder()) {
-                continue;
-            }
-
-            String[] types = mci.getSupportedTypes();
-            for (String type : types) {
-                if (type.equalsIgnoreCase(mParameters.videoCodec)) {
-                    Log.i(TAG, String.format("videoMediaCodec %s types: %s", mci.getName(), type));
-                    if (name == null) {
-                        return mci;
-                    }
-
-                    if (mci.getName().contains(name)) {
-                        return mci;
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
-    // choose the right supported color format. @see below:
-    private int chooseVideoEncoder() {
-        // choose the encoder "video/avc":
-        //      1. select default one when type matched.
-        //      2. google avc is unusable.
-        //      3. choose qcom avc.
-        videoCodecInfo = chooseVideoEncoder(null);
-        //videoCodecInfo = chooseVideoEncoder("google");
-        //videoCodecInfo = chooseVideoEncoder("qcom");
-
-        int matchedColorFormat = 0;
-        MediaCodecInfo.CodecCapabilities cc = videoCodecInfo.getCapabilitiesForType(mParameters.videoCodec);
-        for (int i = 0; i < cc.colorFormats.length; i++) {
-            int cf = cc.colorFormats[i];
-            Log.i(TAG, String.format("videoMediaCodec %s supports color fomart 0x%x(%d)", videoCodecInfo.getName(), cf, cf));
-
-            // choose YUV for h.264, prefer the bigger one.
-            // corresponding to the color space transform in onPreviewFrame
-            if (cf >= cc.COLOR_FormatYUV420Planar && cf <= cc.COLOR_FormatYUV420SemiPlanar) {
-                if (cf > matchedColorFormat) {
-                    matchedColorFormat = cf;
-                }
-            }
-        }
-
-        for (int i = 0; i < cc.profileLevels.length; i++) {
-            MediaCodecInfo.CodecProfileLevel pl = cc.profileLevels[i];
-            Log.i(TAG, String.format("videoMediaCodec %s support profile %d, level %d", videoCodecInfo.getName(), pl.profile, pl.level));
-        }
-
-        Log.i(TAG, String.format("videoMediaCodec %s choose color format 0x%x(%d)", videoCodecInfo.getName(), matchedColorFormat, matchedColorFormat));
-        return matchedColorFormat;
     }
 
     public native int connect(String url);
