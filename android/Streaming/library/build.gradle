@@ -1,12 +1,12 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.2"
+    compileSdkVersion compileVersion
+    buildToolsVersion buildVersion
 
     defaultConfig {
-        minSdkVersion 14
-        targetSdkVersion 22
+        minSdkVersion minVersion
+        targetSdkVersion 24
         versionCode 1
         versionName "1.0"
         externalNativeBuild {
@@ -34,6 +34,5 @@ android {
 }
 
 dependencies {
-    compile 'io.reactivex:rxandroid:1.2.0'
-    compile 'io.reactivex:rxjava:1.1.5'
+    compile "com.android.support:support-v4:${supportLibraryVersion}"
 }

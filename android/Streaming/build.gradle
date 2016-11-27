@@ -16,6 +16,13 @@ allprojects {
     repositories {
         jcenter()
     }
+
+    ext {
+        compileVersion = 24
+        minVersion = 14
+        buildVersion = '23.0.3'
+        supportLibraryVersion = '24.2.1'
+    }
 }
 
 task clean(type: Delete) {

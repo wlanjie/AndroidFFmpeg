@@ -55,18 +55,17 @@ jbyteArray Android_JNI_NV21ToNV12(JNIEnv* env, jobject object, jbyteArray frame,
     return nv12Frame;
 }
 
-jboolean Android_JNI_openSoftEncoder(JNIEnv* env, jobject object) {
-    return openSoftEncoder();
+jboolean Android_JNI_openH264Encoder(JNIEnv* env, jobject object) {
+    return openH264Encoder();
 }
 
-void Android_JNI_closeSoftEncoder(JNIEnv* env, jobject object) {
-    closeSoftEncoder();
-    close_aac_encoder();
+void Android_JNI_closeH264Encoder(JNIEnv* env, jobject object) {
+    closeH264Encoder();
 }
 
-jint Android_JNI_NV21SoftEncode(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
+jint Android_JNI_NV21EncodeToH264(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
                            jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
-    return NV21SoftEncode(env, object, frame, src_width, src_height, need_flip, rotate_degree, pts);
+    return NV21EncodeToH264(env, object, frame, src_width, src_height, need_flip, rotate_degree, pts);
 }
 
 jboolean Android_JNI_openAacEncode(JNIEnv *env, jobject object, jint channels, jint sample_rate, jint bitrate) {
@@ -79,6 +78,10 @@ jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm) {
     int ret = encoder_pcm_to_aac(env, object, pcm_frame, pcm_length);
     env->ReleaseByteArrayElements(pcm, pcm_frame, NULL);
     return ret;
+}
+
+void Android_JNI_closeAacEncoder() {
+    close_aac_encoder();
 }
 
 srs_rtmp_t rtmp;
@@ -124,7 +127,6 @@ jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jlong timestamp
 
 void Android_JNI_destroy(JNIEnv *env, jobject object) {
     srs_rtmp_destroy(rtmp);
-    free(&rtmp);
     rtmp = NULL;
 }
 
@@ -140,11 +142,12 @@ static JNINativeMethod enc_methods[] = {
         { "setEncoderPreset",       "(Ljava/lang/String;)V",    (void *) Android_JNI_setEncoderPreset },
         { "NV21ToI420",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToI420 },
         { "NV21ToNV12",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToNV12 },
-        { "openSoftEncoder",        "()Z",                      (void *) Android_JNI_openSoftEncoder },
-        { "closeSoftEncoder",       "()V",                      (void *) Android_JNI_closeSoftEncoder },
-        { "NV21SoftEncode",         "([BIIZIJ)I",               (void *) Android_JNI_NV21SoftEncode },
+        { "openH264Encoder",        "()Z",                      (void *) Android_JNI_openH264Encoder },
+        { "closeH264Encoder",       "()V",                      (void *) Android_JNI_closeH264Encoder },
+        { "NV21EncodeToH264",         "([BIIZIJ)I",             (void *) Android_JNI_NV21EncodeToH264 },
         { "openAacEncoder",         "(III)Z",                   (void *) Android_JNI_openAacEncode },
-        { "encoderPcmToAac",        "([B)I",                    (void *) Android_JNI_encoderPcmToAac},
+        { "encoderPcmToAac",        "([B)I",                    (void *) Android_JNI_encoderPcmToAac },
+        { "closeAacEncoder",        "()V",                      (void *) Android_JNI_closeAacEncoder },
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {

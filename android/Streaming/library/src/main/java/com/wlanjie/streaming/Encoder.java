@@ -12,6 +12,8 @@ import android.os.Build;
 import android.os.Process;
 import android.util.Log;
 
+import com.wlanjie.streaming.camera.CameraView;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -27,8 +29,6 @@ public class Encoder {
     private MediaCodec audioMediaCodec;
     private MediaCodec.BufferInfo videoBufferInfo = new MediaCodec.BufferInfo();
     private MediaCodec.BufferInfo audioBufferInfo = new MediaCodec.BufferInfo();
-
-    private boolean mCameraFaceFront = true;
 
     private long mPresentTimeUs;
 
@@ -47,13 +47,13 @@ public class Encoder {
         public String audioCodec = "audio/mp4a-latm";
         public String x264Preset = "veryfast";
         public int previewWidth = 1280;
-        public int previewHeight = 720;
+        public int previewHeight = 768;
         public int portraitWidth = 480;
         public int portraitHeight = 854;
         public int landscapeWidth = 854;
         public int landscapeHeight = 480;
-        public int outWidth = 480;
-        public int outHeight = 854;  // Since Y component is quadruple size as U and V component, the stride must be set as 32x
+        public int outWidth = 720;
+        public int outHeight = 1280;  // Since Y component is quadruple size as U and V component, the stride must be set as 32x
         public int videoBitRate = 500 * 1000; // 500 kbps
         private int fps = 24;
         private int gop = 48;
@@ -101,7 +101,7 @@ public class Encoder {
         setEncoderPreset(mParameters.x264Preset);
 
         if (mParameters.useSoftEncoder) {
-            if (!openSoftEncoder()) {
+            if (!openH264Encoder()) {
                 return false;
             }
             mParameters.channel = aChannelConfig == AudioFormat.CHANNEL_IN_STEREO ? 2 : 1;
@@ -116,7 +116,7 @@ public class Encoder {
 
         startPreview();
         startAudioRecord();
-        mCameraView.startCamera(mParameters.fps);
+        mCameraView.start();
 
         try {
             flvMuxer.start();
@@ -190,10 +190,28 @@ public class Encoder {
     }
 
     private void startPreview() {
-        mCameraView.setPreviewResolution(mParameters.previewWidth, mParameters.previewHeight);
-        mCameraView.setPreviewCallback(new CameraView.PreviewCallback() {
-            @Override
-            public void onGetYuvFrame(byte[] data) {
+        mCameraView.addCallback(new CameraView.Callback() {
+
+            public void onCameraOpened(CameraView cameraView, int previewWidth, int previewHeight) {
+                mParameters.previewWidth = previewWidth;
+                mParameters.previewHeight = previewHeight;
+            }
+
+            /**
+             * Called when camera is closed.
+             *
+             * @param cameraView The associated {@link CameraView}.
+             */
+            public void onCameraClosed(CameraView cameraView) {
+            }
+
+            /**
+             * Called when a picture is taken.
+             *
+             * @param cameraView The associated {@link CameraView}.
+             * @param data       JPEG data.
+             */
+            public void onPreviewFrame(CameraView cameraView, byte[] data) {
                 convertYuvFrame(data);
             }
         });
@@ -220,31 +238,24 @@ public class Encoder {
     }
 
     public void stop() {
-        mCameraView.stopCamera();
+        mCameraView.stop();
         stopAudioRecord();
         if (mParameters.useSoftEncoder) {
-            closeSoftEncoder();
+            closeH264Encoder();
+            closeAacEncoder();
+        } else {
+            if (audioMediaCodec != null) {
+                audioMediaCodec.stop();
+                audioMediaCodec.release();
+                audioMediaCodec = null;
+            }
+
+            if (videoMediaCodec != null) {
+                videoMediaCodec.stop();
+                videoMediaCodec.release();
+                videoMediaCodec = null;
+            }
         }
-
-        if (audioMediaCodec != null) {
-            audioMediaCodec.stop();
-            audioMediaCodec.release();
-            audioMediaCodec = null;
-        }
-
-        if (videoMediaCodec != null) {
-            videoMediaCodec.stop();
-            videoMediaCodec.release();
-            videoMediaCodec = null;
-        }
-    }
-
-    public void setCameraFrontFace() {
-        mCameraFaceFront = true;
-    }
-
-    public void setCameraBackFace() {
-        mCameraFaceFront = false;
     }
 
     public void setPreviewResolution(int width, int height) {
@@ -278,22 +289,6 @@ public class Encoder {
     public void setVideoSmoothMode() {
         mParameters.videoBitRate = 500 * 1000;  // 500 kbps
         mParameters.x264Preset = "superfast";
-    }
-
-    public int getPreviewWidth() {
-        return mParameters.previewWidth;
-    }
-
-    public int getPreviewHeight() {
-        return mParameters.previewHeight;
-    }
-
-    public int getOutputWidth() {
-        return mParameters.outWidth;
-    }
-
-    public int getOutputHeight() {
-        return mParameters.outHeight;
     }
 
     public void setScreenOrientation(int orientation) {
@@ -447,19 +442,24 @@ public class Encoder {
         // NV12
         // return NV21ToNV12(data, mParameters.previewWidth, mParameters.previewHeight, true, 270);
         // NV21 Color format
-        return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, mCameraFaceFront ? true : false, mCameraFaceFront ? 270 : 90);
+        boolean isFront = mCameraView.getFacing() == CameraView.FACING_FRONT;
+        System.out.println("width = " + mParameters.previewWidth + " height = " + mParameters.previewHeight);
+        return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, isFront, isFront ? 270 : 90);
     }
 
     private byte[] landscapeYuvFrameMediaCodec(byte[] data) {
-        return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, mCameraFaceFront ? true : false, 0);
+        boolean isFront = mCameraView.getFacing() == CameraView.FACING_FRONT;
+        return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, isFront, 0);
     }
 
     private void portraitYuvFrameX264(byte[] data, long pts) {
-        NV21SoftEncode(data, mParameters.previewWidth, mParameters.previewHeight, mCameraFaceFront ? true : false, mCameraFaceFront ? 270 : 90, pts);
+        boolean isFront = mCameraView.getFacing() == CameraView.FACING_FRONT;
+        NV21EncodeToH264(data, mParameters.previewWidth, mParameters.previewHeight, isFront, isFront ? 270 : 90, pts);
     }
 
     private void landscapeYuvFrameX264(byte[] data, long pts) {
-        NV21SoftEncode(data, mParameters.previewWidth, mParameters.previewHeight, mCameraFaceFront ? true : false, 0, pts);
+        boolean isFront = mCameraView.getFacing() == CameraView.FACING_FRONT;
+        NV21EncodeToH264(data, mParameters.previewWidth, mParameters.previewHeight, isFront, 0, pts);
     }
 
     private AudioRecord chooseAudioRecord() {
@@ -490,11 +490,12 @@ public class Encoder {
     private native void setEncoderPreset(String preset);
     private native byte[] NV21ToI420(byte[] yuvFrame, int width, int height, boolean flip, int rotate);
     private native byte[] NV21ToNV12(byte[] yuvFrame, int width, int height, boolean flip, int rotate);
-    private native int NV21SoftEncode(byte[] yuvFrame, int width, int height, boolean flip, int rotate, long pts);
-    private native boolean openSoftEncoder();
-    private native void closeSoftEncoder();
+    private native int NV21EncodeToH264(byte[] yuvFrame, int width, int height, boolean flip, int rotate, long pts);
+    private native boolean openH264Encoder();
+    private native void closeH264Encoder();
     private native boolean openAacEncoder(int channels, int sampleRate, int bitrate);
     private native int encoderPcmToAac(byte[] pcm);
+    private native void closeAacEncoder();
 
     static {
         System.loadLibrary("wlanjie");

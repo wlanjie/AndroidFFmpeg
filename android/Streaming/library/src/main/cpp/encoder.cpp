@@ -8,10 +8,6 @@
 #include "libAACenc/include/aacenc_lib.h"
 #include "log.h"
 
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
-
 using namespace libyuv;
 
 struct YuvFrame {
@@ -253,7 +249,7 @@ int x264_encode(struct YuvFrame *i420_frame, long pts) {
     return encode_nals(nal, nnal);
 }
 
-int NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
+int NV21EncodeToH264(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
                                   jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
     jbyte* nv21_frame = env->GetByteArrayElements(frame, NULL);
 
@@ -278,7 +274,7 @@ int NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
     return JNI_OK;
 }
 
-void closeSoftEncoder() {
+void closeH264Encoder() {
     int nnal;
     x264_nal_t *nal;
     x264_picture_t pic_out;
@@ -292,7 +288,7 @@ void closeSoftEncoder() {
     }
 }
 
-jboolean openSoftEncoder() {
+jboolean openH264Encoder() {
     // Presetting
     x264_param_default_preset(&x264_ctx.params, "veryfast", "zerolatency");
 
@@ -410,7 +406,3 @@ void close_aac_encoder() {
         aacEncClose(&aac_ctx.aac_handle);
     }
 }
-
-//#ifdef __cplusplus
-//}
-//#endif
