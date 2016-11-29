@@ -8,10 +8,6 @@
 #include "libAACenc/include/aacenc_lib.h"
 #include "log.h"
 
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
-
 using namespace libyuv;
 
 struct YuvFrame {
@@ -253,7 +249,7 @@ int x264_encode(struct YuvFrame *i420_frame, long pts) {
     return encode_nals(nal, nnal);
 }
 
-int NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
+int NV21EncodeToH264(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
                                   jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
     jbyte* nv21_frame = env->GetByteArrayElements(frame, NULL);
 
@@ -271,14 +267,14 @@ int NV21SoftEncode(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
     env->SetByteArrayRegion(outputFrame, 0, es_len, (jbyte *) h264_es);
 
     jclass clz = env->GetObjectClass(thiz);
-    jmethodID mid = env->GetMethodID(clz, "onSoftEncodedData", "([BIZ)V");
+    jmethodID mid = env->GetMethodID(clz, "onH264EncodedData", "([BIZ)V");
     env->CallVoidMethod(thiz, mid, outputFrame, x264_ctx.pts, x264_ctx.is_key_frame);
 
     env->ReleaseByteArrayElements(frame, nv21_frame, JNI_ABORT);
     return JNI_OK;
 }
 
-void closeSoftEncoder() {
+void closeH264Encoder() {
     int nnal;
     x264_nal_t *nal;
     x264_picture_t pic_out;
@@ -292,7 +288,7 @@ void closeSoftEncoder() {
     }
 }
 
-jboolean openSoftEncoder() {
+jboolean openH264Encoder() {
     // Presetting
     x264_param_default_preset(&x264_ctx.params, "veryfast", "zerolatency");
 
@@ -400,7 +396,7 @@ int encoder_pcm_to_aac(JNIEnv *env, jobject object, signed char *pcm, int pcm_le
     env->SetByteArrayRegion(outputFrame, 0, out_args.numOutBytes, (jbyte *) aac_buf);
 
     jclass clz = env->GetObjectClass(object);
-    jmethodID mid = env->GetMethodID(clz, "onAacSoftEncodeData", "([B)V");
+    jmethodID mid = env->GetMethodID(clz, "onAacEncodeData", "([B)V");
     env->CallVoidMethod(object, mid, outputFrame);
     return 0;
 }
@@ -410,7 +406,3 @@ void close_aac_encoder() {
         aacEncClose(&aac_ctx.aac_handle);
     }
 }
-
-//#ifdef __cplusplus
-//}
-//#endif

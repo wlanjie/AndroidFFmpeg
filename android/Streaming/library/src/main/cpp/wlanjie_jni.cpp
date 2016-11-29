@@ -14,6 +14,7 @@
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
 #endif
 #define CLASS_NAME  "com/wlanjie/streaming/Encoder"
+#define SOFT_CLASS_NAME "com/wlanjie/streaming/SoftEncoder"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -55,18 +56,17 @@ jbyteArray Android_JNI_NV21ToNV12(JNIEnv* env, jobject object, jbyteArray frame,
     return nv12Frame;
 }
 
-jboolean Android_JNI_openSoftEncoder(JNIEnv* env, jobject object) {
-    return openSoftEncoder();
+jboolean Android_JNI_openH264Encoder(JNIEnv* env, jobject object) {
+    return openH264Encoder();
 }
 
-void Android_JNI_closeSoftEncoder(JNIEnv* env, jobject object) {
-    closeSoftEncoder();
-    close_aac_encoder();
+void Android_JNI_closeH264Encoder(JNIEnv* env, jobject object) {
+    closeH264Encoder();
 }
 
-jint Android_JNI_NV21SoftEncode(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
+jint Android_JNI_NV21EncodeToH264(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
                            jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
-    return NV21SoftEncode(env, object, frame, src_width, src_height, need_flip, rotate_degree, pts);
+    return NV21EncodeToH264(env, object, frame, src_width, src_height, need_flip, rotate_degree, pts);
 }
 
 jboolean Android_JNI_openAacEncode(JNIEnv *env, jobject object, jint channels, jint sample_rate, jint bitrate) {
@@ -79,6 +79,10 @@ jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm) {
     int ret = encoder_pcm_to_aac(env, object, pcm_frame, pcm_length);
     env->ReleaseByteArrayElements(pcm, pcm_frame, NULL);
     return ret;
+}
+
+void Android_JNI_closeAacEncoder() {
+    close_aac_encoder();
 }
 
 srs_rtmp_t rtmp;
@@ -124,37 +128,43 @@ jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jlong timestamp
 
 void Android_JNI_destroy(JNIEnv *env, jobject object) {
     srs_rtmp_destroy(rtmp);
-    free(&rtmp);
     rtmp = NULL;
 }
 
-static JNINativeMethod enc_methods[] = {
+static JNINativeMethod encoder_methods[] = {
+        { "setEncoderResolution",   "(II)V",                    (void *) Android_JNI_setEncoderResolution },
         { "connect",                "(Ljava/lang/String;)I",    (void *) Android_JNI_connect },
         { "writeVideo",             "(J[B)I",                   (void *) Android_JNI_write_video_sample },
         { "writeAudio",             "(J[BII)I",                 (void *) Android_JNI_write_audio_sample },
         { "destroy",                "()V",                      (void *) Android_JNI_destroy },
-        { "setEncoderResolution",   "(II)V",                    (void *) Android_JNI_setEncoderResolution },
+        { "NV21ToI420",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToI420 },
+        { "NV21ToNV12",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToNV12 },
+};
+
+static JNINativeMethod soft_encoder_methods[] = {
         { "setEncoderFps",          "(I)V",                     (void *) Android_JNI_setEncoderFps },
         { "setEncoderGop",          "(I)V",                     (void *) Android_JNI_setEncoderGop },
         { "setEncoderBitrate",      "(I)V",                     (void *) Android_JNI_setEncoderBitrate },
         { "setEncoderPreset",       "(Ljava/lang/String;)V",    (void *) Android_JNI_setEncoderPreset },
-        { "NV21ToI420",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToI420 },
-        { "NV21ToNV12",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToNV12 },
-        { "openSoftEncoder",        "()Z",                      (void *) Android_JNI_openSoftEncoder },
-        { "closeSoftEncoder",       "()V",                      (void *) Android_JNI_closeSoftEncoder },
-        { "NV21SoftEncode",         "([BIIZIJ)I",               (void *) Android_JNI_NV21SoftEncode },
+        { "openH264Encoder",        "()Z",                      (void *) Android_JNI_openH264Encoder },
+        { "closeH264Encoder",       "()V",                      (void *) Android_JNI_closeH264Encoder },
         { "openAacEncoder",         "(III)Z",                   (void *) Android_JNI_openAacEncode },
-        { "encoderPcmToAac",        "([B)I",                    (void *) Android_JNI_encoderPcmToAac},
+        { "encoderPcmToAac",        "([B)I",                    (void *) Android_JNI_encoderPcmToAac },
+        { "closeAacEncoder",        "()V",                      (void *) Android_JNI_closeAacEncoder },
+        { "NV21EncodeToH264",       "([BIIZIJ)I",               (void *) Android_JNI_NV21EncodeToH264 },
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env = NULL;
     if ((vm)->GetEnv((void **)&env, JNI_VERSION_1_6) != JNI_OK) {
-        return -1;
+        return JNI_FALSE;
     }
     jclass clazz = env->FindClass(CLASS_NAME);
-    env->RegisterNatives(clazz, enc_methods, NELEM(enc_methods));
+    env->RegisterNatives(clazz, encoder_methods, NELEM(encoder_methods));
     env->DeleteLocalRef(clazz);
+    jclass soft_clazz = env->FindClass(SOFT_CLASS_NAME);
+    env->RegisterNatives(soft_clazz, soft_encoder_methods, NELEM(soft_encoder_methods));
+    env->DeleteLocalRef(soft_clazz);
     return JNI_VERSION_1_6;
 }
 
