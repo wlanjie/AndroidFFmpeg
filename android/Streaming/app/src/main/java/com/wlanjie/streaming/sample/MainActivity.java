@@ -8,13 +8,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.wlanjie.streaming.Publish;
 import com.wlanjie.streaming.camera.CameraView;
-import com.wlanjie.streaming.Encoder;
 
 public class MainActivity extends AppCompatActivity {
 
-    private Encoder mEncoder;
     private CameraView mCameraView;
+    private Publish publish;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,15 +33,15 @@ public class MainActivity extends AppCompatActivity {
         mCameraView.postDelayed(new Runnable() {
             @Override
             public void run() {
-                mEncoder = new Encoder(mCameraView);
+                publish = new Publish(mCameraView, true);
 //                String url = "rtmp://192.168.1.100/live/livestream";
                 String url = "rtmp://192.168.0.143/live/livestream";
-                int result = mEncoder.connect(url);
-                if (result < 0) {
-                    Toast.makeText(MainActivity.this, "连接服务器失败", Toast.LENGTH_LONG).show();
-                    return;
-                }
-                mEncoder.start();
+//                int result = mEncoder.connect(url);
+//                if (result < 0) {
+//                    Toast.makeText(MainActivity.this, "连接服务器失败", Toast.LENGTH_LONG).show();
+//                    return;
+//                }
+                publish.start(url);
             }
         }, 1000);
     }
@@ -69,9 +69,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (mEncoder != null) {
-            mEncoder.stop();
-            mEncoder.destroy();
+        if (publish != null) {
+            publish.stop();
         }
     }
 }

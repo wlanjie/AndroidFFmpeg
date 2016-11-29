@@ -267,7 +267,7 @@ int NV21EncodeToH264(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width
     env->SetByteArrayRegion(outputFrame, 0, es_len, (jbyte *) h264_es);
 
     jclass clz = env->GetObjectClass(thiz);
-    jmethodID mid = env->GetMethodID(clz, "onSoftEncodedData", "([BIZ)V");
+    jmethodID mid = env->GetMethodID(clz, "onH264EncodedData", "([BIZ)V");
     env->CallVoidMethod(thiz, mid, outputFrame, x264_ctx.pts, x264_ctx.is_key_frame);
 
     env->ReleaseByteArrayElements(frame, nv21_frame, JNI_ABORT);
@@ -396,7 +396,7 @@ int encoder_pcm_to_aac(JNIEnv *env, jobject object, signed char *pcm, int pcm_le
     env->SetByteArrayRegion(outputFrame, 0, out_args.numOutBytes, (jbyte *) aac_buf);
 
     jclass clz = env->GetObjectClass(object);
-    jmethodID mid = env->GetMethodID(clz, "onAacSoftEncodeData", "([B)V");
+    jmethodID mid = env->GetMethodID(clz, "onAacEncodeData", "([B)V");
     env->CallVoidMethod(object, mid, outputFrame);
     return 0;
 }
