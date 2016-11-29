@@ -361,6 +361,7 @@ class Camera1 extends CameraViewImpl {
 
     private void releaseCamera() {
         if (mCamera != null) {
+            mCamera.setPreviewCallbackWithBuffer(null);
             mCamera.release();
             mCamera = null;
             mCallback.onCameraClosed();

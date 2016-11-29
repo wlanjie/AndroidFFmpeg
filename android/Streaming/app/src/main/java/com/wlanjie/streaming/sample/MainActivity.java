@@ -34,8 +34,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 mEncoder = new Encoder(mCameraView);
-                String url = "rtmp://192.168.1.100/live/livestream";
-//                String url = "rtmp://192.168.0.68/live/livestream";
+//                String url = "rtmp://192.168.1.100/live/livestream";
+                String url = "rtmp://192.168.0.143/live/livestream";
                 int result = mEncoder.connect(url);
                 if (result < 0) {
                     Toast.makeText(MainActivity.this, "连接服务器失败", Toast.LENGTH_LONG).show();

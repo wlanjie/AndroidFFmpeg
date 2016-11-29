@@ -6,6 +6,7 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.media.MediaRecorder;
 import android.os.Build;
@@ -17,6 +18,7 @@ import com.wlanjie.streaming.camera.CameraView;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+@SuppressWarnings("deprecation")
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public class Encoder {
     private static final String TAG = "Encoder";
@@ -43,22 +45,22 @@ public class Encoder {
     private boolean audioRecordLoop;
 
     public static class Parameters {
-        public String videoCodec = "video/avc";
-        public String audioCodec = "audio/mp4a-latm";
-        public String x264Preset = "veryfast";
-        public int previewWidth = 1280;
-        public int previewHeight = 768;
+        private String videoCodec = "video/avc";
+        private String audioCodec = "audio/mp4a-latm";
+        private String x264Preset = "veryfast";
+        private int previewWidth = 1280;
+        private int previewHeight = 768;
         public int portraitWidth = 480;
         public int portraitHeight = 854;
         public int landscapeWidth = 854;
         public int landscapeHeight = 480;
         public int outWidth = 720;
         public int outHeight = 1280;  // Since Y component is quadruple size as U and V component, the stride must be set as 32x
-        public int videoBitRate = 500 * 1000; // 500 kbps
+        private int videoBitRate = 500 * 1000; // 500 kbps
         private int fps = 24;
         private int gop = 48;
-        public int audioSampleRate = 44100;
-        public int audioBitRate = 32 * 1000; // 32kbps
+        private int audioSampleRate = 44100;
+        private int audioBitRate = 32 * 1000; // 32kbps
         private int channel;
         public boolean useSoftEncoder = true;
     }
@@ -126,6 +128,19 @@ public class Encoder {
         return true;
     }
 
+    private MediaCodecInfo chooseVideoEncoder() {
+        for (int i = 0; i < MediaCodecList.getCodecCount(); i++) {
+            MediaCodecInfo info = MediaCodecList.getCodecInfoAt(i);
+            if (!info.isEncoder()) continue;
+            for (String s : info.getSupportedTypes()) {
+                if (mParameters.videoCodec.equalsIgnoreCase(s))  {
+                    return info;
+                }
+            }
+        }
+        return null;
+    }
+
     private boolean initHardEncoder() {
         try {
             audioMediaCodec = MediaCodec.createEncoderByType(mParameters.audioCodec);
@@ -143,8 +158,10 @@ public class Encoder {
         audioMediaCodec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
         try {
-            videoMediaCodec = MediaCodec.createByCodecName(mParameters.videoCodec);
-        } catch (IOException e) {
+            MediaCodecInfo info = chooseVideoEncoder();
+            if (info == null) return false;
+            videoMediaCodec = MediaCodec.createByCodecName(info.getName());
+        } catch (Exception e) {
             Log.e(TAG, "create videoMediaCodec failed.");
             e.printStackTrace();
             return false;
@@ -316,7 +333,7 @@ public class Encoder {
             videoMediaCodec.queueInputBuffer(inBufferIndex, 0, yuvFrame.length, pts, 0);
         }
 
-        for (; ; ) {
+        while (true) {
             int outBufferIndex = videoMediaCodec.dequeueOutputBuffer(videoBufferInfo, 0);
             if (outBufferIndex >= 0) {
                 ByteBuffer bb = outBuffers[outBufferIndex];
@@ -333,7 +350,7 @@ public class Encoder {
 
     /**
      * this method call by jni
-     * @param es h264 stream
+     * @param data h264 stream
      * @param pts pts
      * @param isKeyFrame is key frame
      */
@@ -393,17 +410,10 @@ public class Encoder {
                 audioMediaCodec.queueInputBuffer(inBufferIndex, 0, size, pts, 0);
             }
 
-            for (; ; ) {
+            while (true) {
                 int outBufferIndex = audioMediaCodec.dequeueOutputBuffer(audioBufferInfo, 0);
                 if (outBufferIndex >= 0) {
                     ByteBuffer bb = outBuffers[outBufferIndex];
-//                    bb.position(audioBufferInfo.offset);
-//                    bb.limit(audioBufferInfo.offset + audioBufferInfo.size);
-                    int packetLen = audioBufferInfo.size + 0;
-                    byte[] adtsData = new byte[packetLen];
-                    bb.get(adtsData, 0, audioBufferInfo.size);
-//                    bb.position(audioBufferInfo.offset);
-//                    writeAudio(audioBufferInfo.presentationTimeUs / 1000, adtsData, mParameters.audioSampleRate, mParameters.channel);
                     flvMuxer.writeAudio(bb, audioBufferInfo.size, mParameters.audioSampleRate, mParameters.channel, (int) (audioBufferInfo.presentationTimeUs / 1000));
                     audioMediaCodec.releaseOutputBuffer(outBufferIndex, false);
                 } else {
@@ -443,7 +453,6 @@ public class Encoder {
         // return NV21ToNV12(data, mParameters.previewWidth, mParameters.previewHeight, true, 270);
         // NV21 Color format
         boolean isFront = mCameraView.getFacing() == CameraView.FACING_FRONT;
-        System.out.println("width = " + mParameters.previewWidth + " height = " + mParameters.previewHeight);
         return NV21ToI420(data, mParameters.previewWidth, mParameters.previewHeight, isFront, isFront ? 270 : 90);
     }
 
