@@ -1,3 +1,33 @@
+#### 推流 所在项目 Streaming
+
+![推流](https://github.com/wlanjie/AndroidFFmpeg/blob/master/image/publish.png)
+
+###### 支持软编和硬编
+
+使用的开源项目:
+
+*	libx264
+*	fdk-aac
+*	srs-librtmp
+* 	libyuv
+
+使用方式:
+
+```java
+encoder = new Encoder.Builder()
+				// 是否使用软编
+                .setSoftEncoder(false)
+                // 设置CameraView
+                .setCameraView(mCameraView)
+                .build();
+```
+
+释放资源 调用代码如下:
+
+```java
+encoder.stop();
+```
+
 ##### FFmpeg Library for Android
 
 ##### Building
