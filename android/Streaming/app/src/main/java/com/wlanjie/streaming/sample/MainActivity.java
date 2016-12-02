@@ -6,15 +6,14 @@ import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Toast;
 
-import com.wlanjie.streaming.Publish;
+import com.wlanjie.streaming.Encoder;
 import com.wlanjie.streaming.camera.CameraView;
 
 public class MainActivity extends AppCompatActivity {
 
     private CameraView mCameraView;
-    private Publish publish;
+    private Encoder encoder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,20 +27,17 @@ public class MainActivity extends AppCompatActivity {
             actionBar.setDisplayShowTitleEnabled(false);
         }
 
-//        Encoder.Parameters parameters = new Encoder.Parameters();
         mCameraView = (CameraView) findViewById(R.id.surface_view);
         mCameraView.postDelayed(new Runnable() {
             @Override
             public void run() {
-                publish = new Publish(mCameraView, true);
+                encoder = new Encoder.Builder()
+                        .setSoftEncoder(false)
+                        .setCameraView(mCameraView)
+                        .build();
 //                String url = "rtmp://192.168.1.100/live/livestream";
                 String url = "rtmp://192.168.0.143/live/livestream";
-//                int result = mEncoder.connect(url);
-//                if (result < 0) {
-//                    Toast.makeText(MainActivity.this, "连接服务器失败", Toast.LENGTH_LONG).show();
-//                    return;
-//                }
-                publish.start(url);
+                encoder.start(url);
             }
         }, 1000);
     }
@@ -69,8 +65,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (publish != null) {
-            publish.stop();
+        if (encoder != null) {
+            encoder.stop();
         }
     }
 }

@@ -9,6 +9,8 @@
 #include <jni.h>
 #include "encoder.h"
 #include "srs_librtmp.hpp"
+#include "muxer.h"
+#include "log.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -126,6 +128,56 @@ jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jlong timestamp
     return ret;
 }
 
+void call_muxer_h264_success(JNIEnv* env, jobject object, char* data, int data_size, int pts, int is_sequence_header) {
+    jbyteArray output = env->NewByteArray(data_size);
+    env->SetByteArrayRegion(output, 0, data_size, (const jbyte *) data);
+
+    jclass clazz = env->FindClass(CLASS_NAME);
+    jmethodID mid = env->GetMethodID(clazz, "muxerH264Success", "([BII)V");
+    env->CallVoidMethod(object, mid, output, pts, is_sequence_header);
+}
+
+void call_muxer_aac_success(JNIEnv* env, jobject object, char* data, int data_size, int pts, int is_sequence_header) {
+    jbyteArray output = env->NewByteArray(data_size);
+    env->SetByteArrayRegion(output, 0, data_size, (const jbyte *) data);
+
+    jclass clazz = env->FindClass(CLASS_NAME);
+    jmethodID mid = env->GetMethodID(clazz, "muxerAacSuccess", "([BII)V");
+    env->CallVoidMethod(object, mid, output, pts, is_sequence_header);
+}
+
+void Android_JNI_muxer_h264(JNIEnv *env, jobject object, jbyteArray frame, jint pts) {
+    jbyte *data = env->GetByteArrayElements(frame, NULL);
+    jsize data_size = env->GetArrayLength(frame);
+    char* sps_pps = NULL;
+    int sps_pps_size = 0;
+    char* h264 = NULL;
+    int h264_size = 0;
+    muxer_h264((char *) data, data_size, pts, pts, &sps_pps, &sps_pps_size, &h264, &h264_size);
+    if (sps_pps != NULL && sps_pps_size > 0) {
+        call_muxer_h264_success(env, object, sps_pps, sps_pps_size, pts, 0);
+    }
+    if (h264 != NULL && h264_size > 0) {
+        call_muxer_h264_success(env, object, h264, h264_size, pts, 1);
+    }
+    env->ReleaseByteArrayElements(frame, data, NULL);
+
+}
+
+void Android_JNI_muxer_aac(JNIEnv *env, jobject object, jbyteArray frame, jint pts) {
+    jbyte *data = env->GetByteArrayElements(frame, NULL);
+    jsize data_size = env->GetArrayLength(frame);
+    char* aac = NULL;
+    int aac_size = 0;
+    int aac_packet_type = 0;
+    int ret = muxer_aac(10, 3, 1, 1, (char *) data, data_size, pts, &aac, &aac_size, &aac_packet_type);
+    if (aac != NULL && aac_size > 0) {
+        call_muxer_aac_success(env, object, aac, aac_size, pts, aac_packet_type);
+    }
+
+    env->ReleaseByteArrayElements(frame, data, NULL);
+}
+
 void Android_JNI_destroy(JNIEnv *env, jobject object) {
     srs_rtmp_destroy(rtmp);
     rtmp = NULL;
@@ -136,6 +188,8 @@ static JNINativeMethod encoder_methods[] = {
         { "connect",                "(Ljava/lang/String;)I",    (void *) Android_JNI_connect },
         { "writeVideo",             "(J[B)I",                   (void *) Android_JNI_write_video_sample },
         { "writeAudio",             "(J[BII)I",                 (void *) Android_JNI_write_audio_sample },
+        { "muxerH264",              "([BI)V",                   (void *) Android_JNI_muxer_h264 },
+        { "muxerAac",               "([BI)V",                   (void *) Android_JNI_muxer_aac },
         { "destroy",                "()V",                      (void *) Android_JNI_destroy },
         { "NV21ToI420",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToI420 },
         { "NV21ToNV12",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToNV12 },

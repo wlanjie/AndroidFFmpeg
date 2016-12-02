@@ -15,15 +15,15 @@ public class Publish {
     }
 
     public Publish(CameraView cameraView, boolean isSoftEncoder) {
-        encoder = isSoftEncoder ?
-                new SoftEncoder(cameraView) :
-                new HardEncoder(cameraView);
+        encoder = new Encoder.Builder()
+                .setSoftEncoder(isSoftEncoder)
+                .setCameraView(cameraView)
+                .build();
     }
 
-    public boolean start(final String url) {
-        if (encoder == null) return false;
-        int ret = encoder.connect(url);
-        return ret == 0 && encoder.start();
+    public void start(final String url) throws IllegalStateException, IllegalArgumentException {
+        if (encoder == null) return;
+        encoder.start(url);
     }
 
     public void stop() {
