@@ -12,28 +12,24 @@ import java.nio.ByteBuffer;
 
 class SoftEncoder extends Encoder {
 
-    SoftEncoder(CameraView cameraView) {
-        super(cameraView);
-    }
-
-    SoftEncoder(Parameters parameters, CameraView cameraView) {
-        super(parameters, cameraView);
+    public SoftEncoder(Builder builder) {
+        super(builder);
     }
 
     @Override
     boolean openEncoder() {
 
-        setEncoderFps(mParameters.fps);
-        setEncoderGop(mParameters.gop);
+        setEncoderFps(mBuilder.fps);
+        setEncoderGop(mBuilder.fps * 2);
         // Unfortunately for some android phone, the output fps is less than 10 limited by the
         // capacity of poor cheap chips even with x264. So for the sake of quick appearance of
         // the first picture on the player, a spare lower GOP value is suggested. But note that
         // lower GOP will produce more I frames and therefore more streaming data flow.
-        setEncoderBitrate(mParameters.videoBitRate);
-        setEncoderPreset(mParameters.x264Preset);
+        setEncoderBitrate(mBuilder.videoBitRate);
+        setEncoderPreset(mBuilder.x264Preset);
 
         return openH264Encoder() &&
-                openAacEncoder(mParameters.channel, mParameters.audioSampleRate, mParameters.audioBitRate);
+                openAacEncoder(mAudioRecord.getChannelCount(), mBuilder.audioSampleRate, mBuilder.audioBitRate);
     }
 
     @Override
@@ -45,19 +41,17 @@ class SoftEncoder extends Encoder {
     @Override
     void convertYuvToH264(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-        boolean isFront = mCameraView.getFacing() == CameraView.FACING_FRONT;
+        boolean isFront = mBuilder.cameraView.getFacing() == CameraView.FACING_FRONT;
         NV21EncodeToH264(data,
-                mParameters.previewWidth,
-                mParameters.previewHeight,
+                mBuilder.previewWidth,
+                mBuilder.previewHeight,
                 isFront,
                 mOrientation == Configuration.ORIENTATION_PORTRAIT ? isFront ? 270 : 90 : 0, pts);
     }
 
     @Override
-    void convertPcmToAac(byte[] data, int size) {
-        byte[] pcm = new byte[size];
-        System.arraycopy(data, 0, pcm, 0, size);
-        encoderPcmToAac(pcm);
+    void convertPcmToAac(byte[] aacFrame, int size) {
+        encoderPcmToAac(aacFrame);
     }
 
     /**
@@ -67,8 +61,7 @@ class SoftEncoder extends Encoder {
      * @param isKeyFrame is key frame
      */
     private void onH264EncodedData(byte[] data, int pts, boolean isKeyFrame) {
-        ByteBuffer bb = ByteBuffer.wrap(data);
-        flvMuxer.writeVideo(bb, data.length, pts);
+        muxerH264(data, pts);
     }
 
     /**
@@ -77,8 +70,11 @@ class SoftEncoder extends Encoder {
      */
     private void onAacEncodeData(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-        ByteBuffer bb = ByteBuffer.wrap(data);
-        flvMuxer.writeAudio(bb, data.length, mParameters.audioSampleRate, mParameters.channel, (int) pts);
+
+//        byte[] aac = new byte[data.length + 7];
+//        addADTStoPacket(aac, aac.length);
+//        System.arraycopy(data, 0, aac, 7, data.length);
+        muxerAac(data, (int) pts);
     }
 
     /**

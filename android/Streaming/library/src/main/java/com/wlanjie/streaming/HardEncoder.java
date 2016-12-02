@@ -28,27 +28,24 @@ class HardEncoder extends Encoder {
     private MediaCodec videoMediaCodec;
     private MediaCodec.BufferInfo videoBufferInfo = new MediaCodec.BufferInfo();
     private MediaCodec.BufferInfo audioBufferInfo = new MediaCodec.BufferInfo();
+    private int videoColorFormat;
 
-    HardEncoder(CameraView cameraView) {
-        super(cameraView);
-    }
-
-    HardEncoder(Parameters parameters, CameraView cameraView) {
-        super(parameters, cameraView);
+    public HardEncoder(Builder builder) {
+        super(builder);
     }
 
     @Override
     boolean openEncoder() {
         try {
-            audioMediaCodec = MediaCodec.createEncoderByType(mParameters.audioCodec);
+            audioMediaCodec = MediaCodec.createEncoderByType(mBuilder.audioCodec);
         } catch (IOException e) {
             Log.e(TAG, "create audioMediaCodec failed.");
             e.printStackTrace();
             return false;
         }
 
-        MediaFormat audioFormat = MediaFormat.createAudioFormat(mParameters.audioCodec, mParameters.audioSampleRate, mParameters.channel);
-        audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, mParameters.audioBitRate);
+        MediaFormat audioFormat = MediaFormat.createAudioFormat(mBuilder.audioCodec, mBuilder.audioSampleRate, mAudioRecord.getChannelCount());
+        audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, mBuilder.audioBitRate);
         audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
         audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
         audioMediaCodec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
@@ -57,22 +54,24 @@ class HardEncoder extends Encoder {
             MediaCodecInfo info = chooseVideoEncoder();
             if (info == null) return false;
             videoMediaCodec = MediaCodec.createByCodecName(info.getName());
+
+            // Note: landscape to portrait, 90 degree rotation, so we need to switch width and height in configuration
+            MediaFormat videoFormat = MediaFormat.createVideoFormat(mBuilder.videoCodec, mBuilder.width, mBuilder.height);
+            // COLOR_FormatYUV420Planar COLOR_FormatYUV420SemiPlanar
+            // 二者的区别 http://blog.csdn.net/yuxiatongzhi/article/details/48708639
+            videoColorFormat = chooseEncoderColorFormat(info);
+            videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, videoColorFormat);
+            videoFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
+            videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, mBuilder.videoBitRate);
+            videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mBuilder.fps);
+            // gop / fps
+            videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mBuilder.fps * 2 / mBuilder.fps);
+            videoMediaCodec.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         } catch (Exception e) {
             Log.e(TAG, "create videoMediaCodec failed.");
             e.printStackTrace();
             return false;
         }
-
-        // Note: landscape to portrait, 90 degree rotation, so we need to switch width and height in configuration
-        MediaFormat videoFormat = MediaFormat.createVideoFormat(mParameters.videoCodec, mParameters.outWidth, mParameters.outHeight);
-        // COLOR_FormatYUV420Planar COLOR_FormatYUV420SemiPlanar
-        // 二者的区别 http://blog.csdn.net/yuxiatongzhi/article/details/48708639
-        videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
-        videoFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
-        videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, mParameters.videoBitRate);
-        videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mParameters.fps);
-        videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mParameters.gop / mParameters.fps);
-        videoMediaCodec.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
         // start device and encoder.
         videoMediaCodec.start();
@@ -97,12 +96,18 @@ class HardEncoder extends Encoder {
 
     @Override
     void convertYuvToH264(byte[] data) {
-        boolean isFront = mCameraView.getFacing() == CameraView.FACING_FRONT;
-        byte[] processedData = NV21ToI420(data,
-                mParameters.previewWidth,
-                mParameters.previewHeight,
+        boolean isFront = mBuilder.cameraView.getFacing() == CameraView.FACING_FRONT;
+        byte[] processedData = videoColorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar ?
+                NV21ToNV12(data,
+                mBuilder.previewWidth,
+                mBuilder.previewHeight,
                 isFront,
-                mOrientation == Configuration.ORIENTATION_PORTRAIT ? isFront ? 270 : 90 : 0);
+                mOrientation == Configuration.ORIENTATION_PORTRAIT ? isFront ? 270 : 90 : 0) :
+                NV21ToI420(data,
+                        mBuilder.previewWidth,
+                        mBuilder.previewHeight,
+                        isFront,
+                        mOrientation == Configuration.ORIENTATION_PORTRAIT ? isFront ? 270 : 90 : 0);
 
         if (processedData != null) {
             long pts = System.nanoTime() / 1000 - mPresentTimeUs;
@@ -114,7 +119,7 @@ class HardEncoder extends Encoder {
     }
 
     @Override
-    void convertPcmToAac(byte[] data, int size) {
+    void convertPcmToAac(byte[] aacFrame, int size) {
         ByteBuffer[] inBuffers = audioMediaCodec.getInputBuffers();
         ByteBuffer[] outBuffers = audioMediaCodec.getOutputBuffers();
 
@@ -122,7 +127,7 @@ class HardEncoder extends Encoder {
         if (inBufferIndex >= 0) {
             ByteBuffer bb = inBuffers[inBufferIndex];
             bb.clear();
-            bb.put(data, 0, size);
+            bb.put(aacFrame, 0, size);
             long pts = System.nanoTime() / 1000 - mPresentTimeUs;
             audioMediaCodec.queueInputBuffer(inBufferIndex, 0, size, pts, 0);
         }
@@ -130,8 +135,19 @@ class HardEncoder extends Encoder {
         while (true) {
             int outBufferIndex = audioMediaCodec.dequeueOutputBuffer(audioBufferInfo, 0);
             if (outBufferIndex >= 0) {
+                int outBitSize = audioBufferInfo.size;
+                int outPacketSize = outBitSize + 7;
+
                 ByteBuffer bb = outBuffers[outBufferIndex];
-                flvMuxer.writeAudio(bb, audioBufferInfo.size, mParameters.audioSampleRate, mParameters.channel, (int) (audioBufferInfo.presentationTimeUs / 1000));
+                bb.position(audioBufferInfo.offset);
+                bb.limit(audioBufferInfo.offset + outBitSize);
+
+                byte[] data = new byte[outPacketSize];
+                addADTStoPacket(data, outPacketSize);
+
+                bb.get(data, 7, outBitSize);
+                bb.position(audioBufferInfo.offset);
+                muxerAac(data, (int) (audioBufferInfo.presentationTimeUs / 1000));
                 audioMediaCodec.releaseOutputBuffer(outBufferIndex, false);
             } else {
                 break;
@@ -155,10 +171,9 @@ class HardEncoder extends Encoder {
             int outBufferIndex = videoMediaCodec.dequeueOutputBuffer(videoBufferInfo, 0);
             if (outBufferIndex >= 0) {
                 ByteBuffer bb = outBuffers[outBufferIndex];
-//                byte[] data = new byte[bb.limit()];
-//                bb.get(data);
-//                writeVideo(videoBufferInfo.presentationTimeUs / 1000, data);
-                flvMuxer.writeVideo(bb, bb.limit(), (int) (videoBufferInfo.presentationTimeUs / 1000));
+                byte[] data = new byte[videoBufferInfo.size];
+                bb.get(data);
+                muxerH264(data, (int) (videoBufferInfo.presentationTimeUs / 1000));
                 videoMediaCodec.releaseOutputBuffer(outBufferIndex, false);
             } else {
                 break;
@@ -171,11 +186,25 @@ class HardEncoder extends Encoder {
             MediaCodecInfo info = MediaCodecList.getCodecInfoAt(i);
             if (!info.isEncoder()) continue;
             for (String s : info.getSupportedTypes()) {
-                if (mParameters.videoCodec.equalsIgnoreCase(s))  {
+                if (mBuilder.videoCodec.equalsIgnoreCase(s))  {
                     return info;
                 }
             }
         }
         return null;
+    }
+
+    private int chooseEncoderColorFormat(MediaCodecInfo info) {
+        int colorFormat = 0;
+        MediaCodecInfo.CodecCapabilities codecCapabilities = info.getCapabilitiesForType(mBuilder.videoCodec);
+        for (int i = 0; i < codecCapabilities.colorFormats.length; i++) {
+            if (codecCapabilities.colorFormats[i] >= MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar &&
+                    codecCapabilities.colorFormats[i] <= MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar) {
+                if (codecCapabilities.colorFormats[i] > colorFormat) {
+                    colorFormat = codecCapabilities.colorFormats[i];
+                }
+            }
+        }
+        return colorFormat;
     }
 }

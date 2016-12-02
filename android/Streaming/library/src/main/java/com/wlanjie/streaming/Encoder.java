@@ -7,13 +7,24 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Process;
+import android.os.SystemClock;
+import android.text.TextUtils;
 
 import com.wlanjie.streaming.camera.CameraView;
 
-import java.io.IOException;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-abstract class Encoder {
+public abstract class Encoder {
+
+    protected Queue<Frame> cache = new ConcurrentLinkedQueue<>();
+
+    private Queue<Frame> muxerCache = new ConcurrentLinkedQueue<>();
+
+    private Thread mPublishThread;
+
+    private final Object mPublishLock = new Object();
 
     int mOrientation = Configuration.ORIENTATION_PORTRAIT;
 
@@ -22,35 +33,13 @@ abstract class Encoder {
      */
     long mPresentTimeUs;
 
-    Parameters mParameters;
-
-    CameraView mCameraView;
-
-    private AudioRecord mAudioRecord;
+    AudioRecord mAudioRecord;
 
     private Thread audioRecordThread;
 
     private boolean audioRecordLoop;
 
-    public static class Parameters {
-        String videoCodec = "video/avc";
-        String audioCodec = "audio/mp4a-latm";
-        String x264Preset = "veryfast";
-        int previewWidth = 1280;
-        int previewHeight = 768;
-        public int portraitWidth = 480;
-        public int portraitHeight = 854;
-        public int landscapeWidth = 854;
-        public int landscapeHeight = 480;
-        public int outWidth = 720;
-        public int outHeight = 1280;  // Since Y component is quadruple size as U and V component, the stride must be set as 32x
-        int videoBitRate = 500 * 1000; // 500 kbps
-        int fps = 24;
-        int gop = 48;
-        int audioSampleRate = 44100;
-        int audioBitRate = 32 * 1000; // 32kbps
-        protected int channel;
-    }
+    Builder mBuilder;
 
     // Y, U (Cb) and V (Cr)
     // yuv420                     yuv yuv yuv yuv
@@ -62,41 +51,127 @@ abstract class Encoder {
     // NV21 -> YUV420SP  yyyy*2 vu vu
     // NV16 -> YUV422SP  yyyy uv uv
     // YUY2 -> YUV422SP  yuyv yuyvo
-    FlvMuxer flvMuxer;
-
-    public Encoder(CameraView cameraView) {
-        this(new Parameters(), cameraView);
+    protected class Frame {
+        byte[] data;
+        int dts;
+        boolean isVideo;
     }
 
-    public Encoder(Parameters parameters, CameraView cameraView) {
-        this.mParameters = parameters;
-        this.mCameraView = cameraView;
-        flvMuxer = new FlvMuxer(this);
+    public static class Builder {
+        protected CameraView cameraView;
+        protected boolean isSoftEncoder;
+        protected int width = 720;
+        protected int height = 1280;
+        protected int fps = 24;
+        protected int audioSampleRate = 44100;
+        protected int audioBitRate = 32 * 1000; // 32 kbps
+        protected int previewWidth;
+        protected int previewHeight;
+        protected int videoBitRate = 500 * 1000; // 500 kbps
+        protected String x264Preset = "veryfast";
+        protected String videoCodec = "video/avc";
+        protected String audioCodec = "audio/mp4a-latm";
+
+        public Builder setCameraView(CameraView cameraView) {
+            this.cameraView = cameraView;
+            return this;
+        }
+
+        public Builder setSoftEncoder(boolean softEncoder) {
+            isSoftEncoder = softEncoder;
+            return this;
+        }
+
+        public Builder setWidth(int width) {
+            this.width = width;
+            return this;
+        }
+
+        public Builder setHeight(int height) {
+            this.height = height;
+            return this;
+        }
+
+        public Builder setFps(int fps) {
+            this.fps = fps;
+            return this;
+        }
+
+        public Builder setAudioSampleRate(int audioSampleRate) {
+            this.audioSampleRate = audioSampleRate;
+            return this;
+        }
+
+        public Builder setAudioBitRate(int audioBitRate) {
+            this.audioBitRate = audioBitRate;
+            return this;
+        }
+
+        public Encoder build() {
+            return isSoftEncoder ? new SoftEncoder(this) : new HardEncoder(this);
+        }
     }
 
-    boolean start() {
+    public Encoder(Builder builder) {
+        mBuilder = builder;
+    }
+
+    public void start(final String url) throws IllegalArgumentException, IllegalStateException {
+
+        if (mBuilder.cameraView == null) {
+            throw new IllegalArgumentException("must be call Builder.setCameraView() method.");
+        }
+
+        if (TextUtils.isEmpty(url) || !url.startsWith("rtmp://")) {
+            throw new IllegalArgumentException("url must be rtmp://");
+        }
+
+        if (connect(url) != 0) {
+            throw new RuntimeException("connect rtmp server error.");
+        }
 
         // the referent PTS for video and audio encoder.
         mPresentTimeUs = System.nanoTime() / 1000;
 
         mAudioRecord = chooseAudioRecord();
         if (mAudioRecord == null) {
-            return false;
+            throw new IllegalStateException("start audio record failed.");
         }
-        mParameters.channel = mAudioRecord.getChannelCount();
-        setEncoderResolution(mParameters.outWidth, mParameters.outHeight);
+        setEncoderResolution(mBuilder.width, mBuilder.height);
         openEncoder();
 
         startPreview();
         startAudioRecord();
-        mCameraView.start();
+        mBuilder.cameraView.start();
 
-        try {
-            flvMuxer.start();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return true;
+        startPublish();
+    }
+
+    private void startPublish() {
+        mPublishThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!Thread.interrupted()) {
+                    while (!cache.isEmpty()) {
+                        Frame frame = cache.poll();
+                        if (frame.isVideo) {
+                            writeVideo(frame.dts, frame.data);
+                        } else {
+                            writeAudio(frame.dts, frame.data, mBuilder.audioSampleRate, mAudioRecord.getChannelCount());
+                        }
+                        frame.data = null;
+                        frame.dts = 0;
+                        frame.isVideo = false;
+                        muxerCache.offer(frame);
+                    }
+
+                    synchronized (mPublishLock) {
+                        SystemClock.sleep(500);
+                    }
+                }
+            }
+        });
+        mPublishThread.start();
     }
 
     /**
@@ -112,10 +187,10 @@ abstract class Encoder {
 
     /**
      * covert pcm to aac
-     * @param data pcm data
+     * @param aacFrame pcm data
      * @param size pcm data size
      */
-    abstract void convertPcmToAac(byte[] data, int size);
+    abstract void convertPcmToAac(byte[] aacFrame, int size);
 
     /**
      * convert yuv to h264
@@ -150,11 +225,11 @@ abstract class Encoder {
      * start camera preview
      */
     private void startPreview() {
-        mCameraView.addCallback(new CameraView.Callback() {
+        mBuilder.cameraView.addCallback(new CameraView.Callback() {
 
             public void onCameraOpened(CameraView cameraView, int previewWidth, int previewHeight) {
-                mParameters.previewWidth = previewWidth;
-                mParameters.previewHeight = previewHeight;
+                mBuilder.previewWidth = previewWidth;
+                mBuilder.previewHeight = previewHeight;
             }
 
             /**
@@ -204,55 +279,62 @@ abstract class Encoder {
      * stop camera preview, audio record and close encoder
      */
     public void stop() {
-        mCameraView.stop();
+        mBuilder.cameraView.stop();
         stopAudioRecord();
         closeEncoder();
-    }
-
-    public void setPreviewResolution(int width, int height) {
-        mParameters.previewWidth = width;
-        mParameters.previewHeight = height;
+        destroy();
+        if (mPublishThread != null) {
+            mPublishThread.interrupt();
+            try {
+                mPublishThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                mPublishThread.interrupt();
+            }
+            mPublishThread = null;
+        }
+        cache.clear();
     }
 
     public void setPortraitResolution(int width, int height) {
-        mParameters.outWidth = width;
-        mParameters.outHeight = height;
-        mParameters.portraitWidth = width;
-        mParameters.portraitHeight = height;
-        mParameters.landscapeWidth = height;
-        mParameters.landscapeHeight = width;
+//        mBuilder.outWidth = width;
+//        mBuilder.outHeight = height;
+//        mBuilder.portraitWidth = width;
+//        mBuilder.portraitHeight = height;
+//        mBuilder.landscapeWidth = height;
+//        mBuilder.landscapeHeight = width;
     }
 
     public void setLandscapeResolution(int width, int height) {
-        mParameters.outWidth = width;
-        mParameters.outHeight = height;
-        mParameters.landscapeWidth = width;
-        mParameters.landscapeHeight = height;
-        mParameters.portraitWidth = height;
-        mParameters.portraitHeight = width;
+//        mBuilder.outWidth = width;
+//        mBuilder.outHeight = height;
+//        mBuilder.landscapeWidth = width;
+//        mBuilder.landscapeHeight = height;
+//        mBuilder.portraitWidth = height;
+//        mBuilder.portraitHeight = width;
     }
 
     public void setVideoHDMode() {
-        mParameters.videoBitRate = 1200 * 1000;  // 1200 kbps
-        mParameters.x264Preset = "veryfast";
+        mBuilder.videoBitRate = 1200 * 1000;  // 1200 kbps
+        mBuilder.x264Preset = "veryfast";
     }
 
     public void setVideoSmoothMode() {
-        mParameters.videoBitRate = 500 * 1000;  // 500 kbps
-        mParameters.x264Preset = "superfast";
+        mBuilder.videoBitRate = 500 * 1000;  // 500 kbps
+        mBuilder.x264Preset = "superfast";
     }
 
     public void setScreenOrientation(int orientation) {
         mOrientation = orientation;
-        if (mOrientation == Configuration.ORIENTATION_PORTRAIT) {
-            mParameters.outWidth = mParameters.portraitWidth;
-            mParameters.outHeight = mParameters.portraitHeight;
-        } else if (mOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-            mParameters.outWidth = mParameters.landscapeWidth;
-            mParameters.outHeight = mParameters.landscapeHeight;
-        }
+//        if (mOrientation == Configuration.ORIENTATION_PORTRAIT) {
+//            mBuilder.outWidth = mParameters.portraitWidth;
+//            mBuilder.outHeight = mParameters.portraitHeight;
+//        } else if (mOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+//            mBuilder.outWidth = mParameters.landscapeWidth;
+//            mBuilder.outHeight = mParameters.landscapeHeight;
+//        }
 
-        setEncoderResolution(mParameters.outWidth, mParameters.outHeight);
+        setEncoderResolution(mBuilder.width, mBuilder.height);
     }
 
 
@@ -263,20 +345,20 @@ abstract class Encoder {
      *
      *  Note the packetLen must count in the ADTS header itself.
      **/
-    private void addADTStoPacket(byte[] packet, int packetLen) {
+    protected void addADTStoPacket(byte[] packet, int packetLen) {
         int profile = 2;  //AAC LC
         //39=MediaCodecInfo.CodecProfileLevel.AACObjectELD;
         int freqIdx = 4;  //44.1KHz
         int chanCfg = 2;  //CPE
 
         // fill in ADTS data
-        packet[0] = (byte)0xFF;
-        packet[1] = (byte)0xF9;
-        packet[2] = (byte)(((profile-1)<<6) + (freqIdx<<2) +(chanCfg>>2));
-        packet[3] = (byte)(((chanCfg&3)<<6) + (packetLen>>11));
-        packet[4] = (byte)((packetLen&0x7FF) >> 3);
-        packet[5] = (byte)(((packetLen&7)<<5) + 0x1F);
-        packet[6] = (byte)0xFC;
+        packet[0] = (byte) 0xFF;
+        packet[1] = (byte) 0xF9;
+        packet[2] = (byte) (((profile - 1) << 6) + ( freqIdx << 2) + (chanCfg >> 2));
+        packet[3] = (byte) (((chanCfg & 3) << 6) + (packetLen >> 11));
+        packet[4] = (byte) ((packetLen & 0x7FF) >> 3);
+        packet[5] = (byte) (((packetLen & 7) << 5) + 0x1F);
+        packet[6] = (byte) 0xFC;
     }
 
     /**
@@ -284,15 +366,55 @@ abstract class Encoder {
      * @return audio record
      */
     private AudioRecord chooseAudioRecord() {
-        int minBufferSize = AudioRecord.getMinBufferSize(mParameters.audioSampleRate, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
-        AudioRecord mic = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, mParameters.audioSampleRate, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT, minBufferSize);
+        int minBufferSize = AudioRecord.getMinBufferSize(mBuilder.audioSampleRate, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
+        AudioRecord mic = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, mBuilder.audioSampleRate, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT, minBufferSize);
         if (mic.getState() != AudioRecord.STATE_INITIALIZED) {
-            mic = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, mParameters.audioSampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, minBufferSize);
+            mic = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, mBuilder.audioSampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, minBufferSize);
             if (mic.getState() != AudioRecord.STATE_INITIALIZED) {
                 mic = null;
             }
         }
         return mic;
+    }
+
+    /**
+     * this method call by jni
+     * muxer flv h264 success
+     * @param h264 flv h264 data
+     * @param pts pts
+     * @param isSequenceHeader
+     */
+    private void muxerH264Success(byte[] h264, int pts, int isSequenceHeader) {
+        Frame frame;
+        if (!muxerCache.isEmpty()) {
+            frame = muxerCache.poll();
+        } else {
+            frame = new Frame();
+        }
+        frame.isVideo = true;
+        frame.data = h264;
+        frame.dts = pts;
+        cache.offer(frame);
+    }
+
+    /**
+     * this method call by jni
+     * muxer flv aac data success
+     * @param aac flv aac data
+     * @param pts pts
+     * @param isSequenceHeader
+     */
+    private void muxerAacSuccess(byte[] aac, int pts, int isSequenceHeader) {
+        Frame frame;
+        if (!muxerCache.isEmpty()) {
+            frame = muxerCache.poll();
+        } else {
+            frame = new Frame();
+        }
+        frame.isVideo = false;
+        frame.data = aac;
+        frame.dts = pts;
+        cache.offer(frame);
     }
 
     /**
@@ -326,6 +448,20 @@ abstract class Encoder {
      * @return 0 is success, other failed.
      */
     public native int writeVideo(long timestamp, byte[] data);
+
+    /**
+     * muxer flv h264 data
+     * @param data h264 data
+     * @param pts pts
+     */
+    protected native void muxerH264(byte[] data, int pts);
+
+    /**
+     * muxer flv aac data
+     * @param data aac data
+     * @param pts pts
+     */
+    protected native void muxerAac(byte[] data, int pts);
 
     /**
      * destroy rtmp resources {@link #connect(String url)}
