@@ -163,7 +163,6 @@ public abstract class Encoder {
                         frame.dts = 0;
                         frame.isVideo = false;
                         muxerCache.offer(frame);
-                        System.out.println("frame = " + frame);
                     }
 
                     synchronized (mPublishLock) {
