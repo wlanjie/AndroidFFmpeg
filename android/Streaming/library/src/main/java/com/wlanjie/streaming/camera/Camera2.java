@@ -24,6 +24,7 @@ import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
@@ -31,13 +32,17 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 
@@ -61,8 +66,9 @@ class Camera2 extends CameraViewImpl {
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
             mCamera = camera;
-            mCallback.onCameraOpened(0, 1);
-            startCaptureSession();
+            Size size = chooseOptimalSize();
+            mCallback.onCameraOpened(size.getWidth(), size.getHeight());
+            startPreview();
         }
 
         @Override
@@ -117,29 +123,29 @@ class Camera2 extends CameraViewImpl {
         }
 
     };
-
-    PictureCaptureCallback mCaptureCallback = new PictureCaptureCallback() {
-
-        @Override
-        public void onPrecaptureRequired() {
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
-                    CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
-            setState(STATE_PRECAPTURE);
-            try {
-                mCaptureSession.capture(mPreviewRequestBuilder.build(), this, null);
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
-                        CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
-            } catch (CameraAccessException e) {
-                Log.e(TAG, "Failed to run precapture sequence.", e);
-            }
-        }
-
-        @Override
-        public void onReady() {
-
-        }
-
-    };
+//
+//    PictureCaptureCallback mCaptureCallback = new PictureCaptureCallback() {
+//
+//        @Override
+//        public void onPrecaptureRequired() {
+//            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+//                    CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+//            setState(STATE_PRECAPTURE);
+//            try {
+//                mCaptureSession.capture(mPreviewRequestBuilder.build(), this, null);
+//                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+//                        CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
+//            } catch (CameraAccessException e) {
+//                Log.e(TAG, "Failed to run precapture sequence.", e);
+//            }
+//        }
+//
+//        @Override
+//        public void onReady() {
+//
+//        }
+//
+//    };
 
     private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
             = new ImageReader.OnImageAvailableListener() {
@@ -184,7 +190,13 @@ class Camera2 extends CameraViewImpl {
 
     CameraCaptureSession mCaptureSession;
 
+    CameraCaptureSession mPreviewSession;
+
     CaptureRequest.Builder mPreviewRequestBuilder;
+
+    private Handler mBackgroundHandler;
+
+    private HandlerThread mBackgroundThread;
 
     private ImageReader mImageReader;
 
@@ -202,22 +214,28 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    Camera2(Callback callback, PreviewImpl preview, Context context) {
+    Camera2(CameraCallback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
         mPreview.setCallback(new PreviewImpl.Callback() {
                 @Override
                 public void onSurfaceChanged() {
-                    startCaptureSession();
+                    startPreview();
                 }
             });
     }
 
+    private void startBackgroundThread() {
+        mBackgroundThread = new HandlerThread("CameraBackground");
+        mBackgroundThread.start();
+        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
+    }
+
     @Override
     void start() {
+        startBackgroundThread();
         chooseCameraIdByFacing();
         collectCameraInfo();
-        prepareImageReader();
         startOpeningCamera();
     }
 
@@ -234,6 +252,16 @@ class Camera2 extends CameraViewImpl {
         if (mImageReader != null) {
             mImageReader.close();
             mImageReader = null;
+        }
+        if (mBackgroundHandler != null && mBackgroundThread != null) {
+            mBackgroundThread.quitSafely();
+            try {
+                mBackgroundThread.join();
+                mBackgroundThread = null;
+                mBackgroundHandler = null;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -275,7 +303,7 @@ class Camera2 extends CameraViewImpl {
         if (mCaptureSession != null) {
             mCaptureSession.close();
             mCaptureSession = null;
-            startCaptureSession();
+            startPreview();
         }
     }
 
@@ -435,23 +463,56 @@ class Camera2 extends CameraViewImpl {
      * <p>This rewrites {@link #mPreviewRequestBuilder}.</p>
      * <p>The result will be continuously processed in {@link #mSessionCallback}.</p>
      */
-    void startCaptureSession() {
-        if (!isCameraOpened() || !mPreview.isReady() || mImageReader == null) {
+    void startPreview() {
+        if (!isCameraOpened() || !mPreview.isReady()) {
             return;
         }
         Size previewSize = chooseOptimalSize();
+        mPreviewSurface.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+
         mPreview.setBufferSize(previewSize.getWidth(), previewSize.getHeight());
-        Surface surface = mPreview.getSurface();
         try {
             mPreviewRequestBuilder = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+
+            List<Surface> surfaces = new ArrayList<>();
+            Surface surface = new Surface(mPreviewSurface);
+            surfaces.add(surface);
             mPreviewRequestBuilder.addTarget(surface);
-            mPreviewRequestBuilder.addTarget(mImageReader.getSurface());
-            mCamera.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()),
-                    mSessionCallback, null);
+            mCamera.createCaptureSession(surfaces, new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(@NonNull CameraCaptureSession session) {
+                    mPreviewSession = session;
+                    updatePreview();
+                }
+
+                @Override
+                public void onConfigureFailed(CameraCaptureSession session) {
+
+                }
+            }, mBackgroundHandler);
         } catch (CameraAccessException e) {
             throw new RuntimeException("Failed to start camera session");
         }
     }
+
+    /**
+     * Update the camera preview. {@link #startPreview()} needs to be called an advance.
+     */
+    private void updatePreview() {
+        if (!isCameraOpened()) {
+            return;
+        }
+        try {
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+            mPreviewSession.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback, mBackgroundHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private final CameraCaptureSession.CaptureCallback mCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+
+    };
 
     /**
      * Chooses the optimal preview size based on {@link #mPreviewSizes} and the surface size.

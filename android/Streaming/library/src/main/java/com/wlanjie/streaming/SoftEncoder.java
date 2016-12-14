@@ -42,11 +42,11 @@ class SoftEncoder extends Encoder {
     void convertYuvToH264(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
         boolean isFront = mBuilder.cameraView.getFacing() == CameraView.FACING_FRONT;
-        NV21EncodeToH264(data,
+        rgbaEncodeToH264(data,
                 mBuilder.previewWidth,
                 mBuilder.previewHeight,
-                isFront,
-                mOrientation == Configuration.ORIENTATION_PORTRAIT ? isFront ? 270 : 90 : 0, pts);
+                true,
+                180, pts);
     }
 
     @Override
@@ -102,4 +102,6 @@ class SoftEncoder extends Encoder {
      * @return
      */
     protected native int NV21EncodeToH264(byte[] yuvFrame, int width, int height, boolean flip, int rotate, long pts);
+
+    protected native int rgbaEncodeToH264(byte[] yuvFrame, int width, int height, boolean flip, int rotate, long pts);
 }

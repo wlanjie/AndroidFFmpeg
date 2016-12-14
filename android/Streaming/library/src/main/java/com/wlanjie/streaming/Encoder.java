@@ -490,6 +490,8 @@ public abstract class Encoder {
      */
     protected native byte[] NV21ToNV12(byte[] yuvFrame, int width, int height, boolean flip, int rotate);
 
+    protected native byte[] rgbaToI420(byte[] rgbaFrame, int width, int height, boolean flip, int rotate);
+
     static {
         System.loadLibrary("wlanjie");
     }

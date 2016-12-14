@@ -34,6 +34,7 @@ typedef struct x264_context {
     int fps;
     int gop;
     char preset[16];
+    bool global_nal_header;
     // output
     int pts;
     int dts;
@@ -58,8 +59,7 @@ struct YuvFrame i420_rotated_frame;
 struct YuvFrame i420_scaled_frame;
 struct YuvFrame nv12_frame;
 
-unsigned char nv21_to_i420(signed char *nv21_frame, int src_width, int src_height,
-                         unsigned char need_flip, int rotate_degree) {
+static bool convert_to_i420(jbyte *src_frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, int format) {
     int y_size = src_width * src_height;
 
     if (rotate_degree % 180 == 0) {
@@ -84,17 +84,17 @@ unsigned char nv21_to_i420(signed char *nv21_frame, int src_width, int src_heigh
         }
     }
 
-    jint ret = ConvertToI420((uint8_t *) nv21_frame, y_size,
+    jint ret = ConvertToI420((uint8_t *) src_frame, y_size,
                              i420_rotated_frame.y, i420_rotated_frame.width,
                              i420_rotated_frame.u, i420_rotated_frame.width / 2,
                              i420_rotated_frame.v, i420_rotated_frame.width / 2,
                              0, 0,
                              src_width, src_height,
                              src_width, src_height,
-                             (RotationMode) rotate_degree, FOURCC_NV21);
+                             (RotationMode) rotate_degree, format);
     if (ret < 0) {
         LOGE("ConvertToI420 failure");
-        return JNI_FALSE;
+        return false;
     }
 
     ret = I420Scale(i420_rotated_frame.y, i420_rotated_frame.width,
@@ -108,10 +108,10 @@ unsigned char nv21_to_i420(signed char *nv21_frame, int src_width, int src_heigh
                     kFilterNone);
     if (ret < 0) {
         LOGE("I420Scale failure");
-        return JNI_FALSE;
+        return false;
     }
 
-    return JNI_TRUE;
+    return true;
 }
 
 void setEncoderBitrate(int bitrate) {
@@ -162,10 +162,21 @@ void setEncoderResolution(int out_width, int out_height) {
 jbyteArray encoderNV21ToI420(JNIEnv *env, signed char *nv21_frame, int src_width,
                                     int src_height, unsigned char need_flip, int rotate_degree) {
 
-    if (!nv21_to_i420(nv21_frame, src_width, src_height, need_flip, rotate_degree)) {
+    if (!(nv21_frame, src_width, src_height, need_flip, rotate_degree, FOURCC_NV21)) {
         return NULL;
     }
 
+    int y_size = i420_scaled_frame.width * i420_scaled_frame.height;
+    jbyteArray i420Frame = env->NewByteArray(y_size * 3 / 2);
+    env->SetByteArrayRegion(i420Frame, 0, y_size * 3 / 2, (jbyte *) i420_scaled_frame.data);
+
+    return i420Frame;
+}
+
+jbyteArray rgba_to_i420(JNIEnv *env, signed char *rgba_frame, int width, int height, unsigned char need_flip, int rotate_degree) {
+    if (!convert_to_i420(rgba_frame, width, height, need_flip, rotate_degree, FOURCC_RGBA)) {
+        return NULL;
+    }
     int y_size = i420_scaled_frame.width * i420_scaled_frame.height;
     jbyteArray i420Frame = env->NewByteArray(y_size * 3 / 2);
     env->SetByteArrayRegion(i420Frame, 0, y_size * 3 / 2, (jbyte *) i420_scaled_frame.data);
@@ -177,7 +188,7 @@ jbyteArray encoderNV21ToI420(JNIEnv *env, signed char *nv21_frame, int src_width
 jbyteArray NV21ToNV12(JNIEnv* env, signed char *nv21_frame, int src_width,
                                     int src_height, unsigned char need_flip, int rotate_degree) {
 
-    if (!nv21_to_i420(nv21_frame, src_width, src_height, need_flip, rotate_degree)) {
+    if (!convert_to_i420(nv21_frame, src_width, src_height, need_flip, rotate_degree, FOURCC_NV21)) {
         return NULL;
     }
 
@@ -204,11 +215,11 @@ int encode_nals(const x264_nal_t *nals, int nnal) {
     uint8_t *p = h264_es;
 
     /* Write the SEI as part of the first frame. */
-    if (x264_ctx.sei_size > 0 && nnal > 0) {
-        memcpy(p, x264_ctx.sei, x264_ctx.sei_size);
-        p += x264_ctx.sei_size;
-        x264_ctx.sei_size = 0;
-    }
+//    if (x264_ctx.sei_size > 0 && nnal > 0) {
+//        memcpy(p, x264_ctx.sei, x264_ctx.sei_size);
+//        p += x264_ctx.sei_size;
+//        x264_ctx.sei_size = 0;
+//    }
 
     for (i = 0; i < nnal; i++) {
         if (nals[i].i_type != NAL_SEI) {
@@ -249,15 +260,47 @@ int x264_encode(struct YuvFrame *i420_frame, long pts) {
     return encode_nals(nal, nnal);
 }
 
-int NV21EncodeToH264(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width,
-                                  jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
+int encode_global_nal_header() {
+    int nal;
+    x264_nal_t *nals;
+
+    x264_ctx.global_nal_header = false;
+    x264_encoder_headers(x264_ctx.encoder, &nals, &nal);
+    return encode_nals(nals, nal);
+}
+
+int NV21EncodeToH264(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
     jbyte* nv21_frame = env->GetByteArrayElements(frame, NULL);
 
-    if (!nv21_to_i420(nv21_frame, src_width, src_height, need_flip, rotate_degree)) {
+    if (!convert_to_i420(nv21_frame, src_width, src_height, need_flip, rotate_degree, FOURCC_NV21)) {
         return JNI_ERR;
     }
 
     int es_len = x264_encode(&i420_scaled_frame, pts);
+    if (es_len <= 0) {
+        LOGE("Fail to encode nalu");
+        return JNI_ERR;
+    }
+
+    jbyteArray outputFrame = env->NewByteArray(es_len);
+    env->SetByteArrayRegion(outputFrame, 0, es_len, (jbyte *) h264_es);
+
+    jclass clz = env->GetObjectClass(thiz);
+    jmethodID mid = env->GetMethodID(clz, "onH264EncodedData", "([BIZ)V");
+    env->CallVoidMethod(thiz, mid, outputFrame, x264_ctx.pts, x264_ctx.is_key_frame);
+
+    env->ReleaseByteArrayElements(frame, nv21_frame, JNI_ABORT);
+    return JNI_OK;
+}
+
+int rgbaEncodeToH264(JNIEnv* env, jobject thiz, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
+    jbyte* nv21_frame = env->GetByteArrayElements(frame, NULL);
+
+    if (!convert_to_i420(nv21_frame, src_width, src_height, need_flip, rotate_degree, FOURCC_RGBA)) {
+        return JNI_ERR;
+    }
+
+    int es_len = x264_ctx.global_nal_header ? encode_global_nal_header() : x264_encode(&i420_scaled_frame, pts);
     if (es_len <= 0) {
         LOGE("Fail to encode nalu");
         return JNI_ERR;
@@ -297,13 +340,15 @@ jboolean openH264Encoder() {
     x264_ctx.params.i_height = x264_ctx.height;
 
     // Default setting i_rc_method as X264_RC_CRF which is better than X264_RC_ABR
-    //x264_ctx.params.rc.i_bitrate = x264_ctx.bitrate;  // kbps
-    //x264_ctx.params.rc.i_rc_method = X264_RC_ABR;
+    x264_ctx.params.rc.i_bitrate = x264_ctx.bitrate;  // kbps
+    x264_ctx.params.rc.i_rc_method = X264_RC_ABR;
 
     // fps
     x264_ctx.params.i_fps_num = x264_ctx.fps;
     x264_ctx.params.i_fps_den = 1;
 
+    x264_ctx.params.b_repeat_headers = 0;
+    x264_ctx.global_nal_header = true;
     x264_ctx.params.b_sliced_threads = false;
 
     // gop

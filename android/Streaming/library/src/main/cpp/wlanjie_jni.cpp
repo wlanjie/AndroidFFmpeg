@@ -66,9 +66,12 @@ void Android_JNI_closeH264Encoder(JNIEnv* env, jobject object) {
     closeH264Encoder();
 }
 
-jint Android_JNI_NV21EncodeToH264(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
-                           jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
+jint Android_JNI_NV21EncodeToH264(JNIEnv* env, jobject object, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
     return NV21EncodeToH264(env, object, frame, src_width, src_height, need_flip, rotate_degree, pts);
+}
+
+jint Android_JNI_rgbaEncodeToH264(JNIEnv* env, jobject object, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
+    return rgbaEncodeToH264(env, object, frame, src_width, src_height, need_flip, rotate_degree, pts);
 }
 
 jboolean Android_JNI_openAacEncode(JNIEnv *env, jobject object, jint channels, jint sample_rate, jint bitrate) {
@@ -206,6 +209,7 @@ static JNINativeMethod soft_encoder_methods[] = {
         { "encoderPcmToAac",        "([B)I",                    (void *) Android_JNI_encoderPcmToAac },
         { "closeAacEncoder",        "()V",                      (void *) Android_JNI_closeAacEncoder },
         { "NV21EncodeToH264",       "([BIIZIJ)I",               (void *) Android_JNI_NV21EncodeToH264 },
+        { "rgbaEncodeToH264",       "([BIIZIJ)I",               (void *) Android_JNI_rgbaEncodeToH264 },
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {

@@ -80,6 +80,10 @@ public class CameraView extends FrameLayout {
 
     private final DisplayOrientationDetector mDisplayOrientationDetector;
 
+    private CameraRender mCameraRender;
+
+    final PreviewImpl preview;
+
     public CameraView(Context context) {
         this(context, null);
     }
@@ -92,22 +96,20 @@ public class CameraView extends FrameLayout {
     public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         // Internal setup
-        final PreviewImpl preview;
         if (Build.VERSION.SDK_INT < 14) {
             preview = new SurfaceViewPreview(context, this);
         } else {
             preview = new TextureViewPreview(context, this);
         }
         mCallbacks = new CallbackBridge();
-//        mImpl = new Camera1(mCallbacks, preview);
-        mImpl = new Camera1(mCallbacks, preview);
-//        if (Build.VERSION.SDK_INT < 21) {
-//            mImpl = new Camera1(mCallbacks, preview);
-//        } else if (Build.VERSION.SDK_INT < 23) {
-//            mImpl = new Camera2(mCallbacks, preview, context);
-//        } else {
-//            mImpl = new Camera2Api23(mCallbacks, preview, context);
-//        }
+        if (Build.VERSION.SDK_INT < 21) {
+            mImpl = new Camera1(mCallbacks, preview);
+        } else if (Build.VERSION.SDK_INT < 23) {
+            mImpl = new Camera2(mCallbacks, preview, context);
+        } else {
+            mImpl = new Camera2Api23(mCallbacks, preview, context);
+        }
+        mCameraRender = new CameraRender(mImpl, mCallbacks);
         // Attributes
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
                 R.style.Widget_CameraView);
@@ -237,6 +239,7 @@ public class CameraView extends FrameLayout {
      */
     public void stop() {
         mImpl.stop();
+        mCameraRender.deInitGL();
     }
 
     /**
@@ -375,7 +378,7 @@ public class CameraView extends FrameLayout {
         return mImpl.getFlash();
     }
 
-    private class CallbackBridge implements CameraViewImpl.Callback {
+    class CallbackBridge implements CameraCallback {
 
         private final ArrayList<Callback> mCallbacks = new ArrayList<>();
 
@@ -401,6 +404,9 @@ public class CameraView extends FrameLayout {
             for (Callback callback : mCallbacks) {
                 callback.onCameraOpened(CameraView.this, previewWidth, previewHeight);
             }
+            mCameraRender.initGL(preview.getSurfaceTexture());
+            mCameraRender.setupCameraTexture(previewWidth, previewHeight);
+            mCameraRender.start();
         }
 
         @Override
