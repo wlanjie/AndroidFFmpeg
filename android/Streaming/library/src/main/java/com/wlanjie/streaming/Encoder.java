@@ -12,6 +12,8 @@ import android.text.TextUtils;
 
 import com.wlanjie.streaming.camera.CameraView;
 
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -27,6 +29,8 @@ public abstract class Encoder {
     private final Object mPublishLock = new Object();
 
     int mOrientation = Configuration.ORIENTATION_PORTRAIT;
+
+    private ByteBuffer mFrameBuffer = ByteBuffer.allocate(1275 * 1701 * 4);
 
     /**
      * first frame time
@@ -137,6 +141,8 @@ public abstract class Encoder {
         if (mAudioRecord == null) {
             throw new IllegalStateException("start audio record failed.");
         }
+        mBuilder.previewWidth = mBuilder.cameraView.getSurfaceWidth();
+        mBuilder.previewHeight = mBuilder.cameraView.getSurfaceHeight();
         setEncoderResolution(mBuilder.width, mBuilder.height);
         openEncoder();
 
@@ -172,6 +178,21 @@ public abstract class Encoder {
             }
         });
         mPublishThread.start();
+
+        Thread mMuxerThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    Queue<IntBuffer> buffers = mBuilder.cameraView.getFrameBuffer();
+                    if (mFrameBuffer != null && !buffers.isEmpty()) {
+                        IntBuffer buffer = mBuilder.cameraView.getFrameBuffer().poll();
+                        mFrameBuffer.asIntBuffer().put(buffer.array());
+                        convertYuvToH264(mFrameBuffer.array());
+                    }
+                }
+            }
+        });
+        mMuxerThread.start();
     }
 
     /**
@@ -228,8 +249,7 @@ public abstract class Encoder {
         mBuilder.cameraView.addCallback(new CameraView.Callback() {
 
             public void onCameraOpened(CameraView cameraView, int previewWidth, int previewHeight) {
-                mBuilder.previewWidth = previewWidth;
-                mBuilder.previewHeight = previewHeight;
+
             }
 
             /**
@@ -247,7 +267,14 @@ public abstract class Encoder {
              * @param data       JPEG data.
              */
             public void onPreviewFrame(CameraView cameraView, byte[] data) {
-                convertYuvToH264(data);
+//                convertYuvToH264(data);
+            }
+
+            @Override
+            public void onPreviewSize(int width, int height) {
+                mBuilder.previewWidth = width;
+                mBuilder.previewHeight = height;
+                mFrameBuffer = ByteBuffer.allocate(width * height * 4);
             }
         });
     }

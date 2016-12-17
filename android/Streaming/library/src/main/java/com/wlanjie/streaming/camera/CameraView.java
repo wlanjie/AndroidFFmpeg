@@ -19,7 +19,11 @@ package com.wlanjie.streaming.camera;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.opengl.GLES20;
+import android.opengl.GLSurfaceView;
+import android.opengl.Matrix;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -29,16 +33,23 @@ import android.support.annotation.Nullable;
 import android.support.v4.os.ParcelableCompat;
 import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.util.AttributeSet;
+import android.view.View;
 import android.widget.FrameLayout;
 
 import com.wlanjie.streaming.R;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class CameraView extends FrameLayout {
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
+
+public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
 
     /** The camera device faces the opposite direction as the device's screen. */
     public static final int FACING_BACK = Constants.FACING_BACK;
@@ -80,9 +91,13 @@ public class CameraView extends FrameLayout {
 
     private final DisplayOrientationDetector mDisplayOrientationDetector;
 
-    private CameraRender mCameraRender;
+    private Queue<IntBuffer> mBufferCache = new ConcurrentLinkedQueue<>();
 
-    final PreviewImpl preview;
+    final GLSurfaceView mGLSurfaceView;
+
+    private int mSurfaceWidth;
+
+    private int mSurfaceHeight;
 
     public CameraView(Context context) {
         this(context, null);
@@ -96,20 +111,25 @@ public class CameraView extends FrameLayout {
     public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         // Internal setup
-        if (Build.VERSION.SDK_INT < 14) {
-            preview = new SurfaceViewPreview(context, this);
-        } else {
-            preview = new TextureViewPreview(context, this);
-        }
+
+        final View view = View.inflate(context, R.layout.texture_view, this);
+        mGLSurfaceView = (GLSurfaceView) view.findViewById(R.id.gl_surface_view);
+        mGLSurfaceView.setEGLContextClientVersion(2);
+        mGLSurfaceView.setRenderer(this);
+        mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+
+        mTextureId = OpenGLUtils.getExternalOESTextureID();
+        mSurfaceTexture = new SurfaceTexture(mTextureId);
+
         mCallbacks = new CallbackBridge();
         if (Build.VERSION.SDK_INT < 21) {
-            mImpl = new Camera1(mCallbacks, preview);
+            mImpl = new Camera1(mCallbacks);
         } else if (Build.VERSION.SDK_INT < 23) {
-            mImpl = new Camera2(mCallbacks, preview, context);
+            mImpl = new Camera2(mCallbacks, context);
         } else {
-            mImpl = new Camera2Api23(mCallbacks, preview, context);
+            mImpl = new Camera2Api23(mCallbacks, context);
         }
-        mCameraRender = new CameraRender(mImpl, mCallbacks);
+        mImpl.setPreviewSurface(mSurfaceTexture);
         // Attributes
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
                 R.style.Widget_CameraView);
@@ -131,6 +151,79 @@ public class CameraView extends FrameLayout {
                 mImpl.setDisplayOrientation(displayOrientation);
             }
         };
+    }
+
+    private EglCore mEglCore;
+
+    private int mTextureId;
+
+    private SurfaceTexture mSurfaceTexture;
+
+    private float[] mProjectionMatrix = new float[16];
+
+    private float[] mSurfaceMatrix = new float[16];
+
+    private float[] mTransformMatrix = new float[16];
+
+    @Override
+    public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+        GLES20.glDisable(GL10.GL_DITHER);
+        GLES20.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        mEglCore = new EglCore(getResources());
+        mEglCore.init();
+
+        mSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
+            @Override
+            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+                mGLSurfaceView.requestRender();
+            }
+        });
+    }
+
+    @Override
+    public void onSurfaceChanged(GL10 gl, int width, int height) {
+        mSurfaceWidth = width;
+        mSurfaceHeight = height;
+        mCallbacks.onPreview(width, height);
+
+        mEglCore.onInputSizeChanged(width, height);
+        GLES20.glViewport(0, 0, width, height);
+        mEglCore.onDisplaySizeChange(width, height);
+
+        float outputAspectRatio = width > height ? (float) width / height : (float) height / width;
+        float aspectRatio = outputAspectRatio / outputAspectRatio;
+        if (width > height) {
+            Matrix.orthoM(mProjectionMatrix, 0, -1.0f, 1.0f, -aspectRatio, aspectRatio, -1.0f, 1.0f);
+        } else {
+            Matrix.orthoM(mProjectionMatrix, 0, -aspectRatio, aspectRatio, -1.0f, 1.0f, -1.0f, 1.0f);
+        }
+    }
+
+    @Override
+    public void onDrawFrame(GL10 gl) {
+        GLES20.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+
+        mSurfaceTexture.updateTexImage();
+
+        mSurfaceTexture.getTransformMatrix(mSurfaceMatrix);
+        Matrix.multiplyMM(mTransformMatrix, 0, mSurfaceMatrix, 0, mProjectionMatrix, 0);
+        mEglCore.setTextureTransformMatrix(mTransformMatrix);
+        mEglCore.onDrawFrame(mTextureId);
+        mBufferCache.add(mEglCore.getRgbaBuffer());
+    }
+
+    public int getSurfaceWidth() {
+        return mSurfaceWidth;
+    }
+
+    public int getSurfaceHeight() {
+        return mSurfaceHeight;
+    }
+
+    public Queue<IntBuffer> getFrameBuffer() {
+        return mBufferCache;
     }
 
     @Override
@@ -189,12 +282,12 @@ public class CameraView extends FrameLayout {
         }
         assert ratio != null;
         if (height < width * ratio.getY() / ratio.getX()) {
-            mImpl.getView().measure(
+            mGLSurfaceView.measure(
                     MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(width * ratio.getY() / ratio.getX(),
                             MeasureSpec.EXACTLY));
         } else {
-            mImpl.getView().measure(
+            mGLSurfaceView.measure(
                     MeasureSpec.makeMeasureSpec(height * ratio.getX() / ratio.getY(),
                             MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
@@ -230,7 +323,9 @@ public class CameraView extends FrameLayout {
      * {@link Activity#onResume()}.
      */
     public void start() {
+        mImpl.setSize(getWidth(), getHeight());
         mImpl.start();
+        mImpl.startPreview(getWidth(), getHeight());
     }
 
     /**
@@ -239,7 +334,7 @@ public class CameraView extends FrameLayout {
      */
     public void stop() {
         mImpl.stop();
-        mCameraRender.deInitGL();
+        mEglCore.destroy();
     }
 
     /**
@@ -404,9 +499,6 @@ public class CameraView extends FrameLayout {
             for (Callback callback : mCallbacks) {
                 callback.onCameraOpened(CameraView.this, previewWidth, previewHeight);
             }
-            mCameraRender.initGL(preview.getSurfaceTexture());
-            mCameraRender.setupCameraTexture(previewWidth, previewHeight);
-            mCameraRender.start();
         }
 
         @Override
@@ -420,6 +512,13 @@ public class CameraView extends FrameLayout {
         public void onPreviewFrame(byte[] data) {
             for (Callback callback : mCallbacks) {
                 callback.onPreviewFrame(CameraView.this, data);
+            }
+        }
+
+        @Override
+        public void onPreview(int previewWidth, int previewHeight) {
+            for (Callback callback : mCallbacks) {
+                callback.onPreviewSize(previewWidth, previewHeight);
             }
         }
 
@@ -508,6 +607,9 @@ public class CameraView extends FrameLayout {
          * @param data       JPEG data.
          */
         public void onPreviewFrame(CameraView cameraView, byte[] data) {
+        }
+
+        public void onPreviewSize(int width, int height) {
         }
     }
 

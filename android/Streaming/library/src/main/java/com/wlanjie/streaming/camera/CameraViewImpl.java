@@ -25,21 +25,23 @@ abstract class CameraViewImpl {
 
     final CameraCallback mCallback;
 
-    final PreviewImpl mPreview;
-
     SurfaceTexture mPreviewSurface;
 
-    CameraViewImpl(CameraCallback callback, PreviewImpl preview) {
+    int mWidth;
+
+    int mHeight;
+
+    CameraViewImpl(CameraCallback callback) {
         mCallback = callback;
-        mPreview = preview;
     }
 
     void setPreviewSurface(SurfaceTexture previewSurface) {
         mPreviewSurface = previewSurface;
     }
 
-    View getView() {
-        return mPreview.getView();
+    void setSize(int width, int height) {
+        mWidth = width;
+        mHeight = height;
     }
 
     abstract void start();
@@ -51,6 +53,8 @@ abstract class CameraViewImpl {
     abstract void setFacing(int facing);
 
     abstract int getFacing();
+
+    abstract void startPreview(int width, int height);
 
     abstract Set<AspectRatio> getSupportedAspectRatios();
 

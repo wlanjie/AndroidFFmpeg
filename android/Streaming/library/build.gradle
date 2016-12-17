@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         minSdkVersion minVersion
-        targetSdkVersion 24
+        targetSdkVersion compileVersion
         versionCode 1
         versionName "1.0"
         externalNativeBuild {

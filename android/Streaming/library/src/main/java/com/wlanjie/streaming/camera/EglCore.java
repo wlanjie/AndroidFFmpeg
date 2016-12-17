@@ -1,21 +1,17 @@
 package com.wlanjie.streaming.camera;
 
-import android.graphics.Bitmap;
-import android.graphics.SurfaceTexture;
-import android.opengl.EGL14;
-import android.opengl.EGLConfig;
-import android.opengl.EGLContext;
-import android.opengl.EGLDisplay;
-import android.opengl.EGLSurface;
+import android.content.res.Resources;
+import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
-import android.view.Surface;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import com.wlanjie.streaming.R;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by wlanjie on 2016/12/12.
@@ -23,180 +19,312 @@ import java.nio.ByteOrder;
 
 final class EglCore {
 
-    private EGLSurface mWindowSurface;
-    private EGLDisplay mWindowDisplay = EGL14.EGL_NO_DISPLAY;
-    private EGLConfig mEglConfig = null;
-    private EGLContext mEglContext = null;
-    private int mGlVersion;
+    private static final int NO_INIT = -1;
+    private static final int NO_TEXTURE = -2;
 
-    EglCore(EGLContext sharedContext, int flags) {
-        if (mWindowDisplay != EGL14.EGL_NO_DISPLAY) {
-            throw new RuntimeException("EGL already set up.");
-        }
-        if (sharedContext == null) {
-            sharedContext = EGL14.EGL_NO_CONTEXT;
-        }
-        mWindowDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
-        if (mWindowDisplay == EGL14.EGL_NO_DISPLAY) {
-            throw new RuntimeException("unable to get EGL14 display");
-        }
-        int[] version = new int[2];
-        if (!EGL14.eglInitialize(mWindowDisplay, version, 0, version, 1)) {
-            mWindowDisplay = null;
-            throw new RuntimeException("unable to initialize EGL14");
-        }
-        EGLConfig config = getConfig();
-        if (config == null) {
-            throw new RuntimeException("unable to find a suitable EGLConfig");
-        }
+    private static final String VERTEX_SHADER = "" +
+            "attribute vec4 position;\n" +
+            "attribute vec4 inputTextureCoordinate;\n" +
+            "varying vec2 textureCoordinate;\n" +
+            "uniform mat4 textureTransform;\n" +
+            "void main() {\n" +
+            "   textureCoordinate = (textureTransform * inputTextureCoordinate).xy;\n" +
+            "   gl_Position = position;\n" +
+            "}";
 
-        int[] contextAttrib = {
-                EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
-                EGL14.EGL_NONE
-        };
-        EGLContext context = EGL14.eglCreateContext(mWindowDisplay, config, sharedContext, contextAttrib, 0);
-        checkError();
-        mEglConfig = config;
-        mEglContext = context;
-        mGlVersion = 2;
+    private static final String FRAGMENT_SHADER = "" +
+            "#extension GL_OES_EGL_image_external : require\n" +
+            "precision mediump float;\n" +
+            "varying mediump vec2 textureCoordinate;\n" +
+            "uniform samplerExternalOES inputImageTexture\n" +
+            "void main() {\n" +
+            "   gl_FragColor = texture2D(inputImageTexture, textureCoordinate);\n" +
+            "}";
+
+    private static final float TEXTURE_NO_ROTATION[] = {
+            0.0f, 1.0f,
+            1.0f, 1.0f,
+            0.0f, 0.0f,
+            1.0f, 0.0f
+    };
+
+    private static final float TEXTURE_ROTATED_90[] = {
+            1.0f, 1.0f,
+            1.0f, 0.0f,
+            0.0f, 1.0f,
+            0.0f, 0.0f
+    };
+
+    private static final float TEXTURE_ROTATED_180[] = {
+            1.0f, 0.0f,
+            0.0f, 0.0f,
+            1.0f, 1.0f,
+            0.0f, 1.0f
+    };
+
+    private static final float TEXTURE_ROTATED_270[] = {
+            0.0f, 0.0f,
+            0.0f, 1.0f,
+            1.0f, 0.0f,
+            1.0f, 1.0f
+    };
+
+    private static final float CUBE[] = {
+            -1.0f, -1.0f,
+            1.0f, -1.0f,
+            -1.0f, 1.0f,
+            1.0f, 1.0f
+    };
+
+    private int mInputWidth;
+    private int mInputHeight;
+
+    private final Queue<Runnable> mRunOnDraw;
+
+    private int mDisplayWidth;
+    private int mDisplayHeight;
+
+    private int[] mFboId;
+    private int[] mFboTextureId;
+    private IntBuffer mFboBuffer;
+
+    private int[] mCubeId;
+    private final FloatBuffer mCubeBuffer;
+    private int[] mTextureCoordinatedId;
+    private final FloatBuffer mTextureBuffer;
+
+    private int mProgramId;
+    private int mPosition;
+    private int mUniformTexture;
+    private int mTextureCoordinate;
+    private int mTextureTransform;
+    private float[] mTextureTransformMatrix;
+
+    // screen
+    private int mScreenProgramId;
+    private int mScreenPosition;
+    private int mScreenUniformTexture;
+    private int mScreenTextureCoordinate;
+    private boolean mIsInitialized;
+
+    private final Resources mResources;
+    EglCore(Resources resources) {
+        this.mResources = resources;
+        mRunOnDraw = new ConcurrentLinkedQueue<>();
+        mCubeBuffer = ByteBuffer.allocateDirect(CUBE.length * 4)
+                .order(ByteOrder.nativeOrder())
+                .asFloatBuffer();
+        mCubeBuffer.put(CUBE).position(0);
+
+        mTextureBuffer = ByteBuffer.allocateDirect(TEXTURE_NO_ROTATION.length * 4)
+                .order(ByteOrder.nativeOrder())
+                .asFloatBuffer();
+        mTextureBuffer.put(TEXTURE_NO_ROTATION).position(0);
     }
 
-    int getGlVersion() {
-        return mGlVersion;
+    void init() {
+        onInit();
+        onInitialized();
     }
 
-    private EGLConfig getConfig() {
-        int[] attrib = {
-                EGL14.EGL_RED_SIZE, 8,
-                EGL14.EGL_GREEN_SIZE, 8,
-                EGL14.EGL_BLUE_SIZE, 8,
-                EGL14.EGL_ALPHA_SIZE, 8,
-                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
-                EGL14.EGL_NONE, 0,
-                EGL14.EGL_NONE
-        };
-        EGLConfig[] configs = new EGLConfig[1];
-        int[] numConfigs = new int[1];
-        if (!EGL14.eglChooseConfig(mWindowDisplay, attrib, 0, configs, 0, configs.length, numConfigs, 0)) {
-            return null;
+    void onInputSizeChanged(int width, int height) {
+        this.mInputWidth = width;
+        this.mInputHeight = height;
+        initFboTexture(width, height);
+    }
+
+    void onDisplaySizeChange(int width, int height) {
+        mDisplayWidth = width;
+        mDisplayHeight = height;
+    }
+
+    private void onInit() {
+        initVbo();
+
+        mProgramId = OpenGLUtils.loadProgram(OpenGLUtils.readSharedFromRawResource(mResources, R.raw.vertex_oes), OpenGLUtils.readSharedFromRawResource(mResources, R.raw.fragment_oes));
+        mPosition = GLES20.glGetAttribLocation(mProgramId, "position");
+        mUniformTexture = GLES20.glGetUniformLocation(mProgramId, "inputImageTexture");
+        mTextureCoordinate = GLES20.glGetAttribLocation(mProgramId, "inputTextureCoordinate");
+        mTextureTransform = GLES20.glGetUniformLocation(mProgramId, "textureTransform");
+
+        mScreenProgramId = OpenGLUtils.loadProgram(OpenGLUtils.readSharedFromRawResource(mResources, R.raw.vertex_default), OpenGLUtils.readSharedFromRawResource(mResources, R.raw.fragment_default));
+        mScreenPosition = GLES20.glGetAttribLocation(mScreenProgramId, "position");
+        mScreenUniformTexture = GLES20.glGetUniformLocation(mScreenProgramId, "inputImageTexture");
+        mScreenTextureCoordinate = GLES20.glGetAttribLocation(mScreenProgramId, "inputTextureCoordinate");
+        mIsInitialized = true;
+    }
+
+    private void initVbo() {
+        mCubeId = new int[1];
+        mTextureCoordinatedId = new int[1];
+
+        GLES20.glGenBuffers(1, mCubeId, 0);
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mCubeId[0]);
+        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, mCubeBuffer.capacity() * 4, mCubeBuffer, GLES20.GL_STATIC_DRAW);
+
+        GLES20.glGenBuffers(1, mTextureCoordinatedId, 0);
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mTextureCoordinatedId[0]);
+        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, mTextureBuffer.capacity() * 4, mTextureBuffer, GLES20.GL_STATIC_DRAW);;
+    }
+
+    private void destoryVbo() {
+        if (mCubeId != null) {
+            GLES20.glDeleteBuffers(1, mCubeId, 0);
+            mCubeId = null;
         }
-        return configs[0];
-    }
-
-    void checkError() {
-        if (EGL14.eglGetError() != EGL14.EGL_SUCCESS) {
-            throw new RuntimeException("egl error.");
+        if (mTextureCoordinatedId != null) {
+            GLES20.glDeleteBuffers(1, mTextureCoordinatedId, 0);
+            mTextureCoordinatedId = null;
         }
     }
 
-    void createWindowSurface(Object surface) {
-        if (!(surface instanceof Surface) && !(surface instanceof SurfaceTexture)) {
-            throw new RuntimeException("invalid surface: " + surface);
+    private void onInitialized() {
+
+    }
+
+    private void initFboTexture(int width, int height) {
+        if (mFboId != null && width != mInputWidth && height != mInputHeight) {
+            destroyFboTexture();
         }
-        int[] surfaceAttribs = { EGL14.EGL_NONE };
-        mWindowSurface = EGL14.eglCreateWindowSurface(mWindowDisplay, mEglConfig, surface, surfaceAttribs, 0);
-        checkError();
+        mFboId = new int[1];
+        mFboTextureId = new int[1];
+        mFboBuffer = IntBuffer.allocate(width * height);
+
+        GLES20.glGenFramebuffers(1, mFboId, 0);
+        GLES20.glGenTextures(1, mFboTextureId, 0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mFboTextureId[0]);
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFboId[0]);
+        GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, mFboTextureId[0], 0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
     }
 
-    void makeCurrent() {
-        if (mWindowDisplay != EGL14.EGL_NO_DISPLAY) {
-            if (!EGL14.eglMakeCurrent(mWindowDisplay, mWindowSurface, mWindowSurface, mEglContext)) {
-                throw new RuntimeException("eglMakeCurrent failed.");
-            }
+    private void destroyFboTexture() {
+        if (mFboId != null) {
+            GLES20.glDeleteFramebuffers(1, mFboId, 0);
+        }
+        if (mFboTextureId != null) {
+            GLES20.glDeleteTextures(1, mFboTextureId, 0);
         }
     }
 
-    boolean swapBuffers() {
-        return EGL14.eglSwapBuffers(mWindowDisplay, mWindowSurface);
+    int onDrawFrame(int cameraTextureId) {
+        int fboTextureId = drawToFboTexture(cameraTextureId);
+        return drawToScreen(fboTextureId);
     }
 
-    void release() {
-        EGL14.eglDestroySurface(mWindowDisplay, mWindowSurface);
-        mWindowSurface = EGL14.EGL_NO_SURFACE;
-
-        if (mWindowDisplay != null) {
-            EGL14.eglMakeCurrent(mWindowDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT);
-            EGL14.eglDestroyContext(mWindowDisplay, mEglContext);
-            EGL14.eglReleaseThread();
-            EGL14.eglTerminate(mWindowDisplay);
+    private int drawToScreen(int textureId) {
+        if (!mIsInitialized) {
+            return NO_INIT;
         }
-        mWindowDisplay = EGL14.EGL_NO_DISPLAY;
-        mEglContext = EGL14.EGL_NO_CONTEXT;
-        mEglConfig = null;
-    }
-
-    /**
-     * Returns true if our context and the specified surface are current.
-     */
-    private boolean isCurrent(EGLSurface eglSurface) {
-        return mEglContext.equals(EGL14.eglGetCurrentContext()) &&
-                eglSurface.equals(EGL14.eglGetCurrentSurface(EGL14.EGL_DRAW));
-    }
-
-    /**
-     * Performs a simple surface query.
-     */
-    private int querySurface(EGLSurface eglSurface, int what) {
-        int[] value = new int[1];
-        EGL14.eglQuerySurface(mWindowDisplay, eglSurface, what, value, 0);
-        return value[0];
-    }
-
-    ByteBuffer getRgbaFrame(int width, int height) {
-        if (!isCurrent(mWindowSurface)) {
-            return null;
+        if (mFboId == null) {
+            return NO_TEXTURE;
         }
-        long start = System.currentTimeMillis();
-        ByteBuffer buffer = ByteBuffer.allocate(width * height * 4);
-        GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer);
-        checkError();
-        buffer.rewind();
-        System.out.println("time = " + (System.currentTimeMillis() - start) + " " + buffer.limit());
-        return buffer;
+
+        GLES20.glUseProgram(mScreenProgramId);
+
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mCubeId[0]);
+        GLES20.glEnableVertexAttribArray(mScreenPosition);
+        GLES20.glVertexAttribPointer(mScreenPosition, 2, GLES20.GL_FLOAT, false, 4 * 2, 0);
+
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mTextureCoordinatedId[0]);
+        GLES20.glEnableVertexAttribArray(mScreenTextureCoordinate);
+        GLES20.glVertexAttribPointer(mScreenTextureCoordinate, 2, GLES20.GL_FLOAT, false, 4 * 2, 0);
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+        GLES20.glUniform1i(mScreenUniformTexture, 0);
+
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+
+        GLES20.glDisableVertexAttribArray(mScreenPosition);
+        GLES20.glDisableVertexAttribArray(mScreenTextureCoordinate);
+
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+        return 0;
     }
 
-    /**
-     * Saves the EGL surface to a file.
-     * <p>
-     * Expects that this object's EGL surface is current.
-     */
-    void saveFrame() throws IOException {
-        if (!isCurrent(mWindowSurface)) {
-            throw new RuntimeException("Expected EGL context/surface is not current");
+    IntBuffer getRgbaBuffer() {
+        return mFboBuffer;
+    }
+
+    private int drawToFboTexture(int textureId) {
+        if (!mIsInitialized) {
+            return NO_INIT;
         }
-        long start = System.currentTimeMillis();
-
-        // glReadPixels fills in a "direct" ByteBuffer with what is essentially big-endian RGBA
-        // data (i.e. a byte of red, followed by a byte of green...).  While the Bitmap
-        // constructor that takes an int[] wants little-endian ARGB (blue/red swapped), the
-        // Bitmap "copy pixels" method wants the same format GL provides.
-        //
-        // Ideally we'd have some way to re-use the ByteBuffer, especially if we're calling
-        // here often.
-        //
-        // Making this even more interesting is the upside-down nature of GL, which means
-        // our output will look upside down relative to what appears on screen if the
-        // typical GL conventions are used.
-
-
-        int width = querySurface(mWindowSurface, EGL14.EGL_WIDTH);
-        int height = querySurface(mWindowSurface, EGL14.EGL_HEIGHT);
-        ByteBuffer buffer = ByteBuffer.allocateDirect(width * height * 4)
-                .order(ByteOrder.LITTLE_ENDIAN);
-        GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer);
-        checkError();
-        buffer.rewind();
-
-        System.out.println("time = " + (System.currentTimeMillis() - start));
-        BufferedOutputStream bos = null;
-        try {
-            bos = new BufferedOutputStream(new FileOutputStream("/sdcard/" + System.nanoTime() + ".png"));
-            Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-            bmp.copyPixelsFromBuffer(buffer);
-            bmp.compress(Bitmap.CompressFormat.PNG, 90, bos);
-            bmp.recycle();
-        } finally {
-            if (bos != null) bos.close();
+        if (mFboId == null) {
+            return NO_TEXTURE;
         }
+
+        GLES20.glUseProgram(mProgramId);
+        runPendingOnDrawTasks();
+
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mCubeId[0]);
+        GLES20.glEnableVertexAttribArray(mPosition);
+        GLES20.glVertexAttribPointer(mPosition, 2, GLES20.GL_FLOAT, false, 4 * 2, 0);
+
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mTextureCoordinatedId[0]);
+        GLES20.glEnableVertexAttribArray(mTextureCoordinate);
+        GLES20.glVertexAttribPointer(mTextureCoordinate, 2, GLES20.GL_FLOAT, false, 4 * 2, 0);
+
+        GLES20.glUniformMatrix4fv(mTextureTransform, 1, false, mTextureTransformMatrix, 0);
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textureId);
+        GLES20.glUniform1i(mUniformTexture, 0);
+
+        onDrawArrayPrepare();
+
+        GLES20.glViewport(0, 0, mInputWidth, mInputHeight);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFboId[0]);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+        GLES20.glReadPixels(0, 0, mInputWidth, mInputHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mFboBuffer);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+        GLES20.glViewport(0, 0, mDisplayWidth, mDisplayHeight);
+
+        onDrawArrayAfter();
+
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0);
+
+        GLES20.glDisableVertexAttribArray(mPosition);
+        GLES20.glDisableVertexAttribArray(mTextureCoordinate);
+
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+
+        return mFboTextureId[0];
+    }
+
+    void onDrawArrayPrepare() {}
+
+    void onDrawArrayAfter() {};
+
+    void setTextureTransformMatrix(float[] matrix) {
+        mTextureTransformMatrix = matrix;
+    }
+
+    private void runPendingOnDrawTasks() {
+        while (!mRunOnDraw.isEmpty()) {
+            mRunOnDraw.poll().run();
+        }
+    }
+
+    final void destroy() {
+        mIsInitialized = false;
+        destroyFboTexture();
+        destoryVbo();
+        GLES20.glDeleteProgram(mProgramId);
+        GLES20.glDeleteProgram(mScreenProgramId);
+        onDestroy();
+    }
+
+    void onDestroy() {
+
     }
 }

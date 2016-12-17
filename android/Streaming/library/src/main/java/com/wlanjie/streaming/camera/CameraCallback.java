@@ -10,4 +10,6 @@ interface CameraCallback {
     void onCameraClosed();
 
     void onPreviewFrame(byte[] data);
+
+    void onPreview(int previewWidth, int previewHeight);
 }

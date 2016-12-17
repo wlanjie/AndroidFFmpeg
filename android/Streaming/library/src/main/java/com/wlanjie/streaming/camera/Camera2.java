@@ -19,6 +19,7 @@ package com.wlanjie.streaming.camera;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.ImageFormat;
+import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -67,8 +68,8 @@ class Camera2 extends CameraViewImpl {
         public void onOpened(@NonNull CameraDevice camera) {
             mCamera = camera;
             Size size = chooseOptimalSize();
+            startPreview(size.getWidth(), size.getHeight());
             mCallback.onCameraOpened(size.getWidth(), size.getHeight());
-            startPreview();
         }
 
         @Override
@@ -214,15 +215,15 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    Camera2(CameraCallback callback, PreviewImpl preview, Context context) {
-        super(callback, preview);
+    Camera2(CameraCallback callback, Context context) {
+        super(callback);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
-        mPreview.setCallback(new PreviewImpl.Callback() {
-                @Override
-                public void onSurfaceChanged() {
-                    startPreview();
-                }
-            });
+//        mPreview.setCallback(new PreviewImpl.Callback() {
+//                @Override
+//                public void onSurfaceChanged() {
+//                    startPreview();
+//                }
+//            });
     }
 
     private void startBackgroundThread() {
@@ -303,7 +304,7 @@ class Camera2 extends CameraViewImpl {
         if (mCaptureSession != null) {
             mCaptureSession.close();
             mCaptureSession = null;
-            startPreview();
+//            startPreview();
         }
     }
 
@@ -364,7 +365,7 @@ class Camera2 extends CameraViewImpl {
     @Override
     void setDisplayOrientation(int displayOrientation) {
         mDisplayOrientation = displayOrientation;
-        mPreview.setDisplayOrientation(mDisplayOrientation);
+//        mPreview.setDisplayOrientation(mDisplayOrientation);
     }
 
     /**
@@ -421,7 +422,7 @@ class Camera2 extends CameraViewImpl {
             throw new IllegalStateException("Failed to get configuration map: " + mCameraId);
         }
         mPreviewSizes.clear();
-        for (android.util.Size size : map.getOutputSizes(mPreview.getOutputClass())) {
+        for (android.util.Size size : map.getOutputSizes(SurfaceTexture.class)) {
             mPreviewSizes.add(new Size(size.getWidth(), size.getHeight()));
         }
         mPictureSizes.clear();
@@ -463,14 +464,15 @@ class Camera2 extends CameraViewImpl {
      * <p>This rewrites {@link #mPreviewRequestBuilder}.</p>
      * <p>The result will be continuously processed in {@link #mSessionCallback}.</p>
      */
-    void startPreview() {
-        if (!isCameraOpened() || !mPreview.isReady()) {
+    @Override
+    void startPreview(int width, int height) {
+        if (!isCameraOpened()) {
             return;
         }
         Size previewSize = chooseOptimalSize();
         mPreviewSurface.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
 
-        mPreview.setBufferSize(previewSize.getWidth(), previewSize.getHeight());
+//        mPreview.setBufferSize(previewSize.getWidth(), previewSize.getHeight());
         try {
             mPreviewRequestBuilder = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
 
@@ -521,8 +523,8 @@ class Camera2 extends CameraViewImpl {
      */
     private Size chooseOptimalSize() {
         int surfaceLonger, surfaceShorter;
-        final int surfaceWidth = mPreview.getWidth();
-        final int surfaceHeight = mPreview.getHeight();
+        final int surfaceWidth = mWidth;
+        final int surfaceHeight = mHeight;
         if (surfaceWidth < surfaceHeight) {
             surfaceLonger = surfaceHeight;
             surfaceShorter = surfaceWidth;

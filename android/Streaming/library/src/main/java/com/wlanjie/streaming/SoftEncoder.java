@@ -12,7 +12,7 @@ import java.nio.ByteBuffer;
 
 class SoftEncoder extends Encoder {
 
-    public SoftEncoder(Builder builder) {
+    SoftEncoder(Builder builder) {
         super(builder);
     }
 
@@ -46,7 +46,7 @@ class SoftEncoder extends Encoder {
                 mBuilder.previewWidth,
                 mBuilder.previewHeight,
                 true,
-                180, pts);
+                0, pts);
     }
 
     @Override
