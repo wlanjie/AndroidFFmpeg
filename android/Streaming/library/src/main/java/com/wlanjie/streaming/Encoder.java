@@ -191,7 +191,7 @@ public abstract class Encoder {
                         if (mFrameBuffer != null && !buffers.isEmpty()) {
                             IntBuffer buffer = mBuilder.cameraView.getFrameBuffer().poll();
                             mFrameBuffer.asIntBuffer().put(buffer.array());
-                            convertYuvToH264(mFrameBuffer.array());
+//                            rgbaEncoderToH264(mFrameBuffer.array());
                         }
                     }
                 }
@@ -222,7 +222,7 @@ public abstract class Encoder {
      * convert yuv to h264
      * @param data yuv data
      */
-    abstract void convertYuvToH264(byte[] data);
+    abstract void rgbaEncoderToH264(byte[] data);
 
     /**
      * start audio record
@@ -272,7 +272,7 @@ public abstract class Encoder {
              * @param data       JPEG data.
              */
             public void onPreviewFrame(CameraView cameraView, byte[] data) {
-//                convertYuvToH264(data);
+//                rgbaEncoderToH264(data);
             }
 
             @Override

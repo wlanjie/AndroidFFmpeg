@@ -95,7 +95,7 @@ class HardEncoder extends Encoder {
     }
 
     @Override
-    void convertYuvToH264(byte[] data) {
+    void rgbaEncoderToH264(byte[] data) {
         boolean isFront = mBuilder.cameraView.getFacing() == CameraView.FACING_FRONT;
         byte[] processedData = videoColorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar ?
                 NV21ToNV12(data,

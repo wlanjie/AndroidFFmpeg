@@ -39,7 +39,7 @@ class SoftEncoder extends Encoder {
     }
 
     @Override
-    void convertYuvToH264(byte[] data) {
+    void rgbaEncoderToH264(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
         boolean isFront = mBuilder.cameraView.getFacing() == CameraView.FACING_FRONT;
         rgbaEncodeToH264(data,
