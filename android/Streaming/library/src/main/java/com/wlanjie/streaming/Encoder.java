@@ -26,11 +26,13 @@ public abstract class Encoder {
 
     private Thread mPublishThread;
 
+    private Thread mMuxerThread;
+
     private final Object mPublishLock = new Object();
 
     int mOrientation = Configuration.ORIENTATION_PORTRAIT;
 
-    private ByteBuffer mFrameBuffer = ByteBuffer.allocate(1275 * 1701 * 4);
+    private ByteBuffer mFrameBuffer;
 
     /**
      * first frame time
@@ -71,7 +73,7 @@ public abstract class Encoder {
         protected int audioBitRate = 32 * 1000; // 32 kbps
         protected int previewWidth;
         protected int previewHeight;
-        protected int videoBitRate = 500 * 1000; // 500 kbps
+        protected int videoBitRate = 1500 * 1000; // 500 kbps
         protected String x264Preset = "veryfast";
         protected String videoCodec = "video/avc";
         protected String audioCodec = "audio/mp4a-latm";
@@ -143,6 +145,7 @@ public abstract class Encoder {
         }
         mBuilder.previewWidth = mBuilder.cameraView.getSurfaceWidth();
         mBuilder.previewHeight = mBuilder.cameraView.getSurfaceHeight();
+        mFrameBuffer = ByteBuffer.allocate(mBuilder.previewWidth * mBuilder.previewHeight * 4);
         setEncoderResolution(mBuilder.width, mBuilder.height);
         openEncoder();
 
@@ -179,15 +182,17 @@ public abstract class Encoder {
         });
         mPublishThread.start();
 
-        Thread mMuxerThread = new Thread(new Runnable() {
+        mMuxerThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                while (true) {
+                while (!Thread.interrupted()) {
                     Queue<IntBuffer> buffers = mBuilder.cameraView.getFrameBuffer();
-                    if (mFrameBuffer != null && !buffers.isEmpty()) {
-                        IntBuffer buffer = mBuilder.cameraView.getFrameBuffer().poll();
-                        mFrameBuffer.asIntBuffer().put(buffer.array());
-                        convertYuvToH264(mFrameBuffer.array());
+                    while (!buffers.isEmpty()) {
+                        if (mFrameBuffer != null && !buffers.isEmpty()) {
+                            IntBuffer buffer = mBuilder.cameraView.getFrameBuffer().poll();
+                            mFrameBuffer.asIntBuffer().put(buffer.array());
+                            convertYuvToH264(mFrameBuffer.array());
+                        }
                     }
                 }
             }
@@ -319,6 +324,16 @@ public abstract class Encoder {
                 mPublishThread.interrupt();
             }
             mPublishThread = null;
+        }
+        if (mMuxerThread != null) {
+            mMuxerThread.interrupt();
+            try {
+                mMuxerThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                mMuxerThread.interrupt();
+            }
+            mMuxerThread = null;
         }
         cache.clear();
     }

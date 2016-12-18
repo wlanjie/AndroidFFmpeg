@@ -333,7 +333,7 @@ void closeH264Encoder() {
 
 jboolean openH264Encoder() {
     // Presetting
-    x264_param_default_preset(&x264_ctx.params, "veryfast", "zerolatency");
+    x264_param_default_preset(&x264_ctx.params, "superfast", "zerolatency");
 
     // Resolution
     x264_ctx.params.i_width = x264_ctx.width;
