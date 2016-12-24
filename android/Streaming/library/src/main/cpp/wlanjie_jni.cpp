@@ -11,6 +11,8 @@
 #include "srs_librtmp.hpp"
 #include "muxer.h"
 #include "log.h"
+#include "VideoEncode.h"
+#include "AudioEncode.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -21,25 +23,29 @@
 extern "C" {
 #endif
 
+VideoEncode videoEncode;
+AudioEncode audioEncode;
+srs_rtmp_t rtmp;
+
 void Android_JNI_setEncoderResolution(JNIEnv *env, jobject object, jint width, jint height) {
-    setEncoderResolution(width, height);
+    videoEncode.setEncodeResolution(width, height);
 }
 
 void Android_JNI_setEncoderFps(JNIEnv *env, jobject object, jint fps) {
-    setEncoderFps(fps);
+    videoEncode.setEncodeFps(fps);
 }
 
 void Android_JNI_setEncoderGop(JNIEnv *env, jobject object, jint gop_size) {
-    setEncoderGop(gop_size);
+    videoEncode.setEncodeGop(gop_size);
 }
 
 void Android_JNI_setEncoderBitrate(JNIEnv *env, jobject object, jint bitrate) {
-    setEncoderBitrate(bitrate);
+    videoEncode.setEncodeBitrate(bitrate);
 }
 
 void Android_JNI_setEncoderPreset(JNIEnv *env, jobject object, jstring preset) {
     const char *enc_preset = env->GetStringUTFChars(preset, NULL);
-    setEncoderPreset(enc_preset);
+    videoEncode.setEncodePreset(enc_preset);
     env->ReleaseStringUTFChars(preset, enc_preset);
 }
 
@@ -59,11 +65,11 @@ jbyteArray Android_JNI_NV21ToNV12(JNIEnv* env, jobject object, jbyteArray frame,
 }
 
 jboolean Android_JNI_openH264Encoder(JNIEnv* env, jobject object) {
-    return openH264Encoder();
+    return (jboolean) (videoEncode.open_h264_encode() >= 0 ? JNI_TRUE : JNI_FALSE);
 }
 
 void Android_JNI_closeH264Encoder(JNIEnv* env, jobject object) {
-    closeH264Encoder();
+    videoEncode.close_h264_encode();
 }
 
 jint Android_JNI_NV21EncodeToH264(JNIEnv* env, jobject object, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
@@ -71,26 +77,44 @@ jint Android_JNI_NV21EncodeToH264(JNIEnv* env, jobject object, jbyteArray frame,
 }
 
 jint Android_JNI_rgbaEncodeToH264(JNIEnv* env, jobject object, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
-    return rgbaEncodeToH264(env, object, frame, src_width, src_height, need_flip, rotate_degree, pts);
+    jbyte *rgba = env->GetByteArrayElements(frame, NULL);
+    int h264_size = videoEncode.rgba_encode_to_h264((char *) rgba, src_width, src_height, need_flip, rotate_degree, pts);
+
+    if (h264_size > 0) {
+        jbyteArray outputFrame = env->NewByteArray(h264_size);
+        env->SetByteArrayRegion(outputFrame, 0, h264_size, (jbyte *) videoEncode.get_h264());
+
+        jclass clz = env->GetObjectClass(object);
+        jmethodID mid = env->GetMethodID(clz, "onH264EncodedData", "([BIZ)V");
+        env->CallVoidMethod(object, mid, outputFrame, pts, false);
+    }
+    env->ReleaseByteArrayElements(frame, rgba, NULL);
+    return 0;
 }
 
 jboolean Android_JNI_openAacEncode(JNIEnv *env, jobject object, jint channels, jint sample_rate, jint bitrate) {
-    return open_aac_encoder(channels, sample_rate, bitrate);
+    return (jboolean) audioEncode.open_aac_encode(channels, sample_rate, bitrate);
 }
 
 jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm) {
     jbyte *pcm_frame = env->GetByteArrayElements(pcm, NULL);
     int pcm_length = env->GetArrayLength(pcm);
-    int ret = encoder_pcm_to_aac(env, object, pcm_frame, pcm_length);
+    int aac_size = audioEncode.encode_pcm_to_aac((char *) pcm_frame, pcm_length);
+    if (aac_size > 0) {
+        jbyteArray outputFrame = env->NewByteArray(aac_size);
+        env->SetByteArrayRegion(outputFrame, 0, aac_size, (const jbyte *) audioEncode.getAac());
+
+        jclass clz = env->GetObjectClass(object);
+        jmethodID mid = env->GetMethodID(clz, "onAacEncodeData", "([B)V");
+        env->CallVoidMethod(object, mid, outputFrame);
+    }
     env->ReleaseByteArrayElements(pcm, pcm_frame, NULL);
-    return ret;
+    return 0;
 }
 
 void Android_JNI_closeAacEncoder() {
-    close_aac_encoder();
+    audioEncode.close_aac_encode();
 }
-
-srs_rtmp_t rtmp;
 
 jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
     if (rtmp != NULL) {
@@ -112,11 +136,55 @@ jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
     return 0;
 }
 
+jint Android_JNI_write_video_test(JNIEnv* env, jobject object, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jint pts) {
+    jbyte *data = env->GetByteArrayElements(frame, NULL);
+    int h264_size = videoEncode.rgba_encode_to_h264((char *) data, src_width, src_height, need_flip, rotate_degree, pts);
+    int ret = -1;
+    if (h264_size > 0) {
+        ret = srs_h264_write_raw_frames(rtmp, (char *) videoEncode.get_h264(), h264_size, pts, pts);
+    }
+//    char *sps_pps = NULL;
+//    int sps_pps_size = 0;
+//    char *h264 = NULL;
+//    int h264_length = 0;
+//    if (h264_size > 0) {
+//        muxer_h264((char *) videoEncode.get_h264(), h264_size, pts, pts, &sps_pps, &sps_pps_size,
+//                   &h264, &h264_length);
+//        if (sps_pps != NULL && sps_pps_size > 0) {
+//            ret = srs_rtmp_write_packet(rtmp, SRS_RTMP_TYPE_VIDEO, pts, sps_pps, sps_pps_size);
+//        }
+//        if (h264 != NULL && h264_length > 0) {
+//            ret = srs_rtmp_write_packet(rtmp, SRS_RTMP_TYPE_VIDEO, pts, h264, h264_length);
+//        }
+//    }
+    LOGE("ret = %d", ret);
+    env->ReleaseByteArrayElements(frame, data, NULL);
+    return ret;
+}
+
+jint Android_JNI_write_audio_test(JNIEnv *env, jobject object, jbyteArray pcm, jint pts) {
+    jbyte *data = env->GetByteArrayElements(pcm, NULL);
+    jsize data_size = env->GetArrayLength(pcm);
+    int aac_size = audioEncode.encode_pcm_to_aac((char *) data, data_size);
+    int ret = -1;
+    if (aac_size > 0) {
+        ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, (char *) audioEncode.getAac(), aac_size, pts);
+    }
+//    char *aac = NULL;
+//    int aac_length = 0;
+//    int aac_packet_type = 0;
+//    int ret = muxer_aac(10, 3, 1, 1, (char *) audioEncode.getAac(), aac_size, pts, &aac, &aac_length, &aac_packet_type);
+//    if (ret >= 0) {
+//        ret = srs_rtmp_write_packet(rtmp, SRS_RTMP_TYPE_AUDIO, pts, aac, aac_length);
+//    }
+    env->ReleaseByteArrayElements(pcm, data, NULL);
+    return ret;
+}
+
 int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jlong timestamp, jbyteArray frame) {
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
 
-//    int ret = srs_h264_write_raw_frames(rtmp, data, data_size, timestamp, timestamp);
     int ret = srs_rtmp_write_packet(rtmp, SRS_RTMP_TYPE_VIDEO, timestamp, (char *) data, data_size);
     env->ReleaseByteArrayElements(frame, data, NULL);
     return ret;
@@ -125,7 +193,6 @@ int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jlong timestamp,
 jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jlong timestamp, jbyteArray frame, jint sampleRate, jint channel) {
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
-//    int ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, data, data_size, timestamp);
     int ret = srs_rtmp_write_packet(rtmp, SRS_RTMP_TYPE_AUDIO, timestamp, (char *) data, data_size);
     env->ReleaseByteArrayElements(frame, data, NULL);
     return ret;
@@ -196,6 +263,8 @@ static JNINativeMethod encoder_methods[] = {
         { "destroy",                "()V",                      (void *) Android_JNI_destroy },
         { "NV21ToI420",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToI420 },
         { "NV21ToNV12",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToNV12 },
+        { "writeVideoTest",       "([BIIZII)I",               (void *) Android_JNI_write_video_test },
+        { "writeAudioTest",       "([BI)I",               (void *) Android_JNI_write_audio_test },
 };
 
 static JNINativeMethod soft_encoder_methods[] = {

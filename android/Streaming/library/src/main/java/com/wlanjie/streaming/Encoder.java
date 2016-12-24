@@ -12,8 +12,6 @@ import android.text.TextUtils;
 
 import com.wlanjie.streaming.camera.CameraView;
 
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -26,13 +24,11 @@ public abstract class Encoder {
 
     private Thread mPublishThread;
 
-    private Thread mMuxerThread;
-
     private final Object mPublishLock = new Object();
 
     int mOrientation = Configuration.ORIENTATION_PORTRAIT;
 
-    private ByteBuffer mFrameBuffer;
+    private boolean isStop = false;
 
     /**
      * first frame time
@@ -145,7 +141,6 @@ public abstract class Encoder {
         }
         mBuilder.previewWidth = mBuilder.cameraView.getSurfaceWidth();
         mBuilder.previewHeight = mBuilder.cameraView.getSurfaceHeight();
-        mFrameBuffer = ByteBuffer.allocate(mBuilder.previewWidth * mBuilder.previewHeight * 4);
         setEncoderResolution(mBuilder.width, mBuilder.height);
         openEncoder();
 
@@ -160,7 +155,7 @@ public abstract class Encoder {
         mPublishThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                while (!Thread.interrupted()) {
+                while (!isStop) {
                     while (!cache.isEmpty()) {
                         Frame frame = cache.poll();
                         if (frame.isVideo) {
@@ -173,7 +168,7 @@ public abstract class Encoder {
                         frame.isVideo = false;
                         muxerCache.offer(frame);
                     }
-
+//
                     synchronized (mPublishLock) {
                         SystemClock.sleep(500);
                     }
@@ -181,23 +176,6 @@ public abstract class Encoder {
             }
         });
         mPublishThread.start();
-
-        mMuxerThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (!Thread.interrupted()) {
-                    Queue<IntBuffer> buffers = mBuilder.cameraView.getFrameBuffer();
-                    while (!buffers.isEmpty()) {
-                        if (mFrameBuffer != null && !buffers.isEmpty()) {
-                            IntBuffer buffer = mBuilder.cameraView.getFrameBuffer().poll();
-                            mFrameBuffer.asIntBuffer().put(buffer.array());
-//                            rgbaEncoderToH264(mFrameBuffer.array());
-                        }
-                    }
-                }
-            }
-        });
-        mMuxerThread.start();
     }
 
     /**
@@ -228,18 +206,21 @@ public abstract class Encoder {
      * start audio record
      */
     private void startAudioRecord() {
+        final byte pcmBuffer[] = new byte[4096];
         audioRecordThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
                 mAudioRecord.startRecording();
-                byte pcmBuffer[] = new byte[4096];
-                while (audioRecordLoop && !Thread.interrupted()) {
+                while (audioRecordLoop) {
                     int size = mAudioRecord.read(pcmBuffer, 0, pcmBuffer.length);
                     if (size <= 0) {
                         continue;
                     }
                     convertPcmToAac(pcmBuffer, size);
+//                    int pts = (int) (System.nanoTime() / 1000 - mPresentTimeUs);
+//                    writeAudioTest(pcmBuffer, pts);
+//                    SystemClock.sleep(40);
                 }
             }
         });
@@ -272,14 +253,18 @@ public abstract class Encoder {
              * @param data       JPEG data.
              */
             public void onPreviewFrame(CameraView cameraView, byte[] data) {
-//                rgbaEncoderToH264(data);
+                rgbaEncoderToH264(data);
+//                int pts = (int) (System.nanoTime() / 1000 - mPresentTimeUs);
+//                writeVideoTest(data, mBuilder.previewWidth, mBuilder.previewHeight, true, 0, pts);
+//                synchronized (Encoder.class) {
+//                    SystemClock.sleep(40);
+//                }
             }
 
             @Override
             public void onPreviewSize(int width, int height) {
                 mBuilder.previewWidth = width;
                 mBuilder.previewHeight = height;
-                mFrameBuffer = ByteBuffer.allocate(width * height * 4);
             }
         });
     }
@@ -289,16 +274,7 @@ public abstract class Encoder {
      */
     private void stopAudioRecord() {
         audioRecordLoop = false;
-        if (audioRecordThread != null) {
-            audioRecordThread.interrupt();
-            try {
-                audioRecordThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                audioRecordThread.interrupt();
-            }
-            audioRecordThread = null;
-        }
+        audioRecordThread = null;
         if (mAudioRecord != null) {
             mAudioRecord.setRecordPositionUpdateListener(null);
             mAudioRecord.stop();
@@ -315,26 +291,7 @@ public abstract class Encoder {
         stopAudioRecord();
         closeEncoder();
         destroy();
-        if (mPublishThread != null) {
-            mPublishThread.interrupt();
-            try {
-                mPublishThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                mPublishThread.interrupt();
-            }
-            mPublishThread = null;
-        }
-        if (mMuxerThread != null) {
-            mMuxerThread.interrupt();
-            try {
-                mMuxerThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                mMuxerThread.interrupt();
-            }
-            mMuxerThread = null;
-        }
+        isStop = true;
         cache.clear();
     }
 
@@ -533,6 +490,10 @@ public abstract class Encoder {
     protected native byte[] NV21ToNV12(byte[] yuvFrame, int width, int height, boolean flip, int rotate);
 
     protected native byte[] rgbaToI420(byte[] rgbaFrame, int width, int height, boolean flip, int rotate);
+
+    protected native int writeVideoTest(byte[] rgbaFrame, int width, int height, boolean flip, int rotate, int pts);
+
+    protected native int writeAudioTest(byte[] pcmFrame, int pts);
 
     static {
         System.loadLibrary("wlanjie");

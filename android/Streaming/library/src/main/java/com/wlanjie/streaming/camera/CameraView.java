@@ -25,6 +25,9 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Message;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.annotation.IntDef;
@@ -40,11 +43,11 @@ import com.wlanjie.streaming.R;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
-import java.util.Queue;
+import java.util.LinkedList;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -91,13 +94,29 @@ public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
 
     private final DisplayOrientationDetector mDisplayOrientationDetector;
 
-    private Queue<IntBuffer> mBufferCache = new ConcurrentLinkedQueue<>();
+    private LinkedList<ByteBuffer> mBufferCache = new LinkedList<>();
 
     final GLSurfaceView mGLSurfaceView;
 
     private int mSurfaceWidth;
 
     private int mSurfaceHeight;
+
+    private Handler mHandler;
+
+    private Callback mCallback;
+
+    private EglCore mEglCore;
+
+    private int mTextureId;
+
+    private SurfaceTexture mSurfaceTexture;
+
+    private float[] mProjectionMatrix = new float[16];
+
+    private float[] mSurfaceMatrix = new float[16];
+
+    private float[] mTransformMatrix = new float[16];
 
     public CameraView(Context context) {
         this(context, null);
@@ -153,22 +172,26 @@ public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
         };
     }
 
-    private EglCore mEglCore;
-
-    private int mTextureId;
-
-    private SurfaceTexture mSurfaceTexture;
-
-    private float[] mProjectionMatrix = new float[16];
-
-    private float[] mSurfaceMatrix = new float[16];
-
-    private float[] mTransformMatrix = new float[16];
-
+    private ByteBuffer mFrameBuffer;
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         GLES20.glDisable(GL10.GL_DITHER);
         GLES20.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        HandlerThread thread = new HandlerThread("glDraw");
+        thread.start();
+        mHandler = new Handler(thread.getLooper()) {
+
+            @Override
+            public void handleMessage(Message msg) {
+                super.handleMessage(msg);
+                IntBuffer buffer = mEglCore.getRgbaBuffer();
+                mFrameBuffer.asIntBuffer().put(buffer.array());
+                if (mCallback != null) {
+                    mCallback.onPreviewFrame(CameraView.this, mFrameBuffer.array());
+                }
+            }
+        };
 
         mEglCore = new EglCore(getResources());
         mEglCore.init();
@@ -185,6 +208,7 @@ public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         mSurfaceWidth = width;
         mSurfaceHeight = height;
+        mFrameBuffer = ByteBuffer.allocate(width * height * 4);
         mCallbacks.onPreview(width, height);
 
         mEglCore.onInputSizeChanged(width, height);
@@ -211,7 +235,7 @@ public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
         Matrix.multiplyMM(mTransformMatrix, 0, mSurfaceMatrix, 0, mProjectionMatrix, 0);
         mEglCore.setTextureTransformMatrix(mTransformMatrix);
         mEglCore.onDrawFrame(mTextureId);
-        mBufferCache.add(mEglCore.getRgbaBuffer());
+        mHandler.sendEmptyMessage(0);
     }
 
     public int getSurfaceWidth() {
@@ -220,10 +244,6 @@ public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
 
     public int getSurfaceHeight() {
         return mSurfaceHeight;
-    }
-
-    public Queue<IntBuffer> getFrameBuffer() {
-        return mBufferCache;
     }
 
     @Override
@@ -351,6 +371,7 @@ public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
      * @see #removeCallback(Callback)
      */
     public void addCallback(@NonNull Callback callback) {
+        mCallback = callback;
         mCallbacks.add(callback);
     }
 

@@ -1,11 +1,5 @@
 package com.wlanjie.streaming;
 
-import android.content.res.Configuration;
-
-import com.wlanjie.streaming.camera.CameraView;
-
-import java.nio.ByteBuffer;
-
 /**
  * Created by wlanjie on 2016/11/29.
  */
@@ -41,7 +35,6 @@ class SoftEncoder extends Encoder {
     @Override
     void rgbaEncoderToH264(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-        boolean isFront = mBuilder.cameraView.getFacing() == CameraView.FACING_FRONT;
         rgbaEncodeToH264(data,
                 mBuilder.previewWidth,
                 mBuilder.previewHeight,
@@ -71,9 +64,6 @@ class SoftEncoder extends Encoder {
     private void onAacEncodeData(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
 
-//        byte[] aac = new byte[data.length + 7];
-//        addADTStoPacket(aac, aac.length);
-//        System.arraycopy(data, 0, aac, 7, data.length);
         muxerAac(data, (int) pts);
     }
 

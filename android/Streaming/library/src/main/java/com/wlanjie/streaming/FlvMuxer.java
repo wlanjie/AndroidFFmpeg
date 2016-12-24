@@ -62,11 +62,11 @@ class FlvMuxer {
             return;
         }
 
-        if (frame.isVideo()) {
-            encoder.writeVideo(frame.dts, frame.flvTag.array());
-        } else if (frame.isAudio()) {
-            encoder.writeAudio(frame.dts, frame.flvTag.array(), 44100, 2);
-        }
+//        if (frame.isVideo()) {
+//            encoder.writeVideo(frame.dts, frame.flvTag.array());
+//        } else if (frame.isAudio()) {
+//            encoder.writeAudio(frame.dts, frame.flvTag.array(), 44100, 2);
+//        }
     }
 
     /**
