@@ -22,8 +22,6 @@ public abstract class Encoder {
 
     private Queue<Frame> muxerCache = new ConcurrentLinkedQueue<>();
 
-    private Thread mPublishThread;
-
     private final Object mPublishLock = new Object();
 
     int mOrientation = Configuration.ORIENTATION_PORTRAIT;
@@ -69,7 +67,7 @@ public abstract class Encoder {
         protected int audioBitRate = 32 * 1000; // 32 kbps
         protected int previewWidth;
         protected int previewHeight;
-        protected int videoBitRate = 1500 * 1000; // 500 kbps
+        protected int videoBitRate = 500 * 1000; // 500 kbps
         protected String x264Preset = "veryfast";
         protected String videoCodec = "video/avc";
         protected String audioCodec = "audio/mp4a-latm";
@@ -146,37 +144,43 @@ public abstract class Encoder {
 
         startPreview();
         startAudioRecord();
+        mBuilder.cameraView.setFacing(CameraView.FACING_FRONT);
         mBuilder.cameraView.start();
 
-        startPublish();
-    }
-
-    private void startPublish() {
-        mPublishThread = new Thread(new Runnable() {
+        new Thread(new Runnable() {
             @Override
             public void run() {
-                while (!isStop) {
-                    while (!cache.isEmpty()) {
-                        Frame frame = cache.poll();
-                        if (frame.isVideo) {
-                            writeVideo(frame.dts, frame.data);
-                        } else {
-                            writeAudio(frame.dts, frame.data, mBuilder.audioSampleRate, mAudioRecord.getChannelCount());
-                        }
-                        frame.data = null;
-                        frame.dts = 0;
-                        frame.isVideo = false;
-                        muxerCache.offer(frame);
-                    }
-//
-                    synchronized (mPublishLock) {
-                        SystemClock.sleep(500);
-                    }
-                }
+                startPublish();
             }
-        });
-        mPublishThread.start();
+        }).start();
     }
+
+//    private void startPublish() {
+//        Thread mPublishThread = new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                while (!isStop) {
+//                    while (!cache.isEmpty()) {
+//                        Frame frame = cache.poll();
+//                        if (frame.isVideo) {
+//                            writeVideo(frame.dts, frame.data);
+//                        } else {
+//                            writeAudio(frame.dts, frame.data, mBuilder.audioSampleRate, mAudioRecord.getChannelCount());
+//                        }
+//                        frame.data = null;
+//                        frame.dts = 0;
+//                        frame.isVideo = false;
+//                        muxerCache.offer(frame);
+//                    }
+////
+//                    synchronized (mPublishLock) {
+//                        SystemClock.sleep(500);
+//                    }
+//                }
+//            }
+//        });
+//        mPublishThread.start();
+//    }
 
     /**
      * open h264 aac encoder
@@ -295,24 +299,6 @@ public abstract class Encoder {
         cache.clear();
     }
 
-    public void setPortraitResolution(int width, int height) {
-//        mBuilder.outWidth = width;
-//        mBuilder.outHeight = height;
-//        mBuilder.portraitWidth = width;
-//        mBuilder.portraitHeight = height;
-//        mBuilder.landscapeWidth = height;
-//        mBuilder.landscapeHeight = width;
-    }
-
-    public void setLandscapeResolution(int width, int height) {
-//        mBuilder.outWidth = width;
-//        mBuilder.outHeight = height;
-//        mBuilder.landscapeWidth = width;
-//        mBuilder.landscapeHeight = height;
-//        mBuilder.portraitWidth = height;
-//        mBuilder.portraitHeight = width;
-    }
-
     public void setVideoHDMode() {
         mBuilder.videoBitRate = 1200 * 1000;  // 1200 kbps
         mBuilder.x264Preset = "veryfast";
@@ -322,20 +308,6 @@ public abstract class Encoder {
         mBuilder.videoBitRate = 500 * 1000;  // 500 kbps
         mBuilder.x264Preset = "superfast";
     }
-
-    public void setScreenOrientation(int orientation) {
-        mOrientation = orientation;
-//        if (mOrientation == Configuration.ORIENTATION_PORTRAIT) {
-//            mBuilder.outWidth = mParameters.portraitWidth;
-//            mBuilder.outHeight = mParameters.portraitHeight;
-//        } else if (mOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-//            mBuilder.outWidth = mParameters.landscapeWidth;
-//            mBuilder.outHeight = mParameters.landscapeHeight;
-//        }
-
-        setEncoderResolution(mBuilder.width, mBuilder.height);
-    }
-
 
     /**
      *  Add ADTS header at the beginning of each and every AAC packet.
@@ -415,6 +387,8 @@ public abstract class Encoder {
         frame.dts = pts;
         cache.offer(frame);
     }
+
+    private native void startPublish();
 
     /**
      * set output width and height

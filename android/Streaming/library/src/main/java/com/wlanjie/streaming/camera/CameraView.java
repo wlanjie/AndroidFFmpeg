@@ -20,7 +20,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.SurfaceTexture;
-import android.hardware.Camera;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
@@ -160,7 +159,6 @@ public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
         } else {
             setAspectRatio(Constants.DEFAULT_ASPECT_RATIO);
         }
-        setAutoFocus(a.getBoolean(R.styleable.CameraView_autoFocus, true));
         setFlash(a.getInt(R.styleable.CameraView_flash, Constants.FLASH_AUTO));
         a.recycle();
         // Display orientation detector
@@ -334,7 +332,7 @@ public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
         super.onRestoreInstanceState(ss.getSuperState());
         setFacing(ss.facing);
         setAspectRatio(ss.ratio);
-        setAutoFocus(ss.autoFocus);
+//        setAutoFocus(ss.autoFocus);
         setFlash(ss.flash);
     }
 
@@ -460,9 +458,9 @@ public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
      * @param autoFocus {@code true} to enable continuous auto-focus mode. {@code false} to
      *                  disable it.
      */
-    public void setAutoFocus(boolean autoFocus) {
-        mImpl.setAutoFocus(autoFocus);
-    }
+//    public void setAutoFocus(boolean autoFocus) {
+//        mImpl.setAutoFocus(autoFocus);
+//    }
 
     /**
      * Returns whether the continuous auto-focus mode is enabled.

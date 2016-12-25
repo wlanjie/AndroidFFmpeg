@@ -46,7 +46,7 @@ class Camera1 extends CameraViewImpl {
 
     private int mCameraId;
 
-    Camera mCamera;
+    private Camera mCamera;
 
     private Camera.Parameters mCameraParameters;
 
@@ -68,18 +68,12 @@ class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    private int mPreviewWidth;
-
-    private int mPreviewHeight;
-
     Camera1(CameraCallback callback) {
         super(callback);
     }
 
     @Override
     void startPreview(int width, int height) {
-        mPreviewWidth = width;
-        mPreviewHeight = height;
         setUpPreview();
         adjustCameraParameters();
     }
@@ -102,8 +96,8 @@ class Camera1 extends CameraViewImpl {
         releaseCamera();
     }
 
-    @SuppressLint("NewApi") // Suppresses Camera#setPreviewTexture
-    void setUpPreview() {
+    @SuppressLint("NewApi")
+    private void setUpPreview() {
         try {
             mCamera.setPreviewTexture(mPreviewSurface);
         } catch (IOException e) {

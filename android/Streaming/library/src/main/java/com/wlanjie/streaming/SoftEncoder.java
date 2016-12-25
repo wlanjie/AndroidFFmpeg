@@ -44,7 +44,8 @@ class SoftEncoder extends Encoder {
 
     @Override
     void convertPcmToAac(byte[] aacFrame, int size) {
-        encoderPcmToAac(aacFrame);
+        long pts = System.nanoTime() / 1000 - mPresentTimeUs;
+        encoderPcmToAac(aacFrame, (int) pts);
     }
 
     /**
@@ -78,7 +79,7 @@ class SoftEncoder extends Encoder {
     private native boolean openH264Encoder();
     private native void closeH264Encoder();
     private native boolean openAacEncoder(int channels, int sampleRate, int bitrate);
-    private native int encoderPcmToAac(byte[] pcm);
+    private native int encoderPcmToAac(byte[] pcm, int pts);
     private native void closeAacEncoder();
 
     /**

@@ -28,22 +28,32 @@ int VideoEncode::open_h264_encode() {
     // Presetting
     x264_param_default_preset(&param, "superfast", "zerolatency");
 
-    param.cpu = 1;
-
     // Resolution
     param.i_width = width;
     param.i_height = height;
 
     // Default setting i_rc_method as X264_RC_CRF which is better than X264_RC_ABR
     param.rc.i_bitrate = bitrate;  // kbps
-    param.rc.i_rc_method = X264_RC_ABR;
+    param.rc.i_rc_method = X264_RC_ABR; //参数i_rc_method表示码率控制，CQP(恒定质量)，CRF(恒定码率)，ABR(平均码率)
 
+//    以下是2秒刷新一个I帧
     // fps
     param.i_fps_num = fps;
     param.i_fps_den = 1;
+    param.i_keyint_max = fps * 2;
+
+    // 允许部分B帧为参考帧
+//    param.i_bframe_pyramid = 0;
+
+    param.rc.b_mb_tree = 0;//这个不为0,将导致编码延时帧...在实时编码时,必须为0
+
+//    该参数设置是让每个I帧都附带sps/pps。
+//    param.b_repeat_headers = 1;  // 重复SPS/PPS 放到关键帧前面
 
     param.b_repeat_headers = 0;
     global_nal_header = true;
+    // 如果为false，则一个slice只编码成一个NALU;
+    // 否则有几个线程，在编码成几个NALU。缺省为true。
     param.b_sliced_threads = false;
 
     // gop

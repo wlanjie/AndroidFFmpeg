@@ -290,5 +290,5 @@ int muxer_aac(char sound_format, char sound_rate, char sound_size, char sound_ty
         }
 
     }
-    return NULL;
+    return ret;
 }
