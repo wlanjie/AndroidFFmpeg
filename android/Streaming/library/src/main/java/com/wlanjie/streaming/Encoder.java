@@ -144,34 +144,12 @@ public abstract class Encoder {
         mBuilder.cameraView.setFacing(CameraView.FACING_FRONT);
         mBuilder.cameraView.start();
 
-        startPublish();
-    }
-
-    private void startPublish() {
-        Thread mPublishThread = new Thread(new Runnable() {
+        new Thread(new Runnable() {
             @Override
             public void run() {
-                while (!isStop) {
-                    while (!cache.isEmpty()) {
-                        Frame frame = cache.poll();
-                        if (frame.isVideo) {
-                            writeVideo(frame.dts, frame.data);
-                        } else {
-                            writeAudio(frame.dts, frame.data, mBuilder.audioSampleRate, mAudioRecord.getChannelCount());
-                        }
-                        frame.data = null;
-                        frame.dts = 0;
-                        frame.isVideo = false;
-                        muxerCache.offer(frame);
-                        System.out.println("cache.size = " + cache.size());
-                    }
-                    synchronized (mPublishLock) {
-                        SystemClock.sleep(500);
-                    }
-                }
+                startPublish();
             }
-        });
-        mPublishThread.start();
+        }).start();
     }
 
     /**
@@ -279,8 +257,6 @@ public abstract class Encoder {
         stopAudioRecord();
         closeEncoder();
         destroy();
-        isStop = true;
-        cache.clear();
     }
 
     public void setVideoHDMode() {
@@ -345,43 +321,7 @@ public abstract class Encoder {
         cache.offer(frame);
     }
 
-    /**
-     * this method call by jni
-     * muxer flv h264 success
-     * @param h264 flv h264 data
-     * @param pts pts
-     */
-    private void muxerH264Success(byte[] h264, int pts) {
-        Frame frame;
-        if (!muxerCache.isEmpty()) {
-            frame = muxerCache.poll();
-        } else {
-            frame = new Frame();
-        }
-        frame.isVideo = true;
-        frame.data = h264;
-        frame.dts = pts;
-        cache.offer(frame);
-    }
-
-    /**
-     * this method call by jni
-     * muxer flv aac data success
-     * @param aac flv aac data
-     * @param pts pts
-     */
-    private void muxerAacSuccess(byte[] aac, int pts) {
-        Frame frame;
-        if (!muxerCache.isEmpty()) {
-            frame = muxerCache.poll();
-        } else {
-            frame = new Frame();
-        }
-        frame.isVideo = false;
-        frame.data = aac;
-        frame.dts = pts;
-        cache.offer(frame);
-    }
+    private native void startPublish();
 
     /**
      * set output width and height
@@ -457,10 +397,6 @@ public abstract class Encoder {
     protected native byte[] NV21ToNV12(byte[] yuvFrame, int width, int height, boolean flip, int rotate);
 
     protected native byte[] rgbaToI420(byte[] rgbaFrame, int width, int height, boolean flip, int rotate);
-
-    protected native int writeVideoTest(byte[] rgbaFrame, int width, int height, boolean flip, int rotate, int pts);
-
-    protected native int writeAudioTest(byte[] pcmFrame, int pts);
 
     static {
         System.loadLibrary("wlanjie");

@@ -44,57 +44,54 @@ bool is_stop = false;
 
 void Android_JNI_startPublish(JNIEnv *env, jobject object) {
     while (!is_stop) {
-        if (q.empty()) {
-            continue;
+        while (!q.empty()) {
+            Frame frame = q.front();
+            q.pop();
+            srs_rtmp_write_packet(rtmp,
+                                  (char) (frame.packet_type == AUDIO_TYPE ? SRS_RTMP_TYPE_AUDIO : SRS_RTMP_TYPE_VIDEO),
+                                  (u_int32_t) frame.pts, frame.data, frame.size);
         }
-        Frame frame = q.front();
-        q.pop();
-        int ret = srs_rtmp_write_packet(rtmp,
-                             frame.packet_type == AUDIO_TYPE ? SRS_RTMP_TYPE_AUDIO : SRS_RTMP_TYPE_VIDEO,
-                             frame.pts, frame.data, frame.size);
         usleep(1000 * 500);
-        LOGE("ret = %d size = %d", ret, q.size());
     }
 }
 
-void muxer_aac_success(JNIEnv *env, jobject object, char *data, int size, int pts) {
+void muxer_aac_success(char *data, int size, int pts) {
     char *aac = NULL;
     int aac_length = 0;
     int aac_packet_type = 0;
     muxer_aac(10, 3, 1, 1, data, size, pts, &aac, &aac_length, &aac_packet_type);
 
     if (aac_length > 0) {
-        jbyteArray output = env->NewByteArray(aac_length);
-        env->SetByteArrayRegion(output, 0, aac_length, (const jbyte *) aac);
-
-        jclass clazz = env->FindClass(CLASS_NAME);
-        jmethodID mid = env->GetMethodID(clazz, "muxerSuccess", "([BII)V");
-        env->CallVoidMethod(object, mid, output, pts, AUDIO_TYPE);
+        Frame frame;
+        frame.data = aac;
+        frame.size = aac_length;
+        frame.pts = pts;
+        frame.packet_type = AUDIO_TYPE;
+        q.push(frame);
     }
 }
 
-void muxer_h264_success(JNIEnv *env, jobject object, char *data, int size, int pts) {
+void muxer_h264_success(char *data, int size, int pts) {
     char* sps_pps = NULL;
     int sps_pps_size = 0;
     char* h264 = NULL;
     int h264_size = 0;
     muxer_h264(data, size, pts, pts, &sps_pps, &sps_pps_size, &h264, &h264_size);
-
     if (sps_pps != NULL && sps_pps_size > 0) {
-        jbyteArray output = env->NewByteArray(sps_pps_size);
-        env->SetByteArrayRegion(output, 0, sps_pps_size, (const jbyte *) sps_pps);
-
-        jclass clazz = env->FindClass(CLASS_NAME);
-        jmethodID mid = env->GetMethodID(clazz, "muxerSuccess", "([BII)V");
-        env->CallVoidMethod(object, mid, output, pts, VIDEO_TYPE);
+        Frame frame;
+        frame.data = sps_pps;
+        frame.size = sps_pps_size;
+        frame.pts = pts;
+        frame.packet_type = VIDEO_TYPE;
+        q.push(frame);
     }
     if (h264 != NULL && h264_size > 0) {
-        jbyteArray output = env->NewByteArray(h264_size);
-        env->SetByteArrayRegion(output, 0, h264_size, (const jbyte *) h264);
-
-        jclass clazz = env->FindClass(CLASS_NAME);
-        jmethodID mid = env->GetMethodID(clazz, "muxerSuccess", "([BII)V");
-        env->CallVoidMethod(object, mid, output, pts, VIDEO_TYPE);
+        Frame frame;
+        frame.data = h264;
+        frame.size = h264_size;
+        frame.pts = pts;
+        frame.packet_type = VIDEO_TYPE;
+        q.push(frame);
     }
 }
 
@@ -165,7 +162,7 @@ jint Android_JNI_rgbaEncodeToH264(JNIEnv* env, jobject object, jbyteArray rgba_f
     int h264_size = videoEncode.rgba_encode_to_h264((char *) rgba, src_width, src_height, need_flip, rotate_degree, pts);
     env->ReleaseByteArrayElements(rgba_frame, rgba, NULL);
     if (h264_size > 0) {
-        muxer_h264_success(env, object, (char *) videoEncode.get_h264(), h264_size, pts);
+        muxer_h264_success((char *) videoEncode.get_h264(), h264_size, pts);
     }
     return 0;
 }
@@ -180,7 +177,7 @@ jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm, in
     int aac_size = audioEncode.encode_pcm_to_aac((char *) pcm_frame, pcm_length);
     env->ReleaseByteArrayElements(pcm, pcm_frame, NULL);
     if (aac_size > 0) {
-        muxer_aac_success(env, object, (char *) audioEncode.getAac(), aac_size, pts);
+        muxer_aac_success((char *) audioEncode.getAac(), aac_size, pts);
     }
     return 0;
 }
@@ -230,14 +227,14 @@ void Android_JNI_muxer_h264(JNIEnv *env, jobject object, jbyteArray frame, jint 
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
 
-    muxer_h264_success(env, object, (char *) data, data_size, pts);
+    muxer_h264_success((char *) data, data_size, pts);
     env->ReleaseByteArrayElements(frame, data, NULL);
 }
 
 void Android_JNI_muxer_aac(JNIEnv *env, jobject object, jbyteArray frame, jint pts) {
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
-    muxer_aac_success(env, object, (char *) data, data_size, pts);
+    muxer_aac_success((char *) data, data_size, pts);
 
     env->ReleaseByteArrayElements(frame, data, NULL);
 }
@@ -249,6 +246,7 @@ void Android_JNI_destroy(JNIEnv *env, jobject object) {
 }
 
 static JNINativeMethod encoder_methods[] = {
+        { "startPublish",           "()V",                      (void *) Android_JNI_startPublish },
         { "setEncoderResolution",   "(II)V",                    (void *) Android_JNI_setEncoderResolution },
         { "connect",                "(Ljava/lang/String;)I",    (void *) Android_JNI_connect },
         { "writeVideo",             "(J[B)I",                   (void *) Android_JNI_write_video_sample },

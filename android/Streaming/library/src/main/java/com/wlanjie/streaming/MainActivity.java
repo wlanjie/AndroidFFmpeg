@@ -25,8 +25,8 @@ public class MainActivity extends Activity {
                         .setSoftEncoder(true)
                         .setCameraView(mCameraView)
                         .build();
-//                String url = "rtmp://192.168.1.103/live/livestream";
-                String url = "rtmp://192.168.0.143/live/livestream";
+                String url = "rtmp://192.168.1.103/live/livestream";
+//                String url = "rtmp://192.168.0.143/live/livestream";
                 encoder.start(url);
             }
         }, 1000);
