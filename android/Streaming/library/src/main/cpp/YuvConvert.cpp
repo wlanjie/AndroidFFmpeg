@@ -19,14 +19,27 @@ YuvFrame *YuvConvert::rgba_convert_i420(char *rgba, int width, int height, bool 
     return convert_to_i420(rgba, width, height, need_flip, rotate_degree, libyuv::FOURCC_RGBA);
 }
 
-char *YuvConvert::nv21_convert_i420(char *nv21, int width, int height, bool need_flip,
+YuvFrame *YuvConvert::nv21_convert_i420(char *nv21, int width, int height, bool need_flip,
                                     int rotate_degree) {
-    return nullptr;
+    return convert_to_i420(nv21, width, height, need_flip, rotate_degree, libyuv::FOURCC_NV21);
 }
 
-char *YuvConvert::nv21_convert_nv12(char *nv21, int width, int height, bool need_flip,
+YuvFrame *YuvConvert::nv21_convert_nv12(char *nv21, int width, int height, bool need_flip,
                                     int rotate_degree) {
-    return nullptr;
+    YuvFrame *frame = convert_to_i420(nv21, width, height, need_flip, rotate_degree, libyuv::FOURCC_NV21);
+    if (frame == NULL) {
+        return NULL;
+    }
+    int ret = libyuv::ConvertFromI420(i420_scaled_frame.y, i420_scaled_frame.width,
+                                    i420_scaled_frame.u, i420_scaled_frame.width / 2,
+                                    i420_scaled_frame.v, i420_scaled_frame.width / 2,
+                                    nv12.data, nv12.width,
+                                    nv12.width, nv12.height,
+                                    libyuv::FOURCC_NV12);
+    if (ret < 0) {
+        return NULL;
+    }
+    return &nv12;
 }
 
 YuvFrame *YuvConvert::convert_to_i420(char *frame, int width, int height, bool need_flip,
@@ -66,18 +79,16 @@ YuvFrame *YuvConvert::convert_to_i420(char *frame, int width, int height, bool n
         return NULL;
     }
 
-    return &i420_rotated_frame;
-
-//    ret = libyuv::I420Scale(i420_rotated_frame.y, i420_rotated_frame.width,
-//                    i420_rotated_frame.u, i420_rotated_frame.width / 2,
-//                    i420_rotated_frame.v, i420_rotated_frame.width / 2,
-//                    need_flip ? -i420_rotated_frame.width : i420_rotated_frame.width, i420_rotated_frame.height,
-//                    i420_scaled_frame.y, i420_scaled_frame.width,
-//                    i420_scaled_frame.u, i420_scaled_frame.width / 2,
-//                    i420_scaled_frame.v, i420_scaled_frame.width / 2,
-//                    i420_scaled_frame.width, i420_scaled_frame.height,
-//                    libyuv::kFilterNone);
-//    return ret < 0 ? NULL : &i420_scaled_frame;
+    ret = libyuv::I420Scale(i420_rotated_frame.y, i420_rotated_frame.width,
+                    i420_rotated_frame.u, i420_rotated_frame.width / 2,
+                    i420_rotated_frame.v, i420_rotated_frame.width / 2,
+                    need_flip ? -i420_rotated_frame.width : i420_rotated_frame.width, i420_rotated_frame.height,
+                    i420_scaled_frame.y, i420_scaled_frame.width,
+                    i420_scaled_frame.u, i420_scaled_frame.width / 2,
+                    i420_scaled_frame.v, i420_scaled_frame.width / 2,
+                    i420_scaled_frame.width, i420_scaled_frame.height,
+                    libyuv::kFilterNone);
+    return ret < 0 ? NULL : &i420_scaled_frame;
 }
 
 void YuvConvert::setEncodeResolution(int width, int height) {
@@ -95,13 +106,13 @@ void YuvConvert::setEncodeResolution(int width, int height) {
         i420_scaled_frame.v = i420_scaled_frame.u + y_size / 4;
     }
 
-//    if (nv12_frame.width != width || nv12_frame.height != height) {
-//        free(nv12_frame.data);
-//        nv12_frame.width = out_width;
-//        nv12_frame.height = out_height;
-//        nv12_frame.data = (uint8_t *) malloc(y_size * 3 / 2);
-//        nv12_frame.y = nv12_frame.data;
-//        nv12_frame.u = nv12_frame.y + y_size;
-//        nv12_frame.v = nv12_frame.u + y_size / 4;
-//    }
+    if (nv12.width != width || nv12.height != height) {
+        free(nv12.data);
+        nv12.width = width;
+        nv12.height = height;
+        nv12.data = (uint8_t *) malloc(y_size * 3 / 2);
+        nv12.y = nv12.data;
+        nv12.u = nv12.y + y_size;
+        nv12.v = nv12.u + y_size / 4;
+    }
 }

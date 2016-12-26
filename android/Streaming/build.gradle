@@ -20,7 +20,7 @@ allprojects {
     ext {
         compileVersion = 24
         minVersion = 16
-        buildVersion = '23.0.3'
+        buildVersion = '25.0.2'
         supportLibraryVersion = '25.0.1'
     }
 }

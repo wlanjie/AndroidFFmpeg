@@ -30,7 +30,7 @@ class HardEncoder extends Encoder {
     private MediaCodec.BufferInfo audioBufferInfo = new MediaCodec.BufferInfo();
     private int videoColorFormat;
 
-    public HardEncoder(Builder builder) {
+    HardEncoder(Builder builder) {
         super(builder);
     }
 
@@ -96,22 +96,11 @@ class HardEncoder extends Encoder {
 
     @Override
     void rgbaEncoderToH264(byte[] data) {
-        boolean isFront = mBuilder.cameraView.getFacing() == CameraView.FACING_FRONT;
-        byte[] processedData = videoColorFormat == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar ?
-                NV21ToNV12(data,
-                mBuilder.previewWidth,
-                mBuilder.previewHeight,
-                isFront,
-                mOrientation == Configuration.ORIENTATION_PORTRAIT ? isFront ? 270 : 90 : 0) :
-                NV21ToI420(data,
-                        mBuilder.previewWidth,
-                        mBuilder.previewHeight,
-                        isFront,
-                        mOrientation == Configuration.ORIENTATION_PORTRAIT ? isFront ? 270 : 90 : 0);
+        byte[] yuvData = rgbaToI420(data, mBuilder.previewWidth, mBuilder.previewHeight, false, 0);
 
-        if (processedData != null) {
+        if (yuvData != null) {
             long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-            onProcessedYuvFrame(processedData, pts);
+            onProcessedYuvFrame(yuvData, pts);
         } else {
             Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(),
                     new IllegalArgumentException("libyuv failure"));

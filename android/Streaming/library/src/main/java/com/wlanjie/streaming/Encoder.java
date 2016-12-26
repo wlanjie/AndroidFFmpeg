@@ -1,7 +1,6 @@
 package com.wlanjie.streaming;
 
 import android.annotation.TargetApi;
-import android.content.res.Configuration;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
@@ -23,8 +22,6 @@ public abstract class Encoder {
     private Queue<Frame> muxerCache = new ConcurrentLinkedQueue<>();
 
     private final Object mPublishLock = new Object();
-
-    int mOrientation = Configuration.ORIENTATION_PORTRAIT;
 
     private boolean isStop = false;
 
@@ -147,40 +144,35 @@ public abstract class Encoder {
         mBuilder.cameraView.setFacing(CameraView.FACING_FRONT);
         mBuilder.cameraView.start();
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                startPublish();
-            }
-        }).start();
+        startPublish();
     }
 
-//    private void startPublish() {
-//        Thread mPublishThread = new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                while (!isStop) {
-//                    while (!cache.isEmpty()) {
-//                        Frame frame = cache.poll();
-//                        if (frame.isVideo) {
-//                            writeVideo(frame.dts, frame.data);
-//                        } else {
-//                            writeAudio(frame.dts, frame.data, mBuilder.audioSampleRate, mAudioRecord.getChannelCount());
-//                        }
-//                        frame.data = null;
-//                        frame.dts = 0;
-//                        frame.isVideo = false;
-//                        muxerCache.offer(frame);
-//                    }
-////
-//                    synchronized (mPublishLock) {
-//                        SystemClock.sleep(500);
-//                    }
-//                }
-//            }
-//        });
-//        mPublishThread.start();
-//    }
+    private void startPublish() {
+        Thread mPublishThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!isStop) {
+                    while (!cache.isEmpty()) {
+                        Frame frame = cache.poll();
+                        if (frame.isVideo) {
+                            writeVideo(frame.dts, frame.data);
+                        } else {
+                            writeAudio(frame.dts, frame.data, mBuilder.audioSampleRate, mAudioRecord.getChannelCount());
+                        }
+                        frame.data = null;
+                        frame.dts = 0;
+                        frame.isVideo = false;
+                        muxerCache.offer(frame);
+                        System.out.println("cache.size = " + cache.size());
+                    }
+                    synchronized (mPublishLock) {
+                        SystemClock.sleep(500);
+                    }
+                }
+            }
+        });
+        mPublishThread.start();
+    }
 
     /**
      * open h264 aac encoder
@@ -222,9 +214,6 @@ public abstract class Encoder {
                         continue;
                     }
                     convertPcmToAac(pcmBuffer, size);
-//                    int pts = (int) (System.nanoTime() / 1000 - mPresentTimeUs);
-//                    writeAudioTest(pcmBuffer, pts);
-//                    SystemClock.sleep(40);
                 }
             }
         });
@@ -258,11 +247,6 @@ public abstract class Encoder {
              */
             public void onPreviewFrame(CameraView cameraView, byte[] data) {
                 rgbaEncoderToH264(data);
-//                int pts = (int) (System.nanoTime() / 1000 - mPresentTimeUs);
-//                writeVideoTest(data, mBuilder.previewWidth, mBuilder.previewHeight, true, 0, pts);
-//                synchronized (Encoder.class) {
-//                    SystemClock.sleep(40);
-//                }
             }
 
             @Override
@@ -348,14 +332,26 @@ public abstract class Encoder {
         return mic;
     }
 
+    private void muxerSuccess(byte[] data, int pts, int packetType) {
+        Frame frame;
+        if (!muxerCache.isEmpty()) {
+            frame = muxerCache.poll();
+        } else {
+            frame = new Frame();
+        }
+        frame.isVideo = packetType == 1;
+        frame.data = data;
+        frame.dts = pts;
+        cache.offer(frame);
+    }
+
     /**
      * this method call by jni
      * muxer flv h264 success
      * @param h264 flv h264 data
      * @param pts pts
-     * @param isSequenceHeader
      */
-    private void muxerH264Success(byte[] h264, int pts, int isSequenceHeader) {
+    private void muxerH264Success(byte[] h264, int pts) {
         Frame frame;
         if (!muxerCache.isEmpty()) {
             frame = muxerCache.poll();
@@ -373,9 +369,8 @@ public abstract class Encoder {
      * muxer flv aac data success
      * @param aac flv aac data
      * @param pts pts
-     * @param isSequenceHeader
      */
-    private void muxerAacSuccess(byte[] aac, int pts, int isSequenceHeader) {
+    private void muxerAacSuccess(byte[] aac, int pts) {
         Frame frame;
         if (!muxerCache.isEmpty()) {
             frame = muxerCache.poll();
@@ -387,8 +382,6 @@ public abstract class Encoder {
         frame.dts = pts;
         cache.offer(frame);
     }
-
-    private native void startPublish();
 
     /**
      * set output width and height

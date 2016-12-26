@@ -45,7 +45,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.Set;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -92,8 +91,6 @@ public class CameraView extends FrameLayout implements GLSurfaceView.Renderer {
     private boolean mAdjustViewBounds;
 
     private final DisplayOrientationDetector mDisplayOrientationDetector;
-
-    private LinkedList<ByteBuffer> mBufferCache = new LinkedList<>();
 
     final GLSurfaceView mGLSurfaceView;
 

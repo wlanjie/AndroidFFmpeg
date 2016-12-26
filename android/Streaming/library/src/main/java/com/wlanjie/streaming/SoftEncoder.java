@@ -38,7 +38,7 @@ class SoftEncoder extends Encoder {
         rgbaEncodeToH264(data,
                 mBuilder.previewWidth,
                 mBuilder.previewHeight,
-                true,
+                false,
                 0, pts);
     }
 
@@ -46,26 +46,6 @@ class SoftEncoder extends Encoder {
     void convertPcmToAac(byte[] aacFrame, int size) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
         encoderPcmToAac(aacFrame, (int) pts);
-    }
-
-    /**
-     * this method call by jni
-     * @param data h264 stream
-     * @param pts pts
-     * @param isKeyFrame is key frame
-     */
-    private void onH264EncodedData(byte[] data, int pts, boolean isKeyFrame) {
-        muxerH264(data, pts);
-    }
-
-    /**
-     * this method call by jni
-     * @param data aac data
-     */
-    private void onAacEncodeData(byte[] data) {
-        long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-
-        muxerAac(data, (int) pts);
     }
 
     /**

@@ -373,7 +373,7 @@ class Camera2 extends CameraViewImpl {
                 public void onConfigureFailed(CameraCaptureSession session) {
 
                 }
-            }, mBackgroundHandler);
+            }, null);
         } catch (CameraAccessException e) {
             throw new RuntimeException("Failed to start camera session");
         }
@@ -388,7 +388,7 @@ class Camera2 extends CameraViewImpl {
         }
         try {
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-            mPreviewSession.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback, mBackgroundHandler);
+            mPreviewSession.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
