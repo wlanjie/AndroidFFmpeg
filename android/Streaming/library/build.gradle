@@ -1,11 +1,10 @@
-apply plugin: 'com.android.application'
+apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion compileVersion
     buildToolsVersion buildVersion
 
     defaultConfig {
-        applicationId "com.wlanjie.streaming"
         minSdkVersion minVersion
         targetSdkVersion compileVersion
         versionCode 1

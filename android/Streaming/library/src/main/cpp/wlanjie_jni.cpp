@@ -38,7 +38,6 @@ std::queue<Frame> q;
 
 VideoEncode videoEncode;
 AudioEncode audioEncode;
-YuvConvert yuvConvert;
 srs_rtmp_t rtmp;
 bool is_stop = false;
 
@@ -134,16 +133,33 @@ jbyteArray Android_JNI_NV21ToNV12(JNIEnv* env, jobject object, jbyteArray frame,
 
 jbyteArray Android_JNI_rgbaToI420(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
                                   jint src_height, jboolean need_flip, jint rotate_degree) {
-    jbyte *nv21_frame = env->GetByteArrayElements(frame, NULL);
-    YuvFrame *yuv = yuvConvert.rgba_convert_i420((char *) nv21_frame, src_width, src_height, need_flip, rotate_degree);
+    jbyte *rgba_frame = env->GetByteArrayElements(frame, NULL);
+    YuvFrame *yuv = videoEncode.rgba_convert_i420((char *) rgba_frame, src_width, src_height, need_flip, rotate_degree);
+    env->ReleaseByteArrayElements(frame, rgba_frame, NULL);
+    if (yuv == NULL) {
+        return NULL;
+    }
 
     int y_size = yuv->width * yuv->height;
     jbyteArray i420 = env->NewByteArray(y_size * 3 / 2);
     env->SetByteArrayRegion(i420, 0, y_size * 3 / 2, (jbyte *) yuv->data);
-    env->ReleaseByteArrayElements(frame, nv21_frame, NULL);
     return i420;
 }
 
+jbyteArray Android_JNI_rgbaToNV12(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
+                                  jint src_height, jboolean need_flip, jint rotate_degree) {
+    jbyte *rgba_frame = env->GetByteArrayElements(frame, NULL);
+    YuvFrame *nv12 = videoEncode.rgba_convert_nv12((char *) rgba_frame, src_width, src_height, need_flip, rotate_degree);
+    env->ReleaseByteArrayElements(frame, rgba_frame, NULL);
+    if (nv12 == NULL) {
+        return NULL;
+    }
+
+    int y_size = nv12->width * nv12->height;
+    jbyteArray i420 = env->NewByteArray(y_size * 3 / 2);
+    env->SetByteArrayRegion(i420, 0, y_size * 3 / 2, (jbyte *) nv12->data);
+    return i420;
+}
 
 jboolean Android_JNI_openH264Encoder(JNIEnv* env, jobject object) {
     return (jboolean) (videoEncode.open_h264_encode() >= 0 ? JNI_TRUE : JNI_FALSE);
@@ -223,18 +239,18 @@ jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jlong timestamp
     return ret;
 }
 
-void Android_JNI_muxer_h264(JNIEnv *env, jobject object, jbyteArray frame, jint pts) {
+void Android_JNI_muxer_h264(JNIEnv *env, jobject object, jbyteArray frame, jint size, jint pts) {
     jbyte *data = env->GetByteArrayElements(frame, NULL);
-    jsize data_size = env->GetArrayLength(frame);
 
-    muxer_h264_success((char *) data, data_size, pts);
+    muxer_h264_success((char *) data, size, pts);
+
     env->ReleaseByteArrayElements(frame, data, NULL);
 }
 
-void Android_JNI_muxer_aac(JNIEnv *env, jobject object, jbyteArray frame, jint pts) {
+void Android_JNI_muxer_aac(JNIEnv *env, jobject object, jbyteArray frame, jint size, jint pts) {
     jbyte *data = env->GetByteArrayElements(frame, NULL);
-    jsize data_size = env->GetArrayLength(frame);
-    muxer_aac_success((char *) data, data_size, pts);
+
+    muxer_aac_success((char *) data, size, pts);
 
     env->ReleaseByteArrayElements(frame, data, NULL);
 }
@@ -251,12 +267,13 @@ static JNINativeMethod encoder_methods[] = {
         { "connect",                "(Ljava/lang/String;)I",    (void *) Android_JNI_connect },
         { "writeVideo",             "(J[B)I",                   (void *) Android_JNI_write_video_sample },
         { "writeAudio",             "(J[BII)I",                 (void *) Android_JNI_write_audio_sample },
-        { "muxerH264",              "([BI)V",                   (void *) Android_JNI_muxer_h264 },
-        { "muxerAac",               "([BI)V",                   (void *) Android_JNI_muxer_aac },
+        { "muxerH264",              "([BII)V",                  (void *) Android_JNI_muxer_h264 },
+        { "muxerAac",               "([BII)V",                  (void *) Android_JNI_muxer_aac },
         { "destroy",                "()V",                      (void *) Android_JNI_destroy },
         { "NV21ToI420",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToI420 },
         { "NV21ToNV12",             "([BIIZI)[B",               (void *) Android_JNI_NV21ToNV12 },
         { "rgbaToI420",             "([BIIZI)[B",               (void *) Android_JNI_rgbaToI420 },
+        { "rgbaToNV12",             "([BIIZI)[B",               (void *) Android_JNI_rgbaToNV12 },
 };
 
 static JNINativeMethod soft_encoder_methods[] = {

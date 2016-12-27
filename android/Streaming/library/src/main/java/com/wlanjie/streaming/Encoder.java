@@ -6,24 +6,25 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Process;
-import android.os.SystemClock;
+import android.support.annotation.IntDef;
 import android.text.TextUtils;
 
 import com.wlanjie.streaming.camera.CameraView;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public abstract class Encoder {
 
-    protected Queue<Frame> cache = new ConcurrentLinkedQueue<>();
+    public static final int SOFT_ENCODE = 0;
 
-    private Queue<Frame> muxerCache = new ConcurrentLinkedQueue<>();
+    public static final int HARD_ENCODE = 1;
 
-    private final Object mPublishLock = new Object();
-
-    private boolean isStop = false;
+    @IntDef({SOFT_ENCODE, HARD_ENCODE})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface Encode {
+    }
 
     /**
      * first frame time
@@ -48,15 +49,10 @@ public abstract class Encoder {
     // NV21 -> YUV420SP  yyyy*2 vu vu
     // NV16 -> YUV422SP  yyyy uv uv
     // YUY2 -> YUV422SP  yuyv yuyvo
-    protected class Frame {
-        byte[] data;
-        int dts;
-        boolean isVideo;
-    }
 
     public static class Builder {
         protected CameraView cameraView;
-        protected boolean isSoftEncoder;
+        protected int encode;
         protected int width = 720;
         protected int height = 1280;
         protected int fps = 24;
@@ -74,8 +70,8 @@ public abstract class Encoder {
             return this;
         }
 
-        public Builder setSoftEncoder(boolean softEncoder) {
-            isSoftEncoder = softEncoder;
+        public Builder setSoftEncoder(@Encode int encode) {
+            this.encode = encode;
             return this;
         }
 
@@ -105,7 +101,7 @@ public abstract class Encoder {
         }
 
         public Encoder build() {
-            return isSoftEncoder ? new SoftEncoder(this) : new HardEncoder(this);
+            return encode == SOFT_ENCODE ? new SoftEncoder(this) : new HardEncoder(this);
         }
     }
 
@@ -308,19 +304,6 @@ public abstract class Encoder {
         return mic;
     }
 
-    private void muxerSuccess(byte[] data, int pts, int packetType) {
-        Frame frame;
-        if (!muxerCache.isEmpty()) {
-            frame = muxerCache.poll();
-        } else {
-            frame = new Frame();
-        }
-        frame.isVideo = packetType == 1;
-        frame.data = data;
-        frame.dts = pts;
-        cache.offer(frame);
-    }
-
     private native void startPublish();
 
     /**
@@ -360,14 +343,14 @@ public abstract class Encoder {
      * @param data h264 data
      * @param pts pts
      */
-    protected native void muxerH264(byte[] data, int pts);
+    protected native void muxerH264(byte[] data, int size, int pts);
 
     /**
      * muxer flv aac data
      * @param data aac data
      * @param pts pts
      */
-    protected native void muxerAac(byte[] data, int pts);
+    protected native void muxerAac(byte[] data, int size, int pts);
 
     /**
      * destroy rtmp resources {@link #connect(String url)}
@@ -397,6 +380,8 @@ public abstract class Encoder {
     protected native byte[] NV21ToNV12(byte[] yuvFrame, int width, int height, boolean flip, int rotate);
 
     protected native byte[] rgbaToI420(byte[] rgbaFrame, int width, int height, boolean flip, int rotate);
+
+    protected native byte[] rgbaToNV12(byte[] rgbaFrame, int width, int height, boolean flip, int rotate);
 
     static {
         System.loadLibrary("wlanjie");

@@ -30,6 +30,7 @@ public:
 
 public:
     YuvFrame* rgba_convert_i420(char *rgba, int width, int height, bool need_flip, int rotate_degree);
+    YuvFrame *rgba_convert_nv12(char *rgba, int width, int height, bool need_flip, int rotate_degree);
     YuvFrame* nv21_convert_i420(char *nv21, int width, int height, bool need_flip, int rotate_degree);
     YuvFrame* nv21_convert_nv12(char *nv21, int width, int height, bool need_flip, int rotate_degree);
 private:

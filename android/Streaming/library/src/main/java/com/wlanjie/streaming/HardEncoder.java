@@ -29,6 +29,8 @@ class HardEncoder extends Encoder {
     private MediaCodec.BufferInfo videoBufferInfo = new MediaCodec.BufferInfo();
     private MediaCodec.BufferInfo audioBufferInfo = new MediaCodec.BufferInfo();
     private int videoColorFormat;
+    private byte[] aac = new byte[1024 * 1024];
+    private byte[] h264 = new byte[1024 * 1024];
 
     HardEncoder(Builder builder) {
         super(builder);
@@ -96,7 +98,15 @@ class HardEncoder extends Encoder {
 
     @Override
     void rgbaEncoderToH264(byte[] data) {
-        byte[] yuvData = rgbaToI420(data, mBuilder.previewWidth, mBuilder.previewHeight, false, 0);
+        byte[] yuvData = null;
+        switch (videoColorFormat) {
+            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
+                yuvData = rgbaToI420(data, mBuilder.previewWidth, mBuilder.previewHeight, false, 0);
+                break;
+            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
+                yuvData = rgbaToNV12(data, mBuilder.previewWidth, mBuilder.previewHeight, false, 0);
+                break;
+        }
 
         if (yuvData != null) {
             long pts = System.nanoTime() / 1000 - mPresentTimeUs;
@@ -131,12 +141,12 @@ class HardEncoder extends Encoder {
                 bb.position(audioBufferInfo.offset);
                 bb.limit(audioBufferInfo.offset + outBitSize);
 
-                byte[] data = new byte[outPacketSize];
-                addADTStoPacket(data, outPacketSize);
+//                byte[] data = new byte[outPacketSize];
+                addADTStoPacket(aac, outPacketSize);
 
-                bb.get(data, 7, outBitSize);
+                bb.get(aac, 7, outBitSize);
                 bb.position(audioBufferInfo.offset);
-                muxerAac(data, (int) (audioBufferInfo.presentationTimeUs / 1000));
+                muxerAac(aac, outPacketSize, (int) (audioBufferInfo.presentationTimeUs / 1000));
                 audioMediaCodec.releaseOutputBuffer(outBufferIndex, false);
             } else {
                 break;
@@ -160,9 +170,9 @@ class HardEncoder extends Encoder {
             int outBufferIndex = videoMediaCodec.dequeueOutputBuffer(videoBufferInfo, 0);
             if (outBufferIndex >= 0) {
                 ByteBuffer bb = outBuffers[outBufferIndex];
-                byte[] data = new byte[videoBufferInfo.size];
-                bb.get(data);
-                muxerH264(data, (int) (videoBufferInfo.presentationTimeUs / 1000));
+//                byte[] data = new byte[videoBufferInfo.size];
+                bb.get(h264, 0, videoBufferInfo.size);
+                muxerH264(h264, videoBufferInfo.size, (int) (videoBufferInfo.presentationTimeUs / 1000));
                 videoMediaCodec.releaseOutputBuffer(outBufferIndex, false);
             } else {
                 break;

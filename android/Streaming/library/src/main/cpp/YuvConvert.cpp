@@ -19,6 +19,25 @@ YuvFrame *YuvConvert::rgba_convert_i420(char *rgba, int width, int height, bool 
     return convert_to_i420(rgba, width, height, need_flip, rotate_degree, libyuv::FOURCC_RGBA);
 }
 
+YuvFrame *YuvConvert::rgba_convert_nv12(char *rgba, int width, int height, bool need_flip,
+                                        int rotate_degree) {
+    YuvFrame *frame = convert_to_i420(rgba, width, height, need_flip, rotate_degree, libyuv::FOURCC_RGBA);
+    if (frame == NULL) {
+        return NULL;
+    }
+    int ret = libyuv::ConvertFromI420(i420_scaled_frame.y, i420_scaled_frame.width,
+                                      i420_scaled_frame.u, i420_scaled_frame.width / 2,
+                                      i420_scaled_frame.v, i420_scaled_frame.width / 2,
+                                      nv12.data, nv12.width,
+                                      nv12.width, nv12.height,
+                                      libyuv::FOURCC_NV12);
+    if (ret < 0) {
+        return NULL;
+    }
+    return &nv12;
+}
+
+
 YuvFrame *YuvConvert::nv21_convert_i420(char *nv21, int width, int height, bool need_flip,
                                     int rotate_degree) {
     return convert_to_i420(nv21, width, height, need_flip, rotate_degree, libyuv::FOURCC_NV21);
