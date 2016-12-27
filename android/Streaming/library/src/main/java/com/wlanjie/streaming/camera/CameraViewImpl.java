@@ -16,23 +16,32 @@
 
 package com.wlanjie.streaming.camera;
 
+import android.graphics.SurfaceTexture;
 import android.view.View;
 
 import java.util.Set;
 
 abstract class CameraViewImpl {
 
-    protected final Callback mCallback;
+    final CameraCallback mCallback;
 
-    protected final PreviewImpl mPreview;
+    SurfaceTexture mPreviewSurface;
 
-    CameraViewImpl(Callback callback, PreviewImpl preview) {
+    int mWidth;
+
+    int mHeight;
+
+    CameraViewImpl(CameraCallback callback) {
         mCallback = callback;
-        mPreview = preview;
     }
 
-    View getView() {
-        return mPreview.getView();
+    void setPreviewSurface(SurfaceTexture previewSurface) {
+        mPreviewSurface = previewSurface;
+    }
+
+    void setSize(int width, int height) {
+        mWidth = width;
+        mHeight = height;
     }
 
     abstract void start();
@@ -44,6 +53,8 @@ abstract class CameraViewImpl {
     abstract void setFacing(int facing);
 
     abstract int getFacing();
+
+    abstract void startPreview(int width, int height);
 
     abstract Set<AspectRatio> getSupportedAspectRatios();
 
@@ -60,15 +71,4 @@ abstract class CameraViewImpl {
     abstract int getFlash();
 
     abstract void setDisplayOrientation(int displayOrientation);
-
-    interface Callback {
-
-        void onCameraOpened(int previewWidth, int previewHeight);
-
-        void onCameraClosed();
-
-        void onPreviewFrame(byte[] data);
-
-    }
-
 }

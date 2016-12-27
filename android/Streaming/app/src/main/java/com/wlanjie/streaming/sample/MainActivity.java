@@ -32,11 +32,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 encoder = new Encoder.Builder()
-                        .setSoftEncoder(false)
-                        .setCameraView(mCameraView)
-                        .build();
-//                String url = "rtmp://192.168.1.100/live/livestream";
-                String url = "rtmp://192.168.0.143/live/livestream";
+                    .setSoftEncoder(Encoder.HARD_ENCODE)
+                    .setCameraView(mCameraView)
+                    .build();
+                String url = "rtmp://192.168.1.103/live/livestream";
+//                String url = "rtmp://192.168.0.143/live/livestream";
                 encoder.start(url);
             }
         }, 1000);
@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
                 if (mCameraView != null) {
                     int facing = mCameraView.getFacing();
                     mCameraView.setFacing(facing == CameraView.FACING_FRONT ?
-                            CameraView.FACING_BACK : CameraView.FACING_FRONT);
+                        CameraView.FACING_BACK : CameraView.FACING_FRONT);
                 }
                 break;
         }

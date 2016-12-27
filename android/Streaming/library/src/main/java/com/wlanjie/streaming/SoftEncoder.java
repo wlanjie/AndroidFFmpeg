@@ -1,18 +1,12 @@
 package com.wlanjie.streaming;
 
-import android.content.res.Configuration;
-
-import com.wlanjie.streaming.camera.CameraView;
-
-import java.nio.ByteBuffer;
-
 /**
  * Created by wlanjie on 2016/11/29.
  */
 
 class SoftEncoder extends Encoder {
 
-    public SoftEncoder(Builder builder) {
+    SoftEncoder(Builder builder) {
         super(builder);
     }
 
@@ -39,42 +33,19 @@ class SoftEncoder extends Encoder {
     }
 
     @Override
-    void convertYuvToH264(byte[] data) {
+    void rgbaEncoderToH264(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-        boolean isFront = mBuilder.cameraView.getFacing() == CameraView.FACING_FRONT;
-        NV21EncodeToH264(data,
+        rgbaEncodeToH264(data,
                 mBuilder.previewWidth,
                 mBuilder.previewHeight,
-                isFront,
-                mOrientation == Configuration.ORIENTATION_PORTRAIT ? isFront ? 270 : 90 : 0, pts);
+                false,
+                0, pts);
     }
 
     @Override
     void convertPcmToAac(byte[] aacFrame, int size) {
-        encoderPcmToAac(aacFrame);
-    }
-
-    /**
-     * this method call by jni
-     * @param data h264 stream
-     * @param pts pts
-     * @param isKeyFrame is key frame
-     */
-    private void onH264EncodedData(byte[] data, int pts, boolean isKeyFrame) {
-        muxerH264(data, pts);
-    }
-
-    /**
-     * this method call by jni
-     * @param data aac data
-     */
-    private void onAacEncodeData(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-
-//        byte[] aac = new byte[data.length + 7];
-//        addADTStoPacket(aac, aac.length);
-//        System.arraycopy(data, 0, aac, 7, data.length);
-        muxerAac(data, (int) pts);
+        encoderPcmToAac(aacFrame, (int) pts);
     }
 
     /**
@@ -88,7 +59,7 @@ class SoftEncoder extends Encoder {
     private native boolean openH264Encoder();
     private native void closeH264Encoder();
     private native boolean openAacEncoder(int channels, int sampleRate, int bitrate);
-    private native int encoderPcmToAac(byte[] pcm);
+    private native int encoderPcmToAac(byte[] pcm, int pts);
     private native void closeAacEncoder();
 
     /**
@@ -102,4 +73,6 @@ class SoftEncoder extends Encoder {
      * @return
      */
     protected native int NV21EncodeToH264(byte[] yuvFrame, int width, int height, boolean flip, int rotate, long pts);
+
+    protected native int rgbaEncodeToH264(byte[] yuvFrame, int width, int height, boolean flip, int rotate, long pts);
 }
