@@ -8,7 +8,6 @@
 
 #include <jni.h>
 #include <queue>
-#include "encoder.h"
 #include "srs_librtmp.hpp"
 #include "muxer.h"
 #include "log.h"
@@ -118,17 +117,17 @@ void Android_JNI_setEncoderPreset(JNIEnv *env, jobject object, jstring preset) {
 
 jbyteArray Android_JNI_NV21ToI420(JNIEnv *env, jobject object, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree) {
     jbyte *nv21_frame = env->GetByteArrayElements(frame, NULL);
-    jbyteArray i420Frame = encoderNV21ToI420(env, nv21_frame, src_width, src_height, need_flip, rotate_degree);
+    YuvFrame *i420 = videoEncode.nv21_convert_i420((char *) nv21_frame, src_width, src_height, need_flip, rotate_degree);
     env->ReleaseByteArrayElements(frame, nv21_frame, JNI_ABORT);
-    return i420Frame;
+    return NULL;
 }
 
 jbyteArray Android_JNI_NV21ToNV12(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
                             jint src_height, jboolean need_flip, jint rotate_degree) {
     jbyte *nv21_frame = env->GetByteArrayElements(frame, NULL);
-    jbyteArray nv12Frame = NV21ToNV12(env, nv21_frame, src_width, src_height, need_flip, rotate_degree);
+    YuvFrame *nv12 = videoEncode.nv21_convert_nv12((char *) nv21_frame, src_width, src_height, need_flip, rotate_degree);
     env->ReleaseByteArrayElements(frame, nv21_frame, NULL);
-    return nv12Frame;
+    return NULL;
 }
 
 jbyteArray Android_JNI_rgbaToI420(JNIEnv* env, jobject object, jbyteArray frame, jint src_width,
@@ -170,7 +169,8 @@ void Android_JNI_closeH264Encoder(JNIEnv* env, jobject object) {
 }
 
 jint Android_JNI_NV21EncodeToH264(JNIEnv* env, jobject object, jbyteArray frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
-    return NV21EncodeToH264(env, object, frame, src_width, src_height, need_flip, rotate_degree, pts);
+//    return NV21EncodeToH264(env, object, frame, src_width, src_height, need_flip, rotate_degree, pts);
+    return 0;
 }
 
 jint Android_JNI_rgbaEncodeToH264(JNIEnv* env, jobject object, jbyteArray rgba_frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {

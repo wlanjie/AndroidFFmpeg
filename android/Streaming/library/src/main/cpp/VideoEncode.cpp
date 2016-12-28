@@ -23,6 +23,16 @@ YuvFrame *VideoEncode::rgba_convert_nv12(char *frame, int width, int height, boo
     return convert.rgba_convert_nv12(frame, width, height, need_flip, rotate_degree);
 }
 
+YuvFrame *VideoEncode::nv21_convert_i420(char *frame, int width, int height, bool need_flip,
+                                         int rotate_degree) {
+    return convert.nv21_convert_i420(frame, width, height, need_flip, rotate_degree);
+}
+
+YuvFrame *VideoEncode::nv21_convert_nv12(char *frame, int width, int height, bool need_flip,
+                                         int rotate_degree) {
+    return convert.nv21_convert_nv12(frame, width, height, need_flip, rotate_degree);
+}
+
 int VideoEncode::rgba_encode_to_h264(char *frame, int width, int height, bool need_flip,
                                      int rotate_degree, int pts) {
     YuvFrame *yuv = convert.rgba_convert_i420(frame, width, height, need_flip, rotate_degree);

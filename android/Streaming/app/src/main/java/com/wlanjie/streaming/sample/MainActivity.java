@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 encoder = new Encoder.Builder()
-                    .setSoftEncoder(Encoder.HARD_ENCODE)
+                    .setSoftEncoder(Encoder.SOFT_ENCODE)
                     .setCameraView(mCameraView)
                     .build();
                 String url = "rtmp://192.168.1.103/live/livestream";

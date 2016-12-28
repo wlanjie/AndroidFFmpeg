@@ -43,6 +43,8 @@ public:
     int rgba_encode_to_h264(char *frame, int width, int height, bool need_flip, int rotate_degree, int pts);
     YuvFrame *rgba_convert_i420(char *frame, int width, int height, bool need_flip, int rotate_degree);
     YuvFrame *rgba_convert_nv12(char *frame, int width, int height, bool need_flip, int rotate_degree);
+    YuvFrame *nv21_convert_i420(char *frame, int width, int height, bool need_flip, int rotate_degree);
+    YuvFrame *nv21_convert_nv12(char *frame, int width, int height, bool need_flip, int rotate_degree);
 public:
     uint8_t *get_h264();
 
