@@ -1,0 +1,11 @@
+prefix=/Users/wlanjie/Documents/FFmpeg/tools/x264-build/armeabi/output
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: x264
+Description: H.264 (MPEG4 AVC) encoder library
+Version: 0.148.2692M 64f4e24
+Libs: -L${exec_prefix}/lib -lx264 -lc -lm -ldl
+Libs.private: 
+Cflags: -I${prefix}/include

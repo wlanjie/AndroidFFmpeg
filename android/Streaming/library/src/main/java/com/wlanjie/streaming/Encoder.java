@@ -1,32 +1,30 @@
 package com.wlanjie.streaming;
 
 import android.annotation.TargetApi;
-import android.content.res.Configuration;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Process;
-import android.os.SystemClock;
+import android.support.annotation.IntDef;
 import android.text.TextUtils;
 
 import com.wlanjie.streaming.camera.CameraView;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 public abstract class Encoder {
 
-    protected Queue<Frame> cache = new ConcurrentLinkedQueue<>();
+    public static final int SOFT_ENCODE = 0;
 
-    private Queue<Frame> muxerCache = new ConcurrentLinkedQueue<>();
+    public static final int HARD_ENCODE = 1;
 
-    private Thread mPublishThread;
-
-    private final Object mPublishLock = new Object();
-
-    int mOrientation = Configuration.ORIENTATION_PORTRAIT;
+    @IntDef({SOFT_ENCODE, HARD_ENCODE})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface Encode {
+    }
 
     /**
      * first frame time
@@ -51,15 +49,10 @@ public abstract class Encoder {
     // NV21 -> YUV420SP  yyyy*2 vu vu
     // NV16 -> YUV422SP  yyyy uv uv
     // YUY2 -> YUV422SP  yuyv yuyvo
-    protected class Frame {
-        byte[] data;
-        int dts;
-        boolean isVideo;
-    }
 
     public static class Builder {
         protected CameraView cameraView;
-        protected boolean isSoftEncoder;
+        protected int encode;
         protected int width = 720;
         protected int height = 1280;
         protected int fps = 24;
@@ -77,8 +70,8 @@ public abstract class Encoder {
             return this;
         }
 
-        public Builder setSoftEncoder(boolean softEncoder) {
-            isSoftEncoder = softEncoder;
+        public Builder setSoftEncoder(@Encode int encode) {
+            this.encode = encode;
             return this;
         }
 
@@ -108,7 +101,7 @@ public abstract class Encoder {
         }
 
         public Encoder build() {
-            return isSoftEncoder ? new SoftEncoder(this) : new HardEncoder(this);
+            return encode == SOFT_ENCODE ? new SoftEncoder(this) : new HardEncoder(this);
         }
     }
 
@@ -137,41 +130,22 @@ public abstract class Encoder {
         if (mAudioRecord == null) {
             throw new IllegalStateException("start audio record failed.");
         }
+        mBuilder.previewWidth = mBuilder.cameraView.getSurfaceWidth();
+        mBuilder.previewHeight = mBuilder.cameraView.getSurfaceHeight();
         setEncoderResolution(mBuilder.width, mBuilder.height);
         openEncoder();
 
         startPreview();
         startAudioRecord();
+        mBuilder.cameraView.setFacing(CameraView.FACING_FRONT);
         mBuilder.cameraView.start();
 
-        startPublish();
-    }
-
-    private void startPublish() {
-        mPublishThread = new Thread(new Runnable() {
+        new Thread(new Runnable() {
             @Override
             public void run() {
-                while (!Thread.interrupted()) {
-                    while (!cache.isEmpty()) {
-                        Frame frame = cache.poll();
-                        if (frame.isVideo) {
-                            writeVideo(frame.dts, frame.data);
-                        } else {
-                            writeAudio(frame.dts, frame.data, mBuilder.audioSampleRate, mAudioRecord.getChannelCount());
-                        }
-                        frame.data = null;
-                        frame.dts = 0;
-                        frame.isVideo = false;
-                        muxerCache.offer(frame);
-                    }
-
-                    synchronized (mPublishLock) {
-                        SystemClock.sleep(500);
-                    }
-                }
+                startPublish();
             }
-        });
-        mPublishThread.start();
+        }).start();
     }
 
     /**
@@ -196,19 +170,19 @@ public abstract class Encoder {
      * convert yuv to h264
      * @param data yuv data
      */
-    abstract void convertYuvToH264(byte[] data);
+    abstract void rgbaEncoderToH264(byte[] data);
 
     /**
      * start audio record
      */
     private void startAudioRecord() {
+        final byte pcmBuffer[] = new byte[4096];
         audioRecordThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
                 mAudioRecord.startRecording();
-                byte pcmBuffer[] = new byte[4096];
-                while (audioRecordLoop && !Thread.interrupted()) {
+                while (audioRecordLoop) {
                     int size = mAudioRecord.read(pcmBuffer, 0, pcmBuffer.length);
                     if (size <= 0) {
                         continue;
@@ -228,8 +202,7 @@ public abstract class Encoder {
         mBuilder.cameraView.addCallback(new CameraView.Callback() {
 
             public void onCameraOpened(CameraView cameraView, int previewWidth, int previewHeight) {
-                mBuilder.previewWidth = previewWidth;
-                mBuilder.previewHeight = previewHeight;
+
             }
 
             /**
@@ -247,7 +220,13 @@ public abstract class Encoder {
              * @param data       JPEG data.
              */
             public void onPreviewFrame(CameraView cameraView, byte[] data) {
-                convertYuvToH264(data);
+                rgbaEncoderToH264(data);
+            }
+
+            @Override
+            public void onPreviewSize(int width, int height) {
+                mBuilder.previewWidth = width;
+                mBuilder.previewHeight = height;
             }
         });
     }
@@ -257,16 +236,7 @@ public abstract class Encoder {
      */
     private void stopAudioRecord() {
         audioRecordLoop = false;
-        if (audioRecordThread != null) {
-            audioRecordThread.interrupt();
-            try {
-                audioRecordThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                audioRecordThread.interrupt();
-            }
-            audioRecordThread = null;
-        }
+        audioRecordThread = null;
         if (mAudioRecord != null) {
             mAudioRecord.setRecordPositionUpdateListener(null);
             mAudioRecord.stop();
@@ -283,35 +253,6 @@ public abstract class Encoder {
         stopAudioRecord();
         closeEncoder();
         destroy();
-        if (mPublishThread != null) {
-            mPublishThread.interrupt();
-            try {
-                mPublishThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                mPublishThread.interrupt();
-            }
-            mPublishThread = null;
-        }
-        cache.clear();
-    }
-
-    public void setPortraitResolution(int width, int height) {
-//        mBuilder.outWidth = width;
-//        mBuilder.outHeight = height;
-//        mBuilder.portraitWidth = width;
-//        mBuilder.portraitHeight = height;
-//        mBuilder.landscapeWidth = height;
-//        mBuilder.landscapeHeight = width;
-    }
-
-    public void setLandscapeResolution(int width, int height) {
-//        mBuilder.outWidth = width;
-//        mBuilder.outHeight = height;
-//        mBuilder.landscapeWidth = width;
-//        mBuilder.landscapeHeight = height;
-//        mBuilder.portraitWidth = height;
-//        mBuilder.portraitHeight = width;
     }
 
     public void setVideoHDMode() {
@@ -323,20 +264,6 @@ public abstract class Encoder {
         mBuilder.videoBitRate = 500 * 1000;  // 500 kbps
         mBuilder.x264Preset = "superfast";
     }
-
-    public void setScreenOrientation(int orientation) {
-        mOrientation = orientation;
-//        if (mOrientation == Configuration.ORIENTATION_PORTRAIT) {
-//            mBuilder.outWidth = mParameters.portraitWidth;
-//            mBuilder.outHeight = mParameters.portraitHeight;
-//        } else if (mOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-//            mBuilder.outWidth = mParameters.landscapeWidth;
-//            mBuilder.outHeight = mParameters.landscapeHeight;
-//        }
-
-        setEncoderResolution(mBuilder.width, mBuilder.height);
-    }
-
 
     /**
      *  Add ADTS header at the beginning of each and every AAC packet.
@@ -377,45 +304,7 @@ public abstract class Encoder {
         return mic;
     }
 
-    /**
-     * this method call by jni
-     * muxer flv h264 success
-     * @param h264 flv h264 data
-     * @param pts pts
-     * @param isSequenceHeader
-     */
-    private void muxerH264Success(byte[] h264, int pts, int isSequenceHeader) {
-        Frame frame;
-        if (!muxerCache.isEmpty()) {
-            frame = muxerCache.poll();
-        } else {
-            frame = new Frame();
-        }
-        frame.isVideo = true;
-        frame.data = h264;
-        frame.dts = pts;
-        cache.offer(frame);
-    }
-
-    /**
-     * this method call by jni
-     * muxer flv aac data success
-     * @param aac flv aac data
-     * @param pts pts
-     * @param isSequenceHeader
-     */
-    private void muxerAacSuccess(byte[] aac, int pts, int isSequenceHeader) {
-        Frame frame;
-        if (!muxerCache.isEmpty()) {
-            frame = muxerCache.poll();
-        } else {
-            frame = new Frame();
-        }
-        frame.isVideo = false;
-        frame.data = aac;
-        frame.dts = pts;
-        cache.offer(frame);
-    }
+    private native void startPublish();
 
     /**
      * set output width and height
@@ -454,14 +343,14 @@ public abstract class Encoder {
      * @param data h264 data
      * @param pts pts
      */
-    protected native void muxerH264(byte[] data, int pts);
+    protected native void muxerH264(byte[] data, int size, int pts);
 
     /**
      * muxer flv aac data
      * @param data aac data
      * @param pts pts
      */
-    protected native void muxerAac(byte[] data, int pts);
+    protected native void muxerAac(byte[] data, int size, int pts);
 
     /**
      * destroy rtmp resources {@link #connect(String url)}
@@ -489,6 +378,10 @@ public abstract class Encoder {
      * @return NV12 data
      */
     protected native byte[] NV21ToNV12(byte[] yuvFrame, int width, int height, boolean flip, int rotate);
+
+    protected native byte[] rgbaToI420(byte[] rgbaFrame, int width, int height, boolean flip, int rotate);
+
+    protected native byte[] rgbaToNV12(byte[] rgbaFrame, int width, int height, boolean flip, int rotate);
 
     static {
         System.loadLibrary("wlanjie");

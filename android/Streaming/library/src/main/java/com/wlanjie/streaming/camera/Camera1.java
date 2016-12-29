@@ -46,7 +46,7 @@ class Camera1 extends CameraViewImpl {
 
     private int mCameraId;
 
-    Camera mCamera;
+    private Camera mCamera;
 
     private Camera.Parameters mCameraParameters;
 
@@ -68,26 +68,21 @@ class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    Camera1(Callback callback, PreviewImpl preview) {
-        super(callback, preview);
-        preview.setCallback(new PreviewImpl.Callback() {
-                @Override
-                public void onSurfaceChanged() {
-                    if (mCamera != null) {
-                        setUpPreview();
-                        adjustCameraParameters();
-                    }
-                }
-            });
+    Camera1(CameraCallback callback) {
+        super(callback);
+    }
+
+    @Override
+    void startPreview(int width, int height) {
+        setUpPreview();
+        adjustCameraParameters();
     }
 
     @Override
     void start() {
         chooseCamera();
         openCamera();
-        if (mPreview.isReady()) {
-            setUpPreview();
-        }
+        setUpPreview();
         mShowingPreview = true;
         mCamera.startPreview();
     }
@@ -101,21 +96,10 @@ class Camera1 extends CameraViewImpl {
         releaseCamera();
     }
 
-    @SuppressLint("NewApi") // Suppresses Camera#setPreviewTexture
-    void setUpPreview() {
+    @SuppressLint("NewApi")
+    private void setUpPreview() {
         try {
-            if (mPreview.getOutputClass() == SurfaceHolder.class) {
-                final boolean needsToStopPreview = mShowingPreview && Build.VERSION.SDK_INT < 14;
-                if (needsToStopPreview) {
-                    mCamera.stopPreview();
-                }
-                mCamera.setPreviewDisplay(mPreview.getSurfaceHolder());
-                if (needsToStopPreview) {
-                    mCamera.startPreview();
-                }
-            } else {
-                mCamera.setPreviewTexture((SurfaceTexture) mPreview.getSurfaceTexture());
-            }
+            mCamera.setPreviewTexture(mPreviewSurface);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -298,49 +282,43 @@ class Camera1 extends CameraViewImpl {
             sizes = mPreviewSizes.sizes(mAspectRatio);
         }
         Size size = chooseOptimalSize(sizes);
-        final Camera.Size currentSize = mCameraParameters.getPreviewSize();
-//        if (currentSize.width != size.getWidth() || currentSize.height != size.getHeight()) {
             // Largest picture size in this ratio
-            if (mShowingPreview) {
-                mCamera.stopPreview();
-            }
-            mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
-            int[] fps = chooseFpsRange();
-            mCameraParameters.setPreviewFpsRange(fps[0], fps[1]);
-            mCameraParameters.setPreviewFormat(ImageFormat.NV21);
-            // Largest picture size in this ratio
-            if (mShowingPreview) {
-                mCamera.stopPreview();
-            }
-            mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
-//            mCameraParameters.setPictureSize(currentSize.width, currentSize.height);
-            mCamera.setParameters(mCameraParameters);
-            mCamera.setDisplayOrientation(calcCameraRotation(mDisplayOrientation));
+        if (mShowingPreview) {
+            mCamera.stopPreview();
+        }
+        mCameraParameters.setRotation(calcCameraRotation(mDisplayOrientation));
+        int[] fps = chooseFpsRange();
+        mCameraParameters.setPreviewFpsRange(fps[0], fps[1]);
+        mCameraParameters.setPreviewFormat(ImageFormat.NV21);
+        // Largest picture size in this ratio
+        if (mShowingPreview) {
+            mCamera.stopPreview();
+        }
+        mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
+        mCamera.setParameters(mCameraParameters);
+        mCamera.setDisplayOrientation(calcCameraRotation(mDisplayOrientation));
+//        mCallback.onPreview(size.getWidth(), size.getHeight());
 
-            final byte[] previewBuffer = new byte[size.getWidth() * size.getHeight() * 3 / 2];
-            mCamera.addCallbackBuffer(previewBuffer);
-            mCamera.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
-                @Override
-                public void onPreviewFrame(byte[] bytes, Camera camera) {
-                    mCallback.onPreviewFrame(bytes);
-                    mCamera.addCallbackBuffer(previewBuffer);
-                }
-            });
-            if (mShowingPreview) {
-                mCamera.startPreview();
+        final byte[] previewBuffer = new byte[size.getWidth() * size.getHeight() * 3 / 2];
+        mCamera.addCallbackBuffer(previewBuffer);
+        mCamera.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
+            @Override
+            public void onPreviewFrame(byte[] bytes, Camera camera) {
+                mCallback.onPreviewFrame(bytes);
+                mCamera.addCallbackBuffer(previewBuffer);
             }
-//        }
+        });
+        if (mShowingPreview) {
+            mCamera.startPreview();
+        }
     }
 
     @SuppressWarnings("SuspiciousNameCombination")
     private Size chooseOptimalSize(SortedSet<Size> sizes) {
-        if (!mPreview.isReady()) { // Not yet laid out
-            return sizes.first(); // Return the smallest size
-        }
         int desiredWidth;
         int desiredHeight;
-        final int surfaceWidth = mPreview.getWidth();
-        final int surfaceHeight = mPreview.getHeight();
+        final int surfaceWidth = mWidth;
+        final int surfaceHeight = mHeight;
         if (mDisplayOrientation == 90 || mDisplayOrientation == 270) {
             desiredWidth = surfaceHeight;
             desiredHeight = surfaceWidth;
