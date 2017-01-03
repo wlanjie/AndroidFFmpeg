@@ -1,0 +1,14 @@
+prefix=/Users/wlanjie/Documents/FFmpeg/tools/ffmpeg-build/armeabi/output/shared
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libswscale
+Description: FFmpeg image rescaling library
+Version: 4.1.100
+Requires: libavutil >= 55.28.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lffmpeg -lm
+Libs.private: 
+Cflags: -I${includedir}
