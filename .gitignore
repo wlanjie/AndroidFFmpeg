@@ -1,5 +1,5 @@
 .DS_Store
-/tools/ffmpeg-build/*
+/tools/ffmpeg-build/*/toolchain
 /tools/x264-build/*/toolchain
 /tools/sdl2-build/*
 /android/FFmpeg/.idea/misc.xml
