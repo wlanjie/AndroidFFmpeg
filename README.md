@@ -115,5 +115,5 @@ if (result < 0) {
 
 ### About me:
 
-wlanjie,任职于teambition Android工程师
-联系方式:qq:153920981
+wlanjie，
+联系方式:qq:153920981 微信:w153920981
