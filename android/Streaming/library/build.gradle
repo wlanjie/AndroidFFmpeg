@@ -12,7 +12,9 @@ android {
         externalNativeBuild {
             cmake {
                 cFlags "-march=armv7-a -mtune=cortex-a8 -mfpu=neon -ftree-vectorize -ffast-math -mfloat-abi=softfp"
+                cFlags "-frtti -fexceptions"
                 cppFlags "-march=armv7-a -mtune=cortex-a8 -mfpu=neon -ftree-vectorize -ffast-math -mfloat-abi=softfp"
+                cppFlags "-frtti -fexceptions"
                 abiFilters 'armeabi', 'armeabi-v7a'
             }
         }
