@@ -104,7 +104,6 @@ class HardEncoder extends Encoder {
                 yuvData = rgbaToI420(data, mBuilder.previewWidth, mBuilder.previewHeight, false, 0);
                 break;
             case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
-                yuvData = rgbaToNV12(data, mBuilder.previewWidth, mBuilder.previewHeight, false, 0);
                 break;
         }
 

@@ -53,8 +53,8 @@ public abstract class Encoder {
     public static class Builder {
         protected CameraView cameraView;
         protected int encode;
-        protected int width = 720;
-        protected int height = 1280;
+        protected int width = 360;
+        protected int height = 640;
         protected int fps = 24;
         protected int audioSampleRate = 44100;
         protected int audioBitRate = 32 * 1000; // 32 kbps
@@ -357,31 +357,7 @@ public abstract class Encoder {
      */
     protected native void destroy();
 
-    /**
-     * convert NV21 to I420
-     * @param yuvFrame NV21 data
-     * @param width preview width
-     * @param height preview height
-     * @param flip
-     * @param rotate
-     * @return I420 data
-     */
-    protected native byte[] NV21ToI420(byte[] yuvFrame, int width, int height, boolean flip, int rotate);
-
-    /**
-     * convert NV21 to NV12
-     * @param yuvFrame NV21 data
-     * @param width preview width
-     * @param height preview height
-     * @param flip
-     * @param rotate
-     * @return NV12 data
-     */
-    protected native byte[] NV21ToNV12(byte[] yuvFrame, int width, int height, boolean flip, int rotate);
-
     protected native byte[] rgbaToI420(byte[] rgbaFrame, int width, int height, boolean flip, int rotate);
-
-    protected native byte[] rgbaToNV12(byte[] rgbaFrame, int width, int height, boolean flip, int rotate);
 
     static {
         System.loadLibrary("wlanjie");

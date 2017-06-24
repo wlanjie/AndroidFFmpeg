@@ -184,3 +184,50 @@ void VideoEncode::setEncodeResolution(int width, int height) {
     this->width = width;
     this->height = height;
 }
+
+int VideoEncode::encode(uint8_t *data, int width, int height) {
+    x264_nal_t *nal;
+    int nal_size;
+    x264_picture_t pic_out;
+    if (global_nal_header) {
+        global_nal_header = false;
+        x264_encoder_headers(encoder, &nal, &nal_size);
+    } else {
+        picture.img.i_csp = X264_CSP_I420;
+        picture.img.i_plane = 3;
+//        libyuv::RGBAToI420((const uint8 *) data, width * height,
+//                           picture.img.plane[0], picture.img.i_stride[0],
+//                           picture.img.plane[1], picture.img.i_stride[1],
+//                           picture.img.plane[2], picture.img.i_stride[2],
+//                           width, height);
+
+        int ySize = width * height;
+        uint8_t *yuv = (uint8_t *) malloc(ySize * 3 / 2);
+        uint8_t *y = yuv;
+        uint8_t *u = y + ySize;
+        uint8_t *v = u + ySize / 4;
+        libyuv::ConvertToI420(data, (size_t) ySize, y,
+                              width, u, width / 2,
+                              v, width / 2,
+                              0, 0,
+                              width, height,
+                              width, height,
+                              libyuv::RotationMode::kRotate0, libyuv::FOURCC_RGBA);
+        picture.img.plane[0] = y;
+        pic_out.img.i_stride[0] = width;
+        picture.img.plane[1] = u;
+        pic_out.img.i_stride[1] = width / 2;
+        picture.img.plane[2] = v;
+        pic_out.img.i_stride[2] = width / 2;
+        picture.i_pts = pts;
+        picture.i_type = X264_TYPE_AUTO;
+        if (x264_encoder_encode(encoder, &nal, &nal_size, &picture, &pic_out) < 0) {
+            return -1;
+        }
+        pts = (int) pic_out.i_pts;
+        dts = (int) pic_out.i_dts;
+        is_key_frame = pic_out.i_type == X264_TYPE_IDR;
+        free(yuv);
+    }
+    return encode_nal(nal, nal_size);
+}

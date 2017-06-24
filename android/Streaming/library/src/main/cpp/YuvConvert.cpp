@@ -5,9 +5,10 @@
 #include <cstdlib>
 
 #include "YuvConvert.h"
+#include "log.h"
 
 YuvConvert::YuvConvert() {
-
+    setEncodeResolution(360, 640);
 }
 
 YuvConvert::~YuvConvert() {
@@ -94,6 +95,7 @@ YuvFrame *YuvConvert::convert_to_i420(char *frame, int width, int height, bool n
                              width, height,
                              width, height,
                              (libyuv::RotationMode) rotate_degree, format);
+    LOGE("width = %d height = %d ret = %d", width, height, ret);
     if (ret < 0) {
         return NULL;
     }
