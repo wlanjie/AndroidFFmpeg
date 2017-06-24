@@ -17,7 +17,7 @@ import javax.microedition.khronos.opengles.GL10;
  * Created by wlanjie on 2016/12/14.
  */
 
-final class OpenGLUtils {
+public final class OpenGLUtils {
 
     private static final String TAG = OpenGLUtils.class.getSimpleName();
     public static final int NO_TEXTURE = -1;
@@ -62,7 +62,7 @@ final class OpenGLUtils {
         return programId;
     }
 
-    static int getExternalOESTextureID() {
+    public static int getExternalOESTextureID() {
         int[] texture = new int[1];
         GLES20.glGenTextures(1, texture, 0);
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texture[0]);

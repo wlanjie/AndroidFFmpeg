@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * Created by wlanjie on 2016/12/12.
  */
 
-final class EglCore {
+public final class EglCore {
 
     private static final int NO_INIT = -1;
     private static final int NO_TEXTURE = -2;
@@ -108,7 +108,7 @@ final class EglCore {
     private boolean mIsInitialized;
 
     private final Resources mResources;
-    EglCore(Resources resources) {
+    public EglCore(Resources resources) {
         this.mResources = resources;
         mRunOnDraw = new ConcurrentLinkedQueue<>();
         mCubeBuffer = ByteBuffer.allocateDirect(CUBE.length * 4)
@@ -122,18 +122,18 @@ final class EglCore {
         mTextureBuffer.put(TEXTURE_NO_ROTATION).position(0);
     }
 
-    void init() {
+    public void init() {
         onInit();
         onInitialized();
     }
 
-    void onInputSizeChanged(int width, int height) {
+    public void onInputSizeChanged(int width, int height) {
         this.mInputWidth = width;
         this.mInputHeight = height;
         initFboTexture(width, height);
     }
 
-    void onDisplaySizeChange(int width, int height) {
+    public void onDisplaySizeChange(int width, int height) {
         mDisplayWidth = width;
         mDisplayHeight = height;
     }
@@ -213,7 +213,7 @@ final class EglCore {
         }
     }
 
-    int onDrawFrame(int cameraTextureId) {
+    public int onDrawFrame(int cameraTextureId) {
         int fboTextureId = drawToFboTexture(cameraTextureId);
         return drawToScreen(fboTextureId);
     }
@@ -251,7 +251,7 @@ final class EglCore {
         return 0;
     }
 
-    IntBuffer getRgbaBuffer() {
+    public IntBuffer getRgbaBuffer() {
         return mFboBuffer;
     }
 
@@ -280,16 +280,12 @@ final class EglCore {
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textureId);
         GLES20.glUniform1i(mUniformTexture, 0);
 
-        onDrawArrayPrepare();
-
         GLES20.glViewport(0, 0, mInputWidth, mInputHeight);
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFboId[0]);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
         GLES20.glReadPixels(0, 0, mInputWidth, mInputHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mFboBuffer);
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
         GLES20.glViewport(0, 0, mDisplayWidth, mDisplayHeight);
-
-        onDrawArrayAfter();
 
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0);
 
@@ -301,11 +297,7 @@ final class EglCore {
         return mFboTextureId[0];
     }
 
-    void onDrawArrayPrepare() {}
-
-    void onDrawArrayAfter() {};
-
-    void setTextureTransformMatrix(float[] matrix) {
+    public void setTextureTransformMatrix(float[] matrix) {
         mTextureTransformMatrix = matrix;
     }
 
@@ -315,16 +307,11 @@ final class EglCore {
         }
     }
 
-    final void destroy() {
+    public final void destroy() {
         mIsInitialized = false;
         destroyFboTexture();
         destroyVbo();
         GLES20.glDeleteProgram(mProgramId);
         GLES20.glDeleteProgram(mScreenProgramId);
-        onDestroy();
-    }
-
-    void onDestroy() {
-
     }
 }
