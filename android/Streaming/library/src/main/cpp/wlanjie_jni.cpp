@@ -18,6 +18,7 @@
 #endif
 #define CLASS_NAME  "com/wlanjie/streaming/Encoder"
 #define SOFT_CLASS_NAME "com/wlanjie/streaming/SoftEncoder"
+#define RTMP_CLASS_NAME "com/wlanjie/streaming/rtmp/Rtmp"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -206,14 +207,9 @@ void Android_JNI_destroy(JNIEnv *env, jobject object) {
 }
 
 static JNINativeMethod encoder_methods[] = {
-        { "startPublish",           "()V",                      (void *) Android_JNI_startPublish },
         { "setEncoderResolution",   "(II)V",                    (void *) Android_JNI_setEncoderResolution },
-        { "connect",                "(Ljava/lang/String;)I",    (void *) Android_JNI_connect },
-        { "writeVideo",             "(J[B)I",                   (void *) Android_JNI_write_video_sample },
-        { "writeAudio",             "(J[BII)I",                 (void *) Android_JNI_write_audio_sample },
         { "muxerH264",              "([BII)V",                  (void *) Android_JNI_muxer_h264 },
         { "muxerAac",               "([BII)V",                  (void *) Android_JNI_muxer_aac },
-        { "destroy",                "()V",                      (void *) Android_JNI_destroy },
 };
 
 static JNINativeMethod soft_encoder_methods[] = {
@@ -228,6 +224,14 @@ static JNINativeMethod soft_encoder_methods[] = {
         { "rgbaEncodeToH264",       "([BIIZIJ)I",               (void *) Android_JNI_rgbaEncodeToH264 },
 };
 
+static JNINativeMethod rtmp_methods[] = {
+        { "startPublish",           "()V",                      (void *) Android_JNI_startPublish },
+        { "connect",                "(Ljava/lang/String;)I",    (void *) Android_JNI_connect },
+        { "writeVideo",             "([BJ)I",                   (void *) Android_JNI_write_video_sample },
+        { "writeAudio",             "([BJII)I",                 (void *) Android_JNI_write_audio_sample },
+        { "destroy",                "()V",                      (void *) Android_JNI_destroy },
+};
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env = NULL;
     if ((vm)->GetEnv((void **)&env, JNI_VERSION_1_6) != JNI_OK) {
@@ -239,6 +243,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     jclass soft_clazz = env->FindClass(SOFT_CLASS_NAME);
     env->RegisterNatives(soft_clazz, soft_encoder_methods, NELEM(soft_encoder_methods));
     env->DeleteLocalRef(soft_clazz);
+    jclass rtmp_class = env->FindClass(RTMP_CLASS_NAME);
+    env->RegisterNatives(rtmp_class, rtmp_methods, NELEM(rtmp_methods));
     return JNI_VERSION_1_6;
 }
 

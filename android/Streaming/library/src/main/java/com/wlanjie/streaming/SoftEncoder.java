@@ -18,7 +18,7 @@ class SoftEncoder extends Encoder {
         setEncoderBitrate(mBuilder.videoBitRate);
 
         return openH264Encoder() &&
-                openAacEncoder(mAudioRecord.getChannelCount(), mBuilder.audioSampleRate, mBuilder.audioBitRate);
+                openAacEncoder(2, mBuilder.audioSampleRate, mBuilder.audioBitRate);
     }
 
     @Override
@@ -30,11 +30,7 @@ class SoftEncoder extends Encoder {
     @Override
     void rgbaEncoderToH264(byte[] data) {
         long pts = System.nanoTime() / 1000 - mPresentTimeUs;
-        rgbaEncodeToH264(data,
-                mBuilder.previewWidth,
-                mBuilder.previewHeight,
-                false,
-                0, pts);
+        rgbaEncodeToH264(data, mBuilder.previewWidth, mBuilder.previewHeight, false, 0, pts);
     }
 
     @Override
