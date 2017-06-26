@@ -1,12 +1,8 @@
 package com.wlanjie.streaming;
 
 import android.annotation.TargetApi;
-import android.media.AudioFormat;
-import android.media.AudioRecord;
 import android.media.MediaCodec;
-import android.media.MediaRecorder;
 import android.os.Build;
-import android.os.Process;
 import android.support.annotation.IntDef;
 import android.text.TextUtils;
 
@@ -262,7 +258,7 @@ public abstract class Encoder {
    * @param outWidth  output width
    * @param outHeight output height
    */
-  private native void setEncoderResolution(int outWidth, int outHeight);
+  public native void setEncoderResolution(int outWidth, int outHeight);
 
   /**
    * muxer flv h264 data

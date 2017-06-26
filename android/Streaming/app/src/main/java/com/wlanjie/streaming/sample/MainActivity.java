@@ -1,5 +1,6 @@
 package com.wlanjie.streaming.sample;
 
+import android.opengl.GLSurfaceView;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -8,6 +9,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 import com.wlanjie.streaming.Encoder;
+import com.wlanjie.streaming.MediaStreamingManager;
 import com.wlanjie.streaming.camera.CameraView;
 import com.wlanjie.streaming.setting.AudioSetting;
 import com.wlanjie.streaming.setting.CameraSetting;
@@ -17,6 +19,7 @@ public class MainActivity extends AppCompatActivity {
 
   private CameraView mCameraView;
   private Encoder encoder;
+  private MediaStreamingManager mMediaStreamingManager;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -30,34 +33,41 @@ public class MainActivity extends AppCompatActivity {
       actionBar.setDisplayShowTitleEnabled(false);
     }
 
-    mCameraView = (CameraView) findViewById(R.id.surface_view);
-
     CameraSetting cameraSetting = new CameraSetting();
     AudioSetting audioSetting = new AudioSetting();
     StreamingSetting streamingSetting = new StreamingSetting();
-    streamingSetting.setRtmpUrl("rtmp://192.168.1.102/live/test")
-        .setVideoWidth(360)
-        .setVideoHeight(640);
-    encoder = new Encoder.Builder()
-        .setCameraView(mCameraView)
-        .setSoftEncoder(Encoder.SOFT_ENCODE)
-        .build();
-    encoder.prepare(cameraSetting, streamingSetting, audioSetting);
+    streamingSetting.setRtmpUrl("rtmp://192.168.1.102/live/test");
+//    streamingSetting.setRtmpUrl("rtmp://192.168.1.102/live/test")
+//        .setVideoWidth(360)
+//        .setVideoHeight(640);
+//    encoder = new Encoder.Builder()
+//        .setCameraView(mCameraView)
+//        .setSoftEncoder(Encoder.SOFT_ENCODE)
+//        .build();
+//    encoder.prepare(cameraSetting, streamingSetting, audioSetting);
+
+    GLSurfaceView glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
+    mMediaStreamingManager = new MediaStreamingManager(glSurfaceView);
+    mMediaStreamingManager.prepare(cameraSetting, streamingSetting, audioSetting);
   }
 
   @Override
   protected void onResume() {
     super.onResume();
-    mCameraView.setFacing(CameraView.FACING_FRONT);
-    mCameraView.start();
+//    mCameraView.setFacing(CameraView.FACING_FRONT);
+//    mCameraView.start();
+//
+//    encoder.startStreaming();
+    mMediaStreamingManager.resume();
 
-    encoder.startStreaming();
+    mMediaStreamingManager.startStreaming();
   }
 
   @Override
   protected void onPause() {
     super.onPause();
-    mCameraView.stop();
+//    mCameraView.stop();
+    mMediaStreamingManager.pause();
   }
 
   @Override
@@ -83,8 +93,8 @@ public class MainActivity extends AppCompatActivity {
   @Override
   protected void onDestroy() {
     super.onDestroy();
-    if (encoder != null) {
-      encoder.stop();
-    }
+//    if (encoder != null) {
+//      encoder.stop();
+//    }
   }
 }

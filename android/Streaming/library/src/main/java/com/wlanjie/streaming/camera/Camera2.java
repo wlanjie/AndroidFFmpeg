@@ -42,7 +42,7 @@ import java.util.Set;
 import java.util.SortedSet;
 
 @TargetApi(21)
-class Camera2 extends CameraViewImpl {
+public class Camera2 extends CameraViewImpl {
 
     private static final String TAG = "Camera2";
 
@@ -114,7 +114,7 @@ class Camera2 extends CameraViewImpl {
 
     private int mFlash;
 
-    Camera2(CameraCallback callback, Context context) {
+    public Camera2(CameraCallback callback, Context context) {
         super(callback);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
     }
@@ -126,7 +126,7 @@ class Camera2 extends CameraViewImpl {
     }
 
     @Override
-    void start() {
+    public void start() {
         startBackgroundThread();
         chooseCameraIdByFacing();
         collectCameraInfo();
@@ -134,7 +134,7 @@ class Camera2 extends CameraViewImpl {
     }
 
     @Override
-    void stop() {
+    public void stop() {
         if (mCaptureSession != null) {
             mCaptureSession.close();
             mCaptureSession = null;
@@ -347,7 +347,7 @@ class Camera2 extends CameraViewImpl {
      * <p>This rewrites {@link #mPreviewRequestBuilder}.</p>
      */
     @Override
-    void startPreview(int width, int height) {
+    public void startPreview(int width, int height) {
         if (!isCameraOpened()) {
             return;
         }

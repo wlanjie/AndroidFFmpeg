@@ -30,7 +30,7 @@ import java.util.Set;
 import java.util.SortedSet;
 
 @SuppressWarnings("deprecation")
-class Camera1 extends CameraViewImpl {
+public class Camera1 extends CameraViewImpl {
 
     private static final int INVALID_CAMERA_ID = -1;
 
@@ -68,18 +68,18 @@ class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    Camera1(CameraCallback callback) {
+    public Camera1(CameraCallback callback) {
         super(callback);
     }
 
     @Override
-    void startPreview(int width, int height) {
+    public void startPreview(int width, int height) {
         setUpPreview();
         adjustCameraParameters();
     }
 
     @Override
-    void start() {
+    public void start() {
         chooseCamera();
         openCamera();
         setUpPreview();
@@ -88,7 +88,7 @@ class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    void stop() {
+    public void stop() {
         if (mCamera != null) {
             mCamera.stopPreview();
         }

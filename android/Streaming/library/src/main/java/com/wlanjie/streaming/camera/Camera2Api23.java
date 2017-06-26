@@ -23,9 +23,9 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 
 
 @TargetApi(23)
-class Camera2Api23 extends Camera2 {
+public class Camera2Api23 extends Camera2 {
 
-    Camera2Api23(CameraCallback callback, Context context) {
+    public Camera2Api23(CameraCallback callback, Context context) {
         super(callback, context);
     }
 

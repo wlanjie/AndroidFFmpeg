@@ -7,8 +7,8 @@ public class StreamingSetting {
  
   private String rtmpUrl;
   private int fps;
-  private int videoWidth;
-  private int videoHeight;
+  private int videoWidth = 360;
+  private int videoHeight = 640;
   private int maxBps;
   private int minBps;
   private int ifi;

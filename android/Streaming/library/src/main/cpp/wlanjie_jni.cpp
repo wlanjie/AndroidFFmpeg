@@ -19,6 +19,7 @@
 #define CLASS_NAME  "com/wlanjie/streaming/Encoder"
 #define SOFT_CLASS_NAME "com/wlanjie/streaming/SoftEncoder"
 #define RTMP_CLASS_NAME "com/wlanjie/streaming/rtmp/Rtmp"
+#define VIDEO_ENCODER_CLASS_NAME "com/wlanjie/streaming/video/OpenH264Encoder"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -206,6 +207,15 @@ void Android_JNI_destroy(JNIEnv *env, jobject object) {
     rtmp = NULL;
 }
 
+void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint width, jint height, jlong pts) {
+    jbyte *frame = env->GetByteArrayElements(data, NULL);
+    uint8_t *h264 = h264encoder.encoder((char *) frame, (long) pts);
+    env->ReleaseByteArrayElements(data, frame, NULL);
+    if (h264encoder.getEncoderImageLength() > 0) {
+        muxer_h264_success((char *) h264, h264encoder.getEncoderImageLength(), (int) pts);
+    }
+}
+
 static JNINativeMethod encoder_methods[] = {
         { "setEncoderResolution",   "(II)V",                    (void *) Android_JNI_setEncoderResolution },
         { "muxerH264",              "([BII)V",                  (void *) Android_JNI_muxer_h264 },
@@ -232,6 +242,13 @@ static JNINativeMethod rtmp_methods[] = {
         { "destroy",                "()V",                      (void *) Android_JNI_destroy },
 };
 
+static JNINativeMethod video_encoder_methods[] = {
+        { "openEncoder",            "()Z",                      (void *) Android_JNI_openH264Encoder },
+        { "closeEncoder",           "()V",                      (void *) Android_JNI_closeH264Encoder },
+        { "setFrameSize",           "(II)V",                    (void *) Android_JNI_setEncoderResolution },
+        { "encode",                 "([BIIJ)V",                 (void *) Android_JNI_encode_h264 },
+};
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env = NULL;
     if ((vm)->GetEnv((void **)&env, JNI_VERSION_1_6) != JNI_OK) {
@@ -245,6 +262,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     env->DeleteLocalRef(soft_clazz);
     jclass rtmp_class = env->FindClass(RTMP_CLASS_NAME);
     env->RegisterNatives(rtmp_class, rtmp_methods, NELEM(rtmp_methods));
+    jclass video_encoder_class = env->FindClass(VIDEO_ENCODER_CLASS_NAME);
+    env->RegisterNatives(video_encoder_class, video_encoder_methods, NELEM(video_encoder_methods));
     return JNI_VERSION_1_6;
 }
 

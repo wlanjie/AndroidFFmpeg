@@ -9,7 +9,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 
-import com.wlanjie.streaming.camera.CameraView;
 import com.wlanjie.streaming.camera.EglCore;
 import com.wlanjie.streaming.camera.OpenGLUtils;
 
