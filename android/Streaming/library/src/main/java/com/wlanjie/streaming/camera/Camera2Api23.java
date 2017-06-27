@@ -21,12 +21,14 @@ import android.content.Context;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.params.StreamConfigurationMap;
 
+import com.wlanjie.streaming.setting.CameraSetting;
+
 
 @TargetApi(23)
 public class Camera2Api23 extends Camera2 {
 
-    public Camera2Api23(CameraCallback callback, Context context) {
-        super(callback, context);
+    public Camera2Api23(CameraCallback callback, CameraSetting cameraSetting, Context context) {
+        super(callback, cameraSetting, context);
     }
 
     @Override

@@ -10,6 +10,8 @@ public class CameraSetting {
   private CameraFacingId facing;
   private SurfaceTexture surfaceTexture;
   private int displayOrientation = 0;
+  private int previewWidth;
+  private int previewHeight;
 
   public CameraFacingId getFacing() {
     return facing;
@@ -36,6 +38,22 @@ public class CameraSetting {
   public CameraSetting setDisplayOrientation(int displayOrientation) {
     this.displayOrientation = displayOrientation;
     return this;
+  }
+
+  public int getPreviewWidth() {
+    return previewWidth;
+  }
+
+  public void setPreviewWidth(int previewWidth) {
+    this.previewWidth = previewWidth;
+  }
+
+  public int getPreviewHeight() {
+    return previewHeight;
+  }
+
+  public void setPreviewHeight(int previewHeight) {
+    this.previewHeight = previewHeight;
   }
 
   public static enum CameraFacingId {

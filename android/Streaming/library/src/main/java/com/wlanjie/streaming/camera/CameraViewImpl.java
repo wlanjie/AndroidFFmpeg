@@ -50,7 +50,7 @@ public abstract class CameraViewImpl {
 
     abstract boolean isCameraOpened();
 
-    abstract void setFacing(int facing);
+    public abstract void setFacing(int facing);
 
     abstract int getFacing();
 

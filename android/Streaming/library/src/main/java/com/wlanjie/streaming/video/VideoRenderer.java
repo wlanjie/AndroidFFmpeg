@@ -11,6 +11,7 @@ import android.os.Message;
 
 import com.wlanjie.streaming.camera.EglCore;
 import com.wlanjie.streaming.camera.OpenGLUtils;
+import com.wlanjie.streaming.setting.StreamingSetting;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -34,11 +35,16 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   private int mSurfaceTextureId;
   private Handler mHandler;
   private OnFrameListener mOnFrameListener;
+  private StreamingSetting mStreamingSetting;
 
   public VideoRenderer(Context context) {
     mEglCore = new EglCore(context.getResources());
     mSurfaceTextureId = OpenGLUtils.getExternalOESTextureID();
     mSurfaceTexture = new SurfaceTexture(mSurfaceTextureId);
+  }
+
+  public void setStreamingSetting(StreamingSetting streamingSetting) {
+    mStreamingSetting = streamingSetting;
   }
 
   @Override
@@ -68,7 +74,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceWidth = width;
     mSurfaceHeight = height;
     mFrameBuffer = ByteBuffer.allocate(width * height * 4);
-    mEglCore.onInputSizeChanged(width, height);
+    mEglCore.onInputSizeChanged(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
     GLES20.glViewport(0, 0, width, height);
     mEglCore.onDisplaySizeChange(width, height);
 

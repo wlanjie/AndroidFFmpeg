@@ -25,7 +25,7 @@ namespace wlanjie {
 
         uint8_t* startEncoder(uint8_t *yData, int yStride, uint8_t *uData, int uStride, uint8_t *vData, int vStride);
 
-        uint8_t* encoder(char *rgba, long pts);
+        uint8_t* encoder(char *rgba, int width, int height, long pts);
 
         int getEncoderImageLength();
     private:

@@ -113,20 +113,25 @@ int wlanjie::H264encoder::getEncoderImageLength() {
     return encoded_image_length;
 }
 
-uint8_t *wlanjie::H264encoder::encoder(char *rgba, long pts) {
+uint8_t *wlanjie::H264encoder::encoder(char *rgba, int width, int height, long pts) {
     if (present_time_us == 0) {
         present_time_us = time(NULL) / 1000;
     }
 //    _sourcePicture.uiTimeStamp = time(NULL) / 1000 - present_time_us;
     _sourcePicture.uiTimeStamp = pts;
 
-    YuvFrame *yuv = convert.rgba_convert_i420(rgba, 1305, 1740, false, 0);
-    _sourcePicture.pData[0] = yuv->y;
-    _sourcePicture.iStride[0] = yuv->width;
-    _sourcePicture.pData[1] = yuv->u;
-    _sourcePicture.iStride[1] = yuv->width / 2;
-    _sourcePicture.pData[2] = yuv->v;
-    _sourcePicture.iStride[2] = yuv->width / 2;
+//    YuvFrame *yuv = convert.rgba_convert_i420(rgba, width, height, false, 0);
+//    _sourcePicture.pData[0] = yuv->y;
+//    _sourcePicture.iStride[0] = yuv->width;
+//    _sourcePicture.pData[1] = yuv->u;
+//    _sourcePicture.iStride[1] = yuv->width / 2;
+//    _sourcePicture.pData[2] = yuv->v;
+//    _sourcePicture.iStride[2] = yuv->width / 2;
+    libyuv::RGBAToI420((const uint8 *) rgba, width * 4,
+                   _sourcePicture.pData[0], _sourcePicture.iStride[0],
+                   _sourcePicture.pData[1], _sourcePicture.iStride[1],
+                   _sourcePicture.pData[2], _sourcePicture.iStride[2],
+                   width, height);
     int ret = encoder_->EncodeFrame(&_sourcePicture, &info);
     if (!ret) {
         if (info.eFrameType != videoFrameTypeSkip) {

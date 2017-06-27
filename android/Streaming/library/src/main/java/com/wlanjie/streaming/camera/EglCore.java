@@ -264,7 +264,6 @@ public final class EglCore {
         }
 
         GLES20.glUseProgram(mProgramId);
-        runPendingOnDrawTasks();
 
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mCubeId[0]);
         GLES20.glEnableVertexAttribArray(mPosition);
@@ -299,12 +298,6 @@ public final class EglCore {
 
     public void setTextureTransformMatrix(float[] matrix) {
         mTextureTransformMatrix = matrix;
-    }
-
-    private void runPendingOnDrawTasks() {
-        while (!mRunOnDraw.isEmpty()) {
-            mRunOnDraw.poll().run();
-        }
     }
 
     public final void destroy() {

@@ -24,13 +24,15 @@ import android.os.Build;
 import android.support.v4.util.SparseArrayCompat;
 import android.view.SurfaceHolder;
 
+import com.wlanjie.streaming.setting.CameraSetting;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 
 @SuppressWarnings("deprecation")
-public class Camera1 extends CameraViewImpl {
+public class Camera1 implements LivingCamera {
 
     private static final int INVALID_CAMERA_ID = -1;
 
@@ -68,11 +70,15 @@ public class Camera1 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    public Camera1(CameraCallback callback) {
-        super(callback);
+    private CameraSetting mCameraSetting;
+
+    private CameraCallback mCallback;
+
+    public Camera1(CameraCallback callback, CameraSetting cameraSetting) {
+      mCameraSetting = cameraSetting;
+      mCallback = callback;
     }
 
-    @Override
     public void startPreview(int width, int height) {
         setUpPreview();
         adjustCameraParameters();
@@ -99,19 +105,19 @@ public class Camera1 extends CameraViewImpl {
     @SuppressLint("NewApi")
     private void setUpPreview() {
         try {
-            mCamera.setPreviewTexture(mPreviewSurface);
+            mCamera.setPreviewTexture(mCameraSetting.getSurfaceTexture());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    boolean isCameraOpened() {
+    public boolean isCameraOpened() {
         return mCamera != null;
     }
 
     @Override
-    void setFacing(int facing) {
+    public void setFacing(int facing) {
         if (mFacing == facing) {
             return;
         }
@@ -123,16 +129,14 @@ public class Camera1 extends CameraViewImpl {
     }
 
     @Override
-    int getFacing() {
+    public int getFacing() {
         return mFacing;
     }
 
-    @Override
     Set<AspectRatio> getSupportedAspectRatios() {
         return mPreviewSizes.ratios();
     }
 
-    @Override
     void setAspectRatio(AspectRatio ratio) {
         if (mAspectRatio == null || !isCameraOpened()) {
             // Handle this later when camera is opened
@@ -148,12 +152,10 @@ public class Camera1 extends CameraViewImpl {
         }
     }
 
-    @Override
     AspectRatio getAspectRatio() {
         return mAspectRatio;
     }
 
-    @Override
     void setAutoFocus(boolean autoFocus) {
         if (mAutoFocus == autoFocus) {
             return;
@@ -163,7 +165,6 @@ public class Camera1 extends CameraViewImpl {
         }
     }
 
-    @Override
     boolean getAutoFocus() {
         if (!isCameraOpened()) {
             return mAutoFocus;
@@ -172,7 +173,6 @@ public class Camera1 extends CameraViewImpl {
         return focusMode != null && focusMode.contains("continuous");
     }
 
-    @Override
     void setFlash(int flash) {
         if (flash == mFlash) {
             return;
@@ -182,12 +182,10 @@ public class Camera1 extends CameraViewImpl {
         }
     }
 
-    @Override
-    int getFlash() {
+    public int getFlash() {
         return mFlash;
     }
 
-    @Override
     void setDisplayOrientation(int displayOrientation) {
         if (mDisplayOrientation == displayOrientation) {
             return;
@@ -317,8 +315,8 @@ public class Camera1 extends CameraViewImpl {
     private Size chooseOptimalSize(SortedSet<Size> sizes) {
         int desiredWidth;
         int desiredHeight;
-        final int surfaceWidth = mWidth;
-        final int surfaceHeight = mHeight;
+        final int surfaceWidth = mCameraSetting.getPreviewWidth();
+        final int surfaceHeight = mCameraSetting.getPreviewHeight();
         if (mDisplayOrientation == 90 || mDisplayOrientation == 270) {
             desiredWidth = surfaceHeight;
             desiredHeight = surfaceWidth;

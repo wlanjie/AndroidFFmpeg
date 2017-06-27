@@ -134,7 +134,6 @@ public abstract class Encoder {
     mBuilder.previewWidth = mBuilder.cameraView.getSurfaceWidth();
     mBuilder.previewHeight = mBuilder.cameraView.getSurfaceHeight();
     setEncoderResolution(mBuilder.width, mBuilder.height);
-    openEncoder();
 
     mAudioProcessor.start();
     mAudioProcessor.setOnAudioRecordListener(new OnAudioRecordListener() {

@@ -36,15 +36,7 @@ public class MainActivity extends AppCompatActivity {
     CameraSetting cameraSetting = new CameraSetting();
     AudioSetting audioSetting = new AudioSetting();
     StreamingSetting streamingSetting = new StreamingSetting();
-    streamingSetting.setRtmpUrl("rtmp://192.168.1.102/live/test");
-//    streamingSetting.setRtmpUrl("rtmp://192.168.1.102/live/test")
-//        .setVideoWidth(360)
-//        .setVideoHeight(640);
-//    encoder = new Encoder.Builder()
-//        .setCameraView(mCameraView)
-//        .setSoftEncoder(Encoder.SOFT_ENCODE)
-//        .build();
-//    encoder.prepare(cameraSetting, streamingSetting, audioSetting);
+    streamingSetting.setRtmpUrl("rtmp://www.ossrs.net:1935/live/demo");
 
     GLSurfaceView glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
     mMediaStreamingManager = new MediaStreamingManager(glSurfaceView);
@@ -54,10 +46,6 @@ public class MainActivity extends AppCompatActivity {
   @Override
   protected void onResume() {
     super.onResume();
-//    mCameraView.setFacing(CameraView.FACING_FRONT);
-//    mCameraView.start();
-//
-//    encoder.startStreaming();
     mMediaStreamingManager.resume();
 
     mMediaStreamingManager.startStreaming();
@@ -66,7 +54,6 @@ public class MainActivity extends AppCompatActivity {
   @Override
   protected void onPause() {
     super.onPause();
-//    mCameraView.stop();
     mMediaStreamingManager.pause();
   }
 

@@ -20,6 +20,7 @@
 #define SOFT_CLASS_NAME "com/wlanjie/streaming/SoftEncoder"
 #define RTMP_CLASS_NAME "com/wlanjie/streaming/rtmp/Rtmp"
 #define VIDEO_ENCODER_CLASS_NAME "com/wlanjie/streaming/video/OpenH264Encoder"
+#define AUDIO_ENCODER_CLASS_NAME "com/wlanjie/streaming/audio/FdkAACEncoder"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -115,13 +116,12 @@ jboolean Android_JNI_openH264Encoder(JNIEnv* env, jobject object) {
 }
 
 void Android_JNI_closeH264Encoder(JNIEnv* env, jobject object) {
-//    videoEncode.close_h264_encode();
     h264encoder.closeH264Encoder();
 }
 
 jint Android_JNI_rgbaEncodeToH264(JNIEnv* env, jobject object, jbyteArray rgba_frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
     jbyte *rgba = env->GetByteArrayElements(rgba_frame, NULL);
-    uint8_t *h264 = h264encoder.encoder((char *) rgba, pts);
+    uint8_t *h264 = h264encoder.encoder((char *) rgba, src_width, src_height, pts);
     env->ReleaseByteArrayElements(rgba_frame, rgba, NULL);
     if (h264encoder.getEncoderImageLength() > 0) {
         muxer_h264_success((char *) h264, h264encoder.getEncoderImageLength(), pts);
@@ -209,7 +209,7 @@ void Android_JNI_destroy(JNIEnv *env, jobject object) {
 
 void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint width, jint height, jlong pts) {
     jbyte *frame = env->GetByteArrayElements(data, NULL);
-    uint8_t *h264 = h264encoder.encoder((char *) frame, (long) pts);
+    uint8_t *h264 = h264encoder.encoder((char *) frame, width, height, (long) pts);
     env->ReleaseByteArrayElements(data, frame, NULL);
     if (h264encoder.getEncoderImageLength() > 0) {
         muxer_h264_success((char *) h264, h264encoder.getEncoderImageLength(), (int) pts);
@@ -249,6 +249,12 @@ static JNINativeMethod video_encoder_methods[] = {
         { "encode",                 "([BIIJ)V",                 (void *) Android_JNI_encode_h264 },
 };
 
+static JNINativeMethod audio_encoder_methods[] = {
+        { "openEncoder",            "(III)Z",                   (void *) Android_JNI_openAacEncode },
+        { "encode",                 "([BI)I",                   (void *) Android_JNI_encoderPcmToAac },
+        { "closeEncoder",           "()V",                      (void *) Android_JNI_closeAacEncoder },
+};
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env = NULL;
     if ((vm)->GetEnv((void **)&env, JNI_VERSION_1_6) != JNI_OK) {
@@ -264,6 +270,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     env->RegisterNatives(rtmp_class, rtmp_methods, NELEM(rtmp_methods));
     jclass video_encoder_class = env->FindClass(VIDEO_ENCODER_CLASS_NAME);
     env->RegisterNatives(video_encoder_class, video_encoder_methods, NELEM(video_encoder_methods));
+    jclass audio_encoder_class = env->FindClass(AUDIO_ENCODER_CLASS_NAME);
+    env->RegisterNatives(audio_encoder_class, audio_encoder_methods, NELEM(audio_encoder_methods));
     return JNI_VERSION_1_6;
 }
 

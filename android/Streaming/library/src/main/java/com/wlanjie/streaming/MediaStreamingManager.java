@@ -9,13 +9,14 @@ import android.text.TextUtils;
 import com.wlanjie.streaming.audio.AudioEncoder;
 import com.wlanjie.streaming.audio.AudioProcessor;
 import com.wlanjie.streaming.audio.AudioUtils;
+import com.wlanjie.streaming.audio.FdkAACEncoder;
 import com.wlanjie.streaming.audio.OnAudioEncoderListener;
 import com.wlanjie.streaming.audio.OnAudioRecordListener;
 import com.wlanjie.streaming.camera.Camera1;
 import com.wlanjie.streaming.camera.Camera2;
 import com.wlanjie.streaming.camera.Camera2Api23;
 import com.wlanjie.streaming.camera.CameraCallback;
-import com.wlanjie.streaming.camera.CameraViewImpl;
+import com.wlanjie.streaming.camera.LivingCamera;
 import com.wlanjie.streaming.rtmp.Rtmp;
 import com.wlanjie.streaming.setting.AudioSetting;
 import com.wlanjie.streaming.setting.CameraSetting;
@@ -37,11 +38,10 @@ public class MediaStreamingManager {
   private StreamingSetting mStreamingSetting;
   private AudioProcessor mAudioProcessor;
   private AudioEncoder mAudioEncoder;
-  private CameraViewImpl mCameraViewImpl;
   private CallbackBridge mCallbacks = new CallbackBridge();
   private Encoder mEncoder;
   private byte[] aac = new byte[1024 * 1024];
-
+  private LivingCamera mCamera;
   private long mPresentTimeUs;
 
   public MediaStreamingManager(final GLSurfaceView glSurfaceView) {
@@ -60,36 +60,38 @@ public class MediaStreamingManager {
     mCameraSetting = cameraSetting;
     mStreamingSetting = streamingSetting;
     mAudioSetting = audioSetting;
+    mVideoRenderer.setStreamingSetting(streamingSetting);
     mAudioProcessor = new AudioProcessor(AudioUtils.getAudioRecord(audioSetting), audioSetting);
 
     mGLSurfaceView.setEGLContextClientVersion(2);
     mGLSurfaceView.setRenderer(mVideoRenderer);
     mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
+    cameraSetting.setPreviewWidth(720);
+    cameraSetting.setPreviewHeight(1280);
+    cameraSetting.setSurfaceTexture(mVideoRenderer.getSurfaceTexture());
     if (Build.VERSION.SDK_INT < 21) {
-      mCameraViewImpl = new Camera1(mCallbacks);
+      mCamera = new Camera1(mCallbacks, cameraSetting);
     } else if (Build.VERSION.SDK_INT < 23) {
-      mCameraViewImpl = new Camera2(mCallbacks, mGLSurfaceView.getContext());
+      mCamera = new Camera2(mCallbacks, cameraSetting, mGLSurfaceView.getContext());
     } else {
-      mCameraViewImpl = new Camera2Api23(mCallbacks, mGLSurfaceView.getContext());
+      mCamera = new Camera2Api23(mCallbacks, cameraSetting, mGLSurfaceView.getContext());
     }
-    mCameraViewImpl.setPreviewSurface(mVideoRenderer.getSurfaceTexture());
   }
 
   /**
    * open camera
    */
   public void resume() {
-    mCameraViewImpl.setSize(mGLSurfaceView.getWidth(), mGLSurfaceView.getHeight());
-    mCameraViewImpl.start();
-    mCameraViewImpl.startPreview(mGLSurfaceView.getWidth(), mGLSurfaceView.getHeight());
+    mCamera.setFacing(1);
+    mCamera.start();
   }
 
   /**
    * stop camera
    */
   public void pause() {
-    mCameraViewImpl.stop();
+    mCamera.stop();
   }
 
   public void startStreaming() {
@@ -103,6 +105,7 @@ public class MediaStreamingManager {
     OpenH264Encoder.setFrameSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
     OpenH264Encoder.openEncoder();
 
+    FdkAACEncoder.openEncoder(mAudioSetting.getChannelCount(), mAudioSetting.getSampleRate(), 32 * 1000);
     mVideoRenderer.setOnFrameListener(new VideoRenderer.OnFrameListener() {
       @Override
       public void onFrame(byte[] rgba) {
@@ -115,7 +118,7 @@ public class MediaStreamingManager {
       @Override
       public void onAudioRecord(byte[] buffer, int size) {
         if (true) {
-          mEncoder.convertPcmToAac(buffer, size);
+          FdkAACEncoder.encode(buffer, (int) (System.nanoTime() / 1000 - mPresentTimeUs));
         } else {
           if (mAudioEncoder == null) {
             mAudioEncoder = new AudioEncoder();
@@ -129,7 +132,7 @@ public class MediaStreamingManager {
                 mEncoder.addADTStoPacket(aac, outPacketSize);
                 bb.get(aac, 7, outBitSize);
                 bb.position(bi.offset);
-                mEncoder.muxerAac(aac, outPacketSize, (int) (bi.presentationTimeUs / 1000));
+                mEncoder.muxerAac(aac, outPacketSize, (int) (bi.presentationTimeUs / 1000 - mPresentTimeUs));
               }
             });
             mAudioEncoder.offerEncoder(buffer);
@@ -149,6 +152,12 @@ public class MediaStreamingManager {
         Rtmp.startPublish();
       }
     }.start();
+  }
+
+  public void stopStreaming() {
+    FdkAACEncoder.closeEncoder();
+    OpenH264Encoder.closeEncoder();
+    mAudioProcessor.stopEncode();
   }
 
   class CallbackBridge implements CameraCallback {
