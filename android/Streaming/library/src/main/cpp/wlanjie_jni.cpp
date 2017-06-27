@@ -121,11 +121,6 @@ void Android_JNI_closeH264Encoder(JNIEnv* env, jobject object) {
 
 jint Android_JNI_rgbaEncodeToH264(JNIEnv* env, jobject object, jbyteArray rgba_frame, jint src_width, jint src_height, jboolean need_flip, jint rotate_degree, jlong pts) {
     jbyte *rgba = env->GetByteArrayElements(rgba_frame, NULL);
-    uint8_t *h264 = h264encoder.encoder((char *) rgba, src_width, src_height, pts);
-    env->ReleaseByteArrayElements(rgba_frame, rgba, NULL);
-    if (h264encoder.getEncoderImageLength() > 0) {
-        muxer_h264_success((char *) h264, h264encoder.getEncoderImageLength(), pts);
-    }
     return 0;
 }
 
@@ -209,10 +204,12 @@ void Android_JNI_destroy(JNIEnv *env, jobject object) {
 
 void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint width, jint height, jlong pts) {
     jbyte *frame = env->GetByteArrayElements(data, NULL);
-    uint8_t *h264 = h264encoder.encoder((char *) frame, width, height, (long) pts);
+    int h264_size;
+    uint8_t *h264;
+    h264encoder.encoder((char *) frame, width, height, (long) pts, &h264_size, &h264);
     env->ReleaseByteArrayElements(data, frame, NULL);
-    if (h264encoder.getEncoderImageLength() > 0) {
-        muxer_h264_success((char *) h264, h264encoder.getEncoderImageLength(), (int) pts);
+    if (h264_size > 0) {
+        muxer_h264_success((char *) h264, h264_size, (int) pts);
     }
 }
 
