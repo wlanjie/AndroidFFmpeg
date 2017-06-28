@@ -43,7 +43,7 @@ public final class Effect {
 
   private final Resources mResources;
 
-  public Effect(Resources resources) {
+  Effect(Resources resources) {
     this.mResources = resources;
     mCubeBuffer = ByteBuffer.allocateDirect(TextureRotationUtil.CUBE.length * 4)
         .order(ByteOrder.nativeOrder())
@@ -66,13 +66,13 @@ public final class Effect {
     mTextureTransform = GLES20.glGetUniformLocation(mProgramId, "textureTransform");
   }
 
-  public void onInputSizeChanged(int width, int height) {
+  void onInputSizeChanged(int width, int height) {
     this.mInputWidth = width;
     this.mInputHeight = height;
     initFboTexture(width, height);
   }
 
-  public void onDisplaySizeChange(int width, int height) {
+  void onDisplaySizeChange(int width, int height) {
     mDisplayWidth = width;
     mDisplayHeight = height;
   }
@@ -137,20 +137,18 @@ public final class Effect {
     }
   }
 
-  public IntBuffer getRgbaBuffer() {
+  IntBuffer getRgbaBuffer() {
     return mFboBuffer;
   }
 
-  public int drawToFboTexture(int textureId) {
+  int drawToFboTexture(int textureId, FloatBuffer cubeBuffer, FloatBuffer textureBuffer) {
     GLES20.glUseProgram(mProgramId);
 
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mCubeId[0]);
     GLES20.glEnableVertexAttribArray(mPosition);
-    GLES20.glVertexAttribPointer(mPosition, 2, GLES20.GL_FLOAT, false, 4 * 2, 0);
+    GLES20.glVertexAttribPointer(mPosition, 2, GLES20.GL_FLOAT, false, 4 * 2, cubeBuffer);
 
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mTextureCoordinatedId[0]);
     GLES20.glEnableVertexAttribArray(mTextureCoordinate);
-    GLES20.glVertexAttribPointer(mTextureCoordinate, 2, GLES20.GL_FLOAT, false, 4 * 2, 0);
+    GLES20.glVertexAttribPointer(mTextureCoordinate, 2, GLES20.GL_FLOAT, false, 4 * 2, textureBuffer);
 
     GLES20.glUniformMatrix4fv(mTextureTransform, 1, false, mTextureTransformMatrix, 0);
 
@@ -171,11 +169,14 @@ public final class Effect {
     GLES20.glDisableVertexAttribArray(mTextureCoordinate);
 
     GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
-
     return mFboTextureId;
   }
 
-  public void setTextureTransformMatrix(float[] matrix) {
+  int drawToFboTexture(int textureId) {
+    return drawToFboTexture(textureId, mCubeBuffer, mTextureBuffer);
+  }
+
+  void setTextureTransformMatrix(float[] matrix) {
     mTextureTransformMatrix = matrix;
   }
 

@@ -58,6 +58,7 @@ public class MediaStreamingManager {
     mCameraSetting = cameraSetting;
     mStreamingSetting = streamingSetting;
     mAudioSetting = audioSetting;
+    mVideoRenderer.setCameraSetting(cameraSetting);
     mVideoRenderer.setStreamingSetting(streamingSetting);
     mAudioProcessor = new AudioProcessor(AudioUtils.getAudioRecord(audioSetting), audioSetting);
 
