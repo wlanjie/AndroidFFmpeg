@@ -9,9 +9,8 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 
-import com.wlanjie.streaming.camera.EglCore;
-import com.wlanjie.streaming.camera.OpenGLUtils;
 import com.wlanjie.streaming.setting.StreamingSetting;
+import com.wlanjie.streaming.util.OpenGLUtils;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -24,7 +23,7 @@ import javax.microedition.khronos.opengles.GL10;
  */
 public class VideoRenderer implements GLSurfaceView.Renderer {
 
-  private EglCore mEglCore;
+  private Effect mEffect;
   private int mSurfaceWidth;
   private int mSurfaceHeight;
   private ByteBuffer mFrameBuffer;
@@ -36,11 +35,13 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   private Handler mHandler;
   private OnFrameListener mOnFrameListener;
   private StreamingSetting mStreamingSetting;
+  private final RendererScreen mRendererScreen;
 
   public VideoRenderer(Context context) {
-    mEglCore = new EglCore(context.getResources());
+    mEffect = new Effect(context.getResources());
     mSurfaceTextureId = OpenGLUtils.getExternalOESTextureID();
     mSurfaceTexture = new SurfaceTexture(mSurfaceTextureId);
+    mRendererScreen = new RendererScreen(context);
   }
 
   public void setStreamingSetting(StreamingSetting streamingSetting) {
@@ -52,7 +53,8 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     GLES20.glDisable(GL10.GL_DITHER);
     GLES20.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-    mEglCore.init();
+    mRendererScreen.init();
+    mEffect.init();
 
     HandlerThread thread = new HandlerThread("glDraw");
     thread.start();
@@ -60,7 +62,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
       @Override
       public void handleMessage(Message msg) {
         super.handleMessage(msg);
-        IntBuffer buffer = mEglCore.getRgbaBuffer();
+        IntBuffer buffer = mEffect.getRgbaBuffer();
         mFrameBuffer.asIntBuffer().put(buffer.array());
         if (mOnFrameListener != null) {
           mOnFrameListener.onFrame(mFrameBuffer.array());
@@ -74,9 +76,11 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceWidth = width;
     mSurfaceHeight = height;
     mFrameBuffer = ByteBuffer.allocate(width * height * 4);
-    mEglCore.onInputSizeChanged(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
+    mEffect.onInputSizeChanged(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
     GLES20.glViewport(0, 0, width, height);
-    mEglCore.onDisplaySizeChange(width, height);
+    mEffect.onDisplaySizeChange(width, height);
+
+    mRendererScreen.setDisplaySize(width, height);
 
     float outputAspectRatio = width > height ? (float) width / height : (float) height / width;
     float aspectRatio = outputAspectRatio / outputAspectRatio;
@@ -95,8 +99,9 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceTexture.updateTexImage();
     mSurfaceTexture.getTransformMatrix(mSurfaceMatrix);
     Matrix.multiplyMM(mTransformMatrix, 0, mSurfaceMatrix, 0, mProjectionMatrix, 0);
-    mEglCore.setTextureTransformMatrix(mTransformMatrix);
-    mEglCore.onDrawFrame(mSurfaceTextureId);
+    mEffect.setTextureTransformMatrix(mTransformMatrix);
+    int textureId = mEffect.drawToFboTexture(mSurfaceTextureId);
+    mRendererScreen.draw(textureId);
     mHandler.sendEmptyMessage(0);
   }
 
@@ -113,7 +118,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   }
 
   public void destroy() {
-    mEglCore.destroy();
+    mEffect.destroy();
   }
 
   public void setOnFrameListener(OnFrameListener l) {
