@@ -3,17 +3,17 @@
 //
 
 #include <libAACenc/include/aacenc_lib.h>
-#include "AudioEncode.h"
+#include "audioencode.h"
 
-AudioEncode::AudioEncode() {
-
-}
-
-AudioEncode::~AudioEncode() {
+wlanjie::AudioEncode::AudioEncode() {
 
 }
 
-bool AudioEncode::open_aac_encode(int channel, int sample_rate, int bitrate) {
+wlanjie::AudioEncode::~AudioEncode() {
+
+}
+
+bool wlanjie::AudioEncode::open_aac_encode(int channel, int sample_rate, int bitrate) {
     this->channel = channel;
     this->sample_rate = sample_rate;
     this->bitrate = bitrate;
@@ -44,13 +44,13 @@ bool AudioEncode::open_aac_encode(int channel, int sample_rate, int bitrate) {
     return aacEncInfo(aac_handle, &info) == AACENC_OK;
 }
 
-void AudioEncode::close_aac_encode() {
+void wlanjie::AudioEncode::close_aac_encode() {
     if (aac_handle) {
         aacEncClose(&aac_handle);
     }
 }
 
-int AudioEncode::encode_pcm_to_aac(char *pcm, int pcm_length) {
+int wlanjie::AudioEncode::encode_pcm_to_aac(char *pcm, int pcm_length) {
     AACENC_BufDesc in_buf = { 0 };
     AACENC_BufDesc out_buf = { 0 };
     AACENC_InArgs in_args = { 0 };
@@ -87,7 +87,7 @@ int AudioEncode::encode_pcm_to_aac(char *pcm, int pcm_length) {
     return out_args.numOutBytes;
 }
 
-uint8_t *AudioEncode::getAac() {
+uint8_t *wlanjie::AudioEncode::getAac() {
     return aac_buf;
 }
 

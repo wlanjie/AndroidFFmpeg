@@ -12,10 +12,10 @@
 
 namespace wlanjie {
 
-    class H264encoder {
+    class H264Encoder {
     public:
-        H264encoder();
-        ~H264encoder();
+        H264Encoder();
+        ~H264Encoder();
 
         void setFrameSize(int width, int height);
 
@@ -23,7 +23,7 @@ namespace wlanjie {
 
         void closeH264Encoder();
 
-        uint8_t* encoder(char *rgba, int width, int height, long pts, int *h264_length, uint8_t **h264);
+        void encoder(char *rgba, int width, int height, long pts, int *h264_length, uint8_t **h264);
     private:
         SEncParamExt createEncoderParams() const;
 
@@ -33,8 +33,8 @@ namespace wlanjie {
         Source_Picture_s _sourcePicture;
         std::ofstream _outputStream;
 
-        int frameWidth = 640;
-        int frameHeight = 480;
+        int frameWidth;
+        int frameHeight;
     };
 
 }

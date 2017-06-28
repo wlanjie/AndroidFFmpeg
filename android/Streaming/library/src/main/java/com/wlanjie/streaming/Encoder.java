@@ -108,7 +108,7 @@ public abstract class Encoder {
     }
 
     public Encoder build() {
-      return encode == SOFT_ENCODE ? new SoftEncoder(this) : new HardEncoder(this);
+      return null;
     }
   }
 
@@ -136,32 +136,32 @@ public abstract class Encoder {
     setEncoderResolution(mBuilder.width, mBuilder.height);
 
     mAudioProcessor.start();
-    mAudioProcessor.setOnAudioRecordListener(new OnAudioRecordListener() {
-      @Override
-      public void onAudioRecord(byte[] buffer, int size) {
-        if (mBuilder.encode == SOFT_ENCODE) {
-          convertPcmToAac(buffer, size);
-        } else {
-          if (mAudioEncoder == null) {
-            mAudioEncoder = new AudioEncoder();
-            mAudioEncoder.setOnAudioEncoderListener(new OnAudioEncoderListener() {
-              @Override
-              public void onAudioEncode(ByteBuffer bb, MediaCodec.BufferInfo bi) {
-                int outBitSize = bi.size;
-                int outPacketSize = outBitSize + 7;
-                bb.position(bi.offset);
-                bb.limit(bi.offset + outBitSize);
-                addADTStoPacket(aac, outPacketSize);
-                bb.get(aac, 7, outBitSize);
-                bb.position(bi.offset);
-                muxerAac(aac, outPacketSize, (int) (bi.presentationTimeUs / 1000));
-              }
-            });
-            mAudioEncoder.offerEncoder(buffer);
-          }
-        }
-      }
-    });
+//    mAudioProcessor.setOnAudioRecordListener(new OnAudioRecordListener() {
+//      @Override
+//      public void onAudioRecord(byte[] buffer, int size) {
+//        if (mBuilder.encode == SOFT_ENCODE) {
+//          convertPcmToAac(buffer, size);
+//        } else {
+//          if (mAudioEncoder == null) {
+//            mAudioEncoder = new AudioEncoder();
+//            mAudioEncoder.setOnAudioEncoderListener(new OnAudioEncoderListener() {
+//              @Override
+//              public void onAudioEncode(ByteBuffer bb, MediaCodec.BufferInfo bi) {
+//                int outBitSize = bi.size;
+//                int outPacketSize = outBitSize + 7;
+//                bb.position(bi.offset);
+//                bb.limit(bi.offset + outBitSize);
+//                addADTStoPacket(aac, outPacketSize);
+//                bb.get(aac, 7, outBitSize);
+//                bb.position(bi.offset);
+//                muxerAac(aac, outPacketSize, (int) (bi.presentationTimeUs / 1000));
+//              }
+//            });
+//            mAudioEncoder.offerEncoder(buffer);
+//          }
+//        }
+//      }
+//    });
 
     mBuilder.cameraView.addCallback(new CameraView.Callback() {
       @Override

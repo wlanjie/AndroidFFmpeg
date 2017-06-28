@@ -52,9 +52,7 @@ class FlvMuxer {
     private FlvFrame audioSequenceHeader;
     private ConcurrentLinkedQueue<FlvFrame> frameCache = new ConcurrentLinkedQueue<>();
 
-    private Encoder encoder;
-    FlvMuxer(Encoder encoder) {
-        this.encoder = encoder;
+    FlvMuxer() {
     }
 
     private void sendFlvTag(FlvFrame frame) throws IllegalStateException, IOException {

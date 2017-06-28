@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <time.h>
 #include "libyuv.h"
-#include "h264encoder.h"
+#include "h264encode.h"
 #include "log.h"
 #include "YuvConvert.h"
 
@@ -19,15 +19,15 @@ void logEncode(void *context, int level, const char *message) {
     __android_log_print(ANDROID_LOG_VERBOSE, "wlanjie", message, 1);
 }
 
-wlanjie::H264encoder::H264encoder() {
+wlanjie::H264Encoder::H264Encoder() {
 
 }
 
-wlanjie::H264encoder::~H264encoder() {
+wlanjie::H264Encoder::~H264Encoder() {
 
 }
 
-bool wlanjie::H264encoder::openH264Encoder() {
+bool wlanjie::H264Encoder::openH264Encoder() {
     WelsCreateSVCEncoder(&encoder_);
     SEncParamExt encoder_params = createEncoderParams();
     int ret = 0;
@@ -61,7 +61,7 @@ bool wlanjie::H264encoder::openH264Encoder() {
     return false;
 }
 
-void wlanjie::H264encoder::closeH264Encoder() {
+void wlanjie::H264Encoder::closeH264Encoder() {
     if (encoder_) {
         encoder_->Uninitialize();
         WelsDestroySVCEncoder(encoder_);
@@ -69,7 +69,7 @@ void wlanjie::H264encoder::closeH264Encoder() {
     }
 }
 
-SEncParamExt wlanjie::H264encoder::createEncoderParams() const {
+SEncParamExt wlanjie::H264Encoder::createEncoderParams() const {
     SEncParamExt encoder_params;
     encoder_->GetDefaultParams(&encoder_params);
     encoder_params.iUsageType = CAMERA_VIDEO_REAL_TIME;
@@ -100,12 +100,15 @@ SEncParamExt wlanjie::H264encoder::createEncoderParams() const {
     return encoder_params;
 }
 
-void wlanjie::H264encoder::setFrameSize(int width, int height) {
+void wlanjie::H264Encoder::setFrameSize(int width, int height) {
     this->frameHeight = height;
     this->frameWidth = width;
 }
 
-uint8_t *wlanjie::H264encoder::encoder(char *rgba, int width, int height, long pts, int *h264_length, uint8_t **h264) {
+void wlanjie::H264Encoder::encoder(char *rgba, int width, int height, long pts, int *h264_length, uint8_t **h264) {
+    if (encoder_ == NULL) {
+        return;
+    }
     _sourcePicture.uiTimeStamp = pts;
     libyuv::RGBAToI420((const uint8 *) rgba, width * 4,
                    _sourcePicture.pData[0], _sourcePicture.iStride[0],
@@ -137,8 +140,6 @@ uint8_t *wlanjie::H264encoder::encoder(char *rgba, int width, int height, long p
             }
             *h264 = encoded_image_buffer;
             free(encoded_image_buffer);
-            return encoded_image_buffer;
         }
     }
-    return nullptr;
 }

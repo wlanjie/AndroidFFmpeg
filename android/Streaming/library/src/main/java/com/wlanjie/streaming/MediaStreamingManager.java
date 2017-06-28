@@ -39,14 +39,12 @@ public class MediaStreamingManager {
   private AudioProcessor mAudioProcessor;
   private AudioEncoder mAudioEncoder;
   private CallbackBridge mCallbacks = new CallbackBridge();
-  private Encoder mEncoder;
   private byte[] aac = new byte[1024 * 1024];
   private LivingCamera mCamera;
   private long mPresentTimeUs;
 
   public MediaStreamingManager(final GLSurfaceView glSurfaceView) {
     mGLSurfaceView = glSurfaceView;
-    mEncoder = new SoftEncoder(new Encoder.Builder());
     mVideoRenderer = new VideoRenderer(glSurfaceView.getContext());
     mVideoRenderer.getSurfaceTexture().setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
       @Override
@@ -124,15 +122,8 @@ public class MediaStreamingManager {
             mAudioEncoder = new AudioEncoder();
             mAudioEncoder.setOnAudioEncoderListener(new OnAudioEncoderListener() {
               @Override
-              public void onAudioEncode(ByteBuffer bb, MediaCodec.BufferInfo bi) {
-                int outBitSize = bi.size;
-                int outPacketSize = outBitSize + 7;
-                bb.position(bi.offset);
-                bb.limit(bi.offset + outBitSize);
-                mEncoder.addADTStoPacket(aac, outPacketSize);
-                bb.get(aac, 7, outBitSize);
-                bb.position(bi.offset);
-                mEncoder.muxerAac(aac, outPacketSize, (int) (bi.presentationTimeUs / 1000 - mPresentTimeUs));
+              public void onAudioEncode(byte[] data, long timeUs) {
+                Rtmp.muxerAac(data, data.length, (int) (timeUs / 1000 - mPresentTimeUs));
               }
             });
             mAudioEncoder.offerEncoder(buffer);
@@ -181,5 +172,9 @@ public class MediaStreamingManager {
     public void onPreview(int previewWidth, int previewHeight) {
 
     }
+  }
+
+  static {
+    System.loadLibrary("wlanjie");
   }
 }

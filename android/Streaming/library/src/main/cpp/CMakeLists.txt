@@ -37,7 +37,7 @@ add_subdirectory(rtmp)
 #add fdk-aac library
 add_subdirectory(fdk-aac)
 
-file(GLOB WLANJIE_SOURCE wlanjie_jni.cpp muxer.cpp YuvConvert.cpp YuvFrame.cpp AudioEncode.cpp YuvConvert.cpp h264encoder.cpp)
+file(GLOB WLANJIE_SOURCE stream_jni.cpp muxer.cpp YuvConvert.cpp YuvFrame.cpp audioencode.cpp YuvConvert.cpp h264encode.cpp)
 add_library(wlanjie SHARED ${WLANJIE_SOURCE})
 
 #link libyuv library

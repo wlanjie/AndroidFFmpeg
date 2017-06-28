@@ -1,24 +1,20 @@
 package com.wlanjie.streaming.sample;
 
 import android.opengl.GLSurfaceView;
+import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.wlanjie.streaming.Encoder;
 import com.wlanjie.streaming.MediaStreamingManager;
-import com.wlanjie.streaming.camera.CameraView;
 import com.wlanjie.streaming.setting.AudioSetting;
 import com.wlanjie.streaming.setting.CameraSetting;
 import com.wlanjie.streaming.setting.StreamingSetting;
 
 public class MainActivity extends AppCompatActivity {
 
-  private CameraView mCameraView;
-  private Encoder encoder;
   private MediaStreamingManager mMediaStreamingManager;
 
   @Override
@@ -47,7 +43,6 @@ public class MainActivity extends AppCompatActivity {
   protected void onResume() {
     super.onResume();
     mMediaStreamingManager.resume();
-
     mMediaStreamingManager.startStreaming();
   }
 
@@ -55,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
   protected void onPause() {
     super.onPause();
     mMediaStreamingManager.pause();
+    mMediaStreamingManager.stopStreaming();
   }
 
   @Override
@@ -67,11 +63,11 @@ public class MainActivity extends AppCompatActivity {
   public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
       case R.id.switch_camera:
-        if (mCameraView != null) {
-          int facing = mCameraView.getFacing();
-          mCameraView.setFacing(facing == CameraView.FACING_FRONT ?
-              CameraView.FACING_BACK : CameraView.FACING_FRONT);
-        }
+//        if (mCameraView != null) {
+//          int facing = mCameraView.getFacing();
+//          mCameraView.setFacing(facing == CameraView.FACING_FRONT ?
+//              CameraView.FACING_BACK : CameraView.FACING_FRONT);
+//        }
         break;
     }
     return super.onOptionsItemSelected(item);
@@ -80,8 +76,5 @@ public class MainActivity extends AppCompatActivity {
   @Override
   protected void onDestroy() {
     super.onDestroy();
-//    if (encoder != null) {
-//      encoder.stop();
-//    }
   }
 }
