@@ -7,10 +7,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 
 import com.wlanjie.streaming.MediaStreamingManager;
 import com.wlanjie.streaming.setting.AudioSetting;
 import com.wlanjie.streaming.setting.CameraSetting;
+import com.wlanjie.streaming.setting.EncoderType;
 import com.wlanjie.streaming.setting.StreamingSetting;
 
 public class MainActivity extends AppCompatActivity {
@@ -32,18 +34,34 @@ public class MainActivity extends AppCompatActivity {
     CameraSetting cameraSetting = new CameraSetting();
     AudioSetting audioSetting = new AudioSetting();
     StreamingSetting streamingSetting = new StreamingSetting();
-    streamingSetting.setRtmpUrl("rtmp://www.ossrs.net:1935/live/demo");
+    streamingSetting.setRtmpUrl("rtmp://www.ossrs.net:1935/live/demo")
+        .setEncoderType(EncoderType.HARD);
 
     GLSurfaceView glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
     mMediaStreamingManager = new MediaStreamingManager(glSurfaceView);
     mMediaStreamingManager.prepare(cameraSetting, streamingSetting, audioSetting);
+
+    findViewById(R.id.publish)
+        .setOnClickListener(new View.OnClickListener() {
+          @Override
+          public void onClick(View v) {
+            mMediaStreamingManager.startStreaming();
+          }
+        });
+
+    findViewById(R.id.stop)
+        .setOnClickListener(new View.OnClickListener() {
+          @Override
+          public void onClick(View v) {
+            mMediaStreamingManager.stopStreaming();
+          }
+        });
   }
 
   @Override
   protected void onResume() {
     super.onResume();
     mMediaStreamingManager.resume();
-    mMediaStreamingManager.startStreaming();
   }
 
   @Override

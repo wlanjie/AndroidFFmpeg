@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Streaming</string>
+    <string name="publish">推流</string>
+    <string name="stop">停止</string>
 </resources>

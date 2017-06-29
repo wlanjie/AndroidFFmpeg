@@ -20,7 +20,9 @@ import com.wlanjie.streaming.camera.LivingCamera;
 import com.wlanjie.streaming.rtmp.Rtmp;
 import com.wlanjie.streaming.setting.AudioSetting;
 import com.wlanjie.streaming.setting.CameraSetting;
+import com.wlanjie.streaming.setting.EncoderType;
 import com.wlanjie.streaming.setting.StreamingSetting;
+import com.wlanjie.streaming.video.OnMediaCodecEncoderListener;
 import com.wlanjie.streaming.video.OpenH264Encoder;
 import com.wlanjie.streaming.video.VideoRenderer;
 
@@ -42,6 +44,7 @@ public class MediaStreamingManager {
   private byte[] aac = new byte[1024 * 1024];
   private LivingCamera mCamera;
   private long mPresentTimeUs;
+  private volatile boolean mIsStartPublish = false;
 
   public MediaStreamingManager(final GLSurfaceView glSurfaceView) {
     mGLSurfaceView = glSurfaceView;
@@ -101,22 +104,36 @@ public class MediaStreamingManager {
       throw new IllegalArgumentException("url must be rtmp://");
     }
     mPresentTimeUs = System.nanoTime() / 1000;
-    OpenH264Encoder.setFrameSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
-    OpenH264Encoder.openEncoder();
+    if (mStreamingSetting.getEncoderType() == EncoderType.SOFT) {
+      OpenH264Encoder.setFrameSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
+      OpenH264Encoder.openEncoder();
 
-    FdkAACEncoder.openEncoder(mAudioSetting.getChannelCount(), mAudioSetting.getSampleRate(), 32 * 1000);
-    mVideoRenderer.setOnFrameListener(new VideoRenderer.OnFrameListener() {
-      @Override
-      public void onFrame(byte[] rgba) {
-        OpenH264Encoder.encode(rgba, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(), System.nanoTime() - mPresentTimeUs);
-      }
-    });
+      FdkAACEncoder.openEncoder(mAudioSetting.getChannelCount(), mAudioSetting.getSampleRate(), 32 * 1000);
+      mVideoRenderer.setOnFrameListener(new VideoRenderer.OnFrameListener() {
+        @Override
+        public void onFrame(byte[] rgba) {
+          OpenH264Encoder.encode(rgba, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(), System.nanoTime() - mPresentTimeUs);
+        }
+      });
+    } else {
+      mVideoRenderer.startEncoder();
+      mVideoRenderer.setOnMediaCodecEncoderListener(new OnMediaCodecEncoderListener() {
+        @Override
+        public void onEncode(ByteBuffer buffer, MediaCodec.BufferInfo info) {
+          buffer.position(info.offset);
+          buffer.limit(info.offset + info.size);
+          byte[] h264 = new byte[info.size];
+          buffer.get(h264, 0, info.size);
+          Rtmp.muxerH264(h264, h264.length, (int) (info.presentationTimeUs / 1000));
+        }
+      });
+    }
 
     mAudioProcessor.start();
     mAudioProcessor.setOnAudioRecordListener(new OnAudioRecordListener() {
       @Override
       public void onAudioRecord(byte[] buffer, int size) {
-        if (true) {
+        if (mStreamingSetting.getEncoderType() == EncoderType.SOFT) {
           FdkAACEncoder.encode(buffer, (int) (System.nanoTime() / 1000 - mPresentTimeUs));
         } else {
           if (mAudioEncoder == null) {
@@ -127,8 +144,8 @@ public class MediaStreamingManager {
                 Rtmp.muxerAac(data, data.length, (int) (timeUs / 1000 - mPresentTimeUs));
               }
             });
-            mAudioEncoder.offerEncoder(buffer);
           }
+          mAudioEncoder.offerEncoder(buffer);
         }
       }
     });
@@ -144,12 +161,22 @@ public class MediaStreamingManager {
         Rtmp.startPublish();
       }
     }.start();
+    mIsStartPublish = true;
   }
 
   public void stopStreaming() {
-    FdkAACEncoder.closeEncoder();
-    OpenH264Encoder.closeEncoder();
+    if (!mIsStartPublish) {
+      return;
+    }
+    if (mStreamingSetting.getEncoderType() == EncoderType.SOFT) {
+      FdkAACEncoder.closeEncoder();
+      OpenH264Encoder.closeEncoder();
+    } else {
+      mVideoRenderer.stopEncoder();
+    }
     mAudioProcessor.stopEncode();
+    mAudioProcessor.interrupt();
+    mIsStartPublish = false;
   }
 
   class CallbackBridge implements CameraCallback {

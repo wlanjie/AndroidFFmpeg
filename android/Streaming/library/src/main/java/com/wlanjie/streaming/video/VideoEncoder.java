@@ -28,7 +28,7 @@ public class VideoEncoder {
   private HandlerThread mEncoderThread;
   private Handler mEncodeHandler;
   private MediaCodec.BufferInfo mBufferInfo;
-  private boolean mIsStarted;
+  private volatile boolean mIsStarted;
   private final ReentrantLock mEncoderLock = new ReentrantLock();
   private OnMediaCodecEncoderListener mEncoderListener;
 
@@ -71,6 +71,30 @@ public class VideoEncoder {
     mEncodeHandler.post(mEncoderRunnable);
   }
 
+  public void stopEncoder() {
+    if (!mIsStarted) {
+      return;
+    }
+    mIsStarted = false;
+    if (mInputSurface != null) {
+      mInputSurface.release();
+    }
+    if (mMediaCodec != null) {
+      mMediaCodec.stop();
+      mMediaCodec.release();
+      mMediaCodec = null;
+    }
+    if (mEncodeHandler != null) {
+      mEncodeHandler.removeCallbacks(mEncoderRunnable);
+    }
+    if (mEncoderThread != null) {
+      mEncoderThread.getLooper().quit();
+      mEncoderThread.interrupt();
+      mEncoderThread.quit();
+      mEncoderThread = null;
+    }
+  }
+
   private final Runnable mEncoderRunnable = new Runnable() {
     @Override
     public void run() {
@@ -88,6 +112,7 @@ public class VideoEncoder {
         if (mEncoderListener != null) {
           mEncoderListener.onEncode(buffer, mBufferInfo);
         }
+        mMediaCodec.releaseOutputBuffer(outBufferIndex, false);
       } else {
         SystemClock.sleep(10);
       }

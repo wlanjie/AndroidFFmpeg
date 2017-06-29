@@ -5,12 +5,14 @@ import android.graphics.SurfaceTexture;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 
 import com.wlanjie.streaming.camera.CameraFacingId;
 import com.wlanjie.streaming.setting.CameraSetting;
+import com.wlanjie.streaming.setting.EncoderType;
 import com.wlanjie.streaming.setting.StreamingSetting;
 import com.wlanjie.streaming.util.OpenGLUtils;
 import com.wlanjie.streaming.util.Rotation;
@@ -28,9 +30,11 @@ import javax.microedition.khronos.opengles.GL10;
  * Created by wlanjie on 2017/6/24.
  */
 public class VideoRenderer implements GLSurfaceView.Renderer {
+  private static final int SOFT_ENCODER_MESSAGE = 0;
   public static final int CENTER_INSIDE = 0, CENTER_CROP = 1, FIT_XY = 2;
   private int mScaleType = CENTER_CROP;
 
+  private Context mContext;
   private Effect mEffect;
   private int mSurfaceWidth;
   private int mSurfaceHeight;
@@ -39,6 +43,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   private SurfaceTexture mSurfaceTexture;
   private int mSurfaceTextureId;
   private Handler mHandler;
+  private HandlerThread mEncoderThread;
   private OnFrameListener mOnFrameListener;
   private StreamingSetting mStreamingSetting;
   private CameraSetting mCameraSetting;
@@ -47,8 +52,11 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   private FloatBuffer mTextureBuffer;
   FloatBuffer mRecordCubeBuffer;
   FloatBuffer mRecordTextureBuffer;
+  private VideoEncoder mVideoEncoder;
+  private RendererVideoEncoder mRendererVideoEncoder;
 
   public VideoRenderer(Context context) {
+    mContext = context;
     mEffect = new Effect(context.getResources());
     mSurfaceTextureId = OpenGLUtils.getExternalOESTextureID();
     mSurfaceTexture = new SurfaceTexture(mSurfaceTextureId);
@@ -89,19 +97,57 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mRendererScreen.init();
     mEffect.init();
 
-    HandlerThread thread = new HandlerThread("glDraw");
-    thread.start();
-    mHandler = new Handler(thread.getLooper()) {
-      @Override
-      public void handleMessage(Message msg) {
-        super.handleMessage(msg);
-        IntBuffer buffer = mEffect.getRgbaBuffer();
-        mFrameBuffer.asIntBuffer().put(buffer.array());
-        if (mOnFrameListener != null) {
-          mOnFrameListener.onFrame(mFrameBuffer.array());
+  }
+
+  public void startEncoder() {
+    initEncoder();
+  }
+
+  public void setOnMediaCodecEncoderListener(OnMediaCodecEncoderListener l) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+      mVideoEncoder.setOnMediaCodecEncoderListener(l);
+    }
+  }
+
+  public void stopEncoder() {
+    if (mHandler != null) {
+      mHandler.removeMessages(SOFT_ENCODER_MESSAGE);
+    }
+    if (mEncoderThread != null) {
+      mEncoderThread.getLooper().quit();
+      mEncoderThread.interrupt();
+      mEncoderThread.quit();
+      mEncoderThread = null;
+    }
+    if (mVideoEncoder != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+      mVideoEncoder.stopEncoder();
+    }
+  }
+
+  private void initEncoder() {
+    if (mStreamingSetting.getEncoderType() == EncoderType.SOFT) {
+      mEncoderThread = new HandlerThread("glDraw");
+      mEncoderThread.start();
+      mHandler = new Handler(mEncoderThread.getLooper()) {
+        @Override
+        public void handleMessage(Message msg) {
+          super.handleMessage(msg);
+          IntBuffer buffer = mEffect.getRgbaBuffer();
+          mFrameBuffer.asIntBuffer().put(buffer.array());
+          if (mOnFrameListener != null) {
+            mOnFrameListener.onFrame(mFrameBuffer.array());
+          }
         }
+      };
+    } else {
+      mVideoEncoder = new VideoEncoder();
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+        mVideoEncoder.prepareEncoder(mStreamingSetting);
+        mRendererVideoEncoder = new RendererVideoEncoder(mContext);
+        mRendererVideoEncoder.init();
+        mRendererVideoEncoder.setVideoSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
       }
-    };
+    }
   }
 
   @Override
@@ -133,9 +179,16 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceTexture.updateTexImage();
     mSurfaceTexture.getTransformMatrix(mSurfaceMatrix);
     mEffect.setTextureTransformMatrix(mSurfaceMatrix);
-    int textureId = mEffect.drawToFboTexture(mSurfaceTextureId, mRecordCubeBuffer, mRecordTextureBuffer);
+    int textureId = mEffect.drawToFboTexture(mSurfaceTextureId);
     mRendererScreen.draw(textureId, mCubeBuffer, mTextureBuffer);
-    mHandler.sendEmptyMessage(0);
+    if (mHandler != null) {
+      mHandler.sendEmptyMessage(SOFT_ENCODER_MESSAGE);
+    }
+    if (mRendererVideoEncoder != null) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+        mRendererVideoEncoder.drawEncoder(textureId, mVideoEncoder, mCubeBuffer, mTextureBuffer);
+      }
+    }
   }
 
   public SurfaceTexture getSurfaceTexture() {
@@ -152,6 +205,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
 
   public void destroy() {
     mEffect.destroy();
+    mRendererScreen.destroy();
   }
 
   public void setOnFrameListener(OnFrameListener l) {

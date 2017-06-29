@@ -12,6 +12,7 @@ public class StreamingSetting {
   private int maxBps = 500;
   private int minBps;
   private int ifi = 2;
+  private EncoderType mEncoderType = EncoderType.SOFT;
  
   public String getRtmpUrl() {
     return rtmpUrl;
@@ -74,5 +75,13 @@ public class StreamingSetting {
   public StreamingSetting setIfi(int ifi) {
     this.ifi = ifi;
     return this;
-  } 
-} 
+  }
+
+  public EncoderType getEncoderType() {
+    return mEncoderType;
+  }
+
+  public void setEncoderType(EncoderType mEncoderType) {
+    this.mEncoderType = mEncoderType;
+  }
+}
