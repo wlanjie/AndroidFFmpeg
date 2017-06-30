@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
     CameraSetting cameraSetting = new CameraSetting();
     AudioSetting audioSetting = new AudioSetting();
     StreamingSetting streamingSetting = new StreamingSetting();
-    streamingSetting.setRtmpUrl("rtmp://www.ossrs.net:1935/live/demo")
+    streamingSetting.setRtmpUrl("rtmp://192.168.0.106/live/demo")
         .setEncoderType(EncoderType.HARD);
 
     GLSurfaceView glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_surface_view);

@@ -46,6 +46,9 @@ class InputSurface {
   }
 
   public void makeCurrent() {
+    if (mEGLDisplay == null || mEGLSurface == null || mEGLContext == null) {
+      return;
+    }
     if (!EGL14.eglMakeCurrent(mEGLDisplay, mEGLSurface, mEGLSurface, mEGLContext)) {
       throw new RuntimeException("eglMakeCurrent failed");
     }

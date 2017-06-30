@@ -70,7 +70,7 @@ public class AudioEncoder {
         addAdtsToPacket(aac, outBitSize);
         outputBuffer.get(aac, 7, outBitSize);
         outputBuffer.position(mBufferInfo.offset);
-        mOnAudioEncoderListener.onAudioEncode(aac, mBufferInfo.presentationTimeUs);
+        mOnAudioEncoderListener.onAudioEncode(aac, outPacketSize, mBufferInfo.presentationTimeUs);
       }
       mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
       outputBufferIndex = mMediaCodec.dequeueOutputBuffer(mBufferInfo, 0);

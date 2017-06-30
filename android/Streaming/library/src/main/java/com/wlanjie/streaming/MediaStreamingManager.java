@@ -138,10 +138,11 @@ public class MediaStreamingManager {
         } else {
           if (mAudioEncoder == null) {
             mAudioEncoder = new AudioEncoder();
+            mAudioEncoder.start(mAudioSetting);
             mAudioEncoder.setOnAudioEncoderListener(new OnAudioEncoderListener() {
               @Override
-              public void onAudioEncode(byte[] data, long timeUs) {
-                Rtmp.muxerAac(data, data.length, (int) (timeUs / 1000 - mPresentTimeUs));
+              public void onAudioEncode(byte[] data, int size, long timeUs) {
+                Rtmp.muxerAac(data, size, (int) (timeUs / 1000 - mPresentTimeUs));
               }
             });
           }
