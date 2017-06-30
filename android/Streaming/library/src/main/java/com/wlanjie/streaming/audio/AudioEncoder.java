@@ -19,6 +19,7 @@ public class AudioEncoder {
   private final static int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
   private MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
   private OnAudioEncoderListener mOnAudioEncoderListener;
+  private long mPresentTimeUs;
 
   private AudioSetting mAudioSetting;
   private MediaCodec mMediaCodec;
@@ -34,6 +35,7 @@ public class AudioEncoder {
     mAudioSetting = audioSetting;
     mMediaCodec = getAudioMediaCodec();
     mMediaCodec.start();
+    mPresentTimeUs = System.nanoTime() / 1000;
   }
 
   public synchronized void stop() {
@@ -54,8 +56,9 @@ public class AudioEncoder {
     if (inputBufferIndex >= 0) {
       ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
       inputBuffer.clear();
-      inputBuffer.put(input);
-      mMediaCodec.queueInputBuffer(inputBufferIndex, 0, input.length, 0, 0);
+      inputBuffer.put(input, 0 , input.length);
+      long pts = System.nanoTime() / 1000 - mPresentTimeUs;
+      mMediaCodec.queueInputBuffer(inputBufferIndex, 0, input.length, pts, 0);
     }
 
     int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(mBufferInfo, 12000);
@@ -67,7 +70,7 @@ public class AudioEncoder {
         outputBuffer.position(mBufferInfo.offset);
         outputBuffer.limit(mBufferInfo.offset + outBitSize);
         byte[] aac = new byte[outPacketSize];
-        addAdtsToPacket(aac, outBitSize);
+        addAdtsToPacket(aac, outPacketSize);
         outputBuffer.get(aac, 7, outBitSize);
         outputBuffer.position(mBufferInfo.offset);
         mOnAudioEncoderListener.onAudioEncode(aac, outPacketSize, mBufferInfo.presentationTimeUs);
