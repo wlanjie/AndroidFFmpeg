@@ -2,12 +2,14 @@ package com.wlanjie.streaming.setting;
 
 import android.graphics.SurfaceTexture;
 
+import com.wlanjie.streaming.camera.CameraFacingId;
+
 /**
  * Created by wlanjie on 2017/6/14.
  */
 public class CameraSetting {
 
-  private CameraFacingId facing;
+  private CameraFacingId facing = CameraFacingId.CAMERA_FACING_FRONT;
   private SurfaceTexture surfaceTexture;
   private int displayOrientation = 0;
   private int previewWidth;
@@ -54,10 +56,5 @@ public class CameraSetting {
 
   public void setPreviewHeight(int previewHeight) {
     this.previewHeight = previewHeight;
-  }
-
-  public static enum CameraFacingId {
-    CAMERA_FACING_BACK,
-    CAMERA_FACING_FRONT
   }
 }

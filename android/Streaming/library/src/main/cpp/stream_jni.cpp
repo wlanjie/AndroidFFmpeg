@@ -50,7 +50,7 @@ void Android_JNI_startPublish(JNIEnv *env, jobject object) {
             srs_rtmp_write_packet(rtmp, (char) (frame.packet_type == AUDIO_TYPE ? SRS_RTMP_TYPE_AUDIO : SRS_RTMP_TYPE_VIDEO),
                                   (u_int32_t) frame.pts, frame.data, frame.size);
         }
-        usleep(1000 * 500);
+        usleep(1000 * 1000);
     }
 }
 
@@ -151,13 +151,13 @@ jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
     return 0;
 }
 
-int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jlong timestamp, jbyteArray frame) {
+int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp) {
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
 
     int ret = srs_rtmp_write_packet(rtmp, SRS_RTMP_TYPE_VIDEO, timestamp, (char *) data, data_size);
     env->ReleaseByteArrayElements(frame, data, NULL);
-    return ret;
+    return 0;
 }
 
 jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jlong timestamp, jbyteArray frame, jint sampleRate, jint channel) {
@@ -165,7 +165,7 @@ jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jlong timestamp
     jsize data_size = env->GetArrayLength(frame);
     int ret = srs_rtmp_write_packet(rtmp, SRS_RTMP_TYPE_AUDIO, timestamp, (char *) data, data_size);
     env->ReleaseByteArrayElements(frame, data, NULL);
-    return ret;
+    return 0;
 }
 
 void Android_JNI_muxer_h264(JNIEnv *env, jobject object, jbyteArray frame, jint size, jint pts) {

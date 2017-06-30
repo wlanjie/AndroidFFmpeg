@@ -6,12 +6,13 @@ package com.wlanjie.streaming.setting;
 public class StreamingSetting { 
  
   private String rtmpUrl;
-  private int fps;
+  private int fps = 25;
   private int videoWidth = 360;
   private int videoHeight = 640;
-  private int maxBps;
+  private int maxBps = 500;
   private int minBps;
-  private int ifi;
+  private int ifi = 2;
+  private EncoderType mEncoderType = EncoderType.SOFT;
  
   public String getRtmpUrl() {
     return rtmpUrl;
@@ -74,5 +75,13 @@ public class StreamingSetting {
   public StreamingSetting setIfi(int ifi) {
     this.ifi = ifi;
     return this;
-  } 
-} 
+  }
+
+  public EncoderType getEncoderType() {
+    return mEncoderType;
+  }
+
+  public void setEncoderType(EncoderType mEncoderType) {
+    this.mEncoderType = mEncoderType;
+  }
+}
