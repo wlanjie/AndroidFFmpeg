@@ -81,11 +81,6 @@ public class MainActivity extends AppCompatActivity {
   public boolean onOptionsItemSelected(MenuItem item) {
     switch (item.getItemId()) {
       case R.id.switch_camera:
-//        if (mCameraView != null) {
-//          int facing = mCameraView.getFacing();
-//          mCameraView.setFacing(facing == CameraView.FACING_FRONT ?
-//              CameraView.FACING_BACK : CameraView.FACING_FRONT);
-//        }
         break;
     }
     return super.onOptionsItemSelected(item);

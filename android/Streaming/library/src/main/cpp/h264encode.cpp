@@ -5,13 +5,9 @@
 #include <wels/codec_app_def.h>
 #include <string.h>
 #include <cstdint>
-#include <time.h>
 #include "libyuv.h"
 #include "h264encode.h"
 #include "log.h"
-#include "YuvConvert.h"
-
-YuvConvert convert;
 
 extern void logEncode(void *context, int level, const char *message);
 

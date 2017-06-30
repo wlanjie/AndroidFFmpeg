@@ -17,7 +17,6 @@
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
 #endif
-#define CLASS_NAME  "com/wlanjie/streaming/Encoder"
 #define RTMP_CLASS_NAME "com/wlanjie/streaming/rtmp/Rtmp"
 #define VIDEO_ENCODER_CLASS_NAME "com/wlanjie/streaming/video/OpenH264Encoder"
 #define AUDIO_ENCODER_CLASS_NAME "com/wlanjie/streaming/audio/FdkAACEncoder"
@@ -201,12 +200,6 @@ void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint 
     }
 }
 
-static JNINativeMethod encoder_methods[] = {
-        { "setEncoderResolution",   "(II)V",                    (void *) Android_JNI_setEncoderResolution },
-        { "muxerH264",              "([BII)V",                  (void *) Android_JNI_muxer_h264 },
-        { "muxerAac",               "([BII)V",                  (void *) Android_JNI_muxer_aac },
-};
-
 static JNINativeMethod rtmp_methods[] = {
         { "startPublish",           "()V",                      (void *) Android_JNI_startPublish },
         { "connect",                "(Ljava/lang/String;)I",    (void *) Android_JNI_connect },
@@ -235,9 +228,6 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     if ((vm)->GetEnv((void **)&env, JNI_VERSION_1_6) != JNI_OK) {
         return JNI_FALSE;
     }
-    jclass clazz = env->FindClass(CLASS_NAME);
-    env->RegisterNatives(clazz, encoder_methods, NELEM(encoder_methods));
-    env->DeleteLocalRef(clazz);
     jclass rtmp_class = env->FindClass(RTMP_CLASS_NAME);
     env->RegisterNatives(rtmp_class, rtmp_methods, NELEM(rtmp_methods));
     jclass video_encoder_class = env->FindClass(VIDEO_ENCODER_CLASS_NAME);

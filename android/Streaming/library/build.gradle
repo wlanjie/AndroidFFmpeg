@@ -11,10 +11,8 @@ android {
         versionName "1.0"
         externalNativeBuild {
             cmake {
-                cFlags "-march=armv7-a -mtune=cortex-a8 -mfpu=neon -ftree-vectorize -ffast-math -mfloat-abi=softfp"
-                cFlags "-frtti -fexceptions"
                 cppFlags "-march=armv7-a -mtune=cortex-a8 -mfpu=neon -ftree-vectorize -ffast-math -mfloat-abi=softfp"
-                cppFlags "-frtti -fexceptions"
+                cppFlags "-std=c++11 -frtti -fexceptions"
                 abiFilters 'armeabi', 'armeabi-v7a'
             }
         }
