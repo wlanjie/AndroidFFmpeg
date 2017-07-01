@@ -112,7 +112,7 @@ public class MediaStreamingManager {
       mVideoRenderer.setOnFrameListener(new VideoRenderer.OnFrameListener() {
         @Override
         public void onFrame(byte[] rgba) {
-          OpenH264Encoder.encode(rgba, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(), System.nanoTime() - mPresentTimeUs);
+          OpenH264Encoder.encode(rgba, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(), System.nanoTime() / 1000 - mPresentTimeUs);
         }
       });
     } else {
@@ -124,7 +124,7 @@ public class MediaStreamingManager {
           buffer.limit(info.offset + info.size);
           byte[] h264 = new byte[info.size];
           buffer.get(h264, 0, info.size);
-          Rtmp.muxerH264(h264, h264.length, (int) (info.presentationTimeUs / 1000));
+          Rtmp.writeVideo(h264, (int) (System.nanoTime() / 1000 - mPresentTimeUs));
         }
       });
     }
@@ -142,7 +142,7 @@ public class MediaStreamingManager {
             mAudioEncoder.setOnAudioEncoderListener(new OnAudioEncoderListener() {
               @Override
               public void onAudioEncode(byte[] data, int size, long timeUs) {
-                Rtmp.muxerAac(data, size, (int) (timeUs / 1000 - mPresentTimeUs));
+                Rtmp.writeAudio(data, (int) (timeUs / 1000 - mPresentTimeUs), mAudioSetting.getSampleRate(), mAudioSetting.getChannelCount());
               }
             });
           }
