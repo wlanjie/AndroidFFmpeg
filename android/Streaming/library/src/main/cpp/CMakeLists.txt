@@ -7,10 +7,10 @@ include_directories(${openh264_header})
 include_directories(${PROJECT_SOURCE_DIR}/libyuv/include)
 
 #add rtmp header
-include_directories(${PROJECT_SOURCE_DIR}/rtmp/core)
-include_directories(${PROJECT_SOURCE_DIR}/rtmp/kernel)
-include_directories(${PROJECT_SOURCE_DIR}/rtmp/libs)
-include_directories(${PROJECT_SOURCE_DIR}/rtmp/protocol)
+#include_directories(${PROJECT_SOURCE_DIR}/rtmp/core)
+#include_directories(${PROJECT_SOURCE_DIR}/rtmp/kernel)
+#include_directories(${PROJECT_SOURCE_DIR}/rtmp/libs)
+#include_directories(${PROJECT_SOURCE_DIR}/rtmp/protocol)
 
 #add fdk-aac header
 include_directories(${PROJECT_SOURCE_DIR}/fdk-aac)
@@ -19,12 +19,12 @@ include_directories(${PROJECT_SOURCE_DIR}/fdk-aac)
 add_subdirectory(libyuv)
 
 #add librtmp library
-add_subdirectory(rtmp)
+#add_subdirectory(rtmp)
 
 #add fdk-aac library
 add_subdirectory(fdk-aac)
 
-file(GLOB source stream_jni.cpp muxer.cpp audioencode.cpp h264encode.cpp)
+file(GLOB source stream_jni.cpp audioencode.cpp h264encode.cpp srs_librtmp.cpp)
 add_library(wlanjie SHARED ${source})
 
 #link libyuv library
@@ -43,13 +43,13 @@ add_library(AAC STATIC IMPORTED)
 set_target_properties(AAC PROPERTIES IMPORTED_LOCATION ${AAC_LIB_DIR}/libaac.a)
 
 #link rtmp library
-set(RTMP_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/rtmp)
-add_library(RTMP STATIC IMPORTED)
-set_target_properties(RTMP PROPERTIES IMPORTED_LOCATION ${RTMP_LIB_DIR}/librtmp.a)
+#set(RTMP_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/rtmp)
+#add_library(RTMP STATIC IMPORTED)
+#set_target_properties(RTMP PROPERTIES IMPORTED_LOCATION ${RTMP_LIB_DIR}/librtmp.a)
 
 #link openh264 library
 set(openh264_lib ${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/openh264-build)
 add_library(openh264 SHARED IMPORTED)
 set_target_properties(openh264 PROPERTIES IMPORTED_LOCATION ${openh264_lib}/${ANDROID_ABI}/output/lib/libopenh264.so)
 
-target_link_libraries(wlanjie YUV_LIB openh264 AAC RTMP android log dl m z GLESv1_CM GLESv2)
+target_link_libraries(wlanjie YUV_LIB openh264 AAC android log dl m z GLESv1_CM GLESv2)
