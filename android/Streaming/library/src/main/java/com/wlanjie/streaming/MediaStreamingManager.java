@@ -116,7 +116,6 @@ public class MediaStreamingManager {
         }
       });
     } else {
-      mVideoRenderer.startEncoder();
       mVideoRenderer.setOnMediaCodecEncoderListener(new OnMediaCodecEncoderListener() {
         @Override
         public void onEncode(ByteBuffer buffer, MediaCodec.BufferInfo info) {
@@ -129,6 +128,7 @@ public class MediaStreamingManager {
       });
     }
 
+    mVideoRenderer.startEncoder();
     mAudioProcessor.start();
     mAudioProcessor.setOnAudioRecordListener(new OnAudioRecordListener() {
       @Override

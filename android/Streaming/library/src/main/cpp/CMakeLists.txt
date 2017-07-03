@@ -52,4 +52,4 @@ set(openh264_lib ${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/openh264-buil
 add_library(openh264 SHARED IMPORTED)
 set_target_properties(openh264 PROPERTIES IMPORTED_LOCATION ${openh264_lib}/${ANDROID_ABI}/output/lib/libopenh264.so)
 
-target_link_libraries(wlanjie YUV_LIB openh264 AAC android log dl m z GLESv1_CM GLESv2)
+target_link_libraries(wlanjie YUV_LIB openh264 AAC android log dl m)

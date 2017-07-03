@@ -10,7 +10,6 @@
 #include <queue>
 #include <unistd.h>
 #include "srs_librtmp.h"
-#include "muxer.h"
 #include "audioencode.h"
 #include "h264encode.h"
 #include "log.h"
@@ -29,6 +28,7 @@ extern "C" {
 #define VIDEO_TYPE 1
 
 struct Frame {
+    char *frame;
     char *data;
     int size = 0;
     int packet_type;
@@ -47,15 +47,26 @@ void Android_JNI_startPublish(JNIEnv *env, jobject object) {
         while (!q.empty()) {
             Frame frame = q.front();
             q.pop();
+            if (frame.size <= 0) {
+                if (frame.data) {
+                    free(frame.data);
+                }
+                continue;
+            }
             if (frame.packet_type == AUDIO_TYPE) {
-                srs_audio_write_raw_frame(rtmp, 10 , 3, 1, 1, frame.data, frame.size, frame.pts);
+                int ret = srs_audio_write_raw_frame(rtmp, 10 , 3, 1, 1, frame.data, frame.size, frame.pts);
+                if (ret != 0) {
+                    LOGE("write audio ret = %d", ret);
+                }
             } else {
                 if (frame.size <= 0) {
                     LOGE("h264 size = %d", frame.size);
                     continue;
                 }
                 int ret = srs_h264_write_raw_frames(rtmp, frame.data, frame.size, frame.pts, frame.pts);
-                LOGE("write h264 ret = %d.", ret);
+                if (ret != 0) {
+                    LOGE("write h264 ret = %d.", ret);
+                }
             }
             if (frame.data) {
                 free(frame.data);
@@ -130,11 +141,11 @@ int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
 
-    if (data_size <= 0) {
+    if (data_size <= 0 || data == NULL) {
         return -1;
     }
-    char *h264 = (char *) malloc(data_size);
-    memcpy(h264, data, data_size);
+    char *h264 = (char *) malloc((size_t) data_size);
+    memcpy(h264, data, (size_t) data_size);
     Frame f;
     f.data = h264;
     f.size = data_size;
@@ -148,15 +159,15 @@ int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame
 jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp, jint sampleRate, jint channel) {
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
-    if (data_size <= 0) {
+    if (data_size <= 0 || data == NULL) {
         return -1;
     }
-    char *aac = (char *) malloc(data_size);
-    memcpy(aac, data, data_size);
+    char *aac = (char *) malloc((size_t) data_size);
+    memcpy(aac, data, (size_t) data_size);
     Frame f;
     f.data = aac;
     f.size = data_size;
-    f.pts = timestamp;
+    f.pts = (int) timestamp;
     f.packet_type = AUDIO_TYPE;
     q.push(f);
     env->ReleaseByteArrayElements(frame, data, NULL);
