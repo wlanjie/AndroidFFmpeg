@@ -107,13 +107,7 @@ public class MediaStreamingManager {
     if (result != 0) {
       throw new RuntimeException("connect rtmp server error.");
     }
-    new Thread(){
-      @Override
-      public void run() {
-        super.run();
-        Rtmp.startPublish();
-      }
-    }.start();
+    Rtmp.startPublish();
     mVideoRenderer.startEncoder();
     mAudioProcessor.start();
     mPresentTimeUs = System.nanoTime() / 1000;

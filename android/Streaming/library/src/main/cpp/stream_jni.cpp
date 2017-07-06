@@ -41,35 +41,41 @@ wlanjie::H264Encoder h264Encoder;
 wlanjie::AudioEncode audioEncode;
 srs_rtmp_t rtmp;
 bool is_stop = false;
+pthread_t worker;
+pthread_mutex_t mutex;
+
+void *publish(void *arg) {
+    while (!is_stop) {
+        if (!q.empty()) {
+            pthread_mutex_lock(&mutex);
+            Frame *frame = q.front();
+            q.pop();
+            if (frame->packet_type == AUDIO_TYPE) {
+                int ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, frame->data, frame->size, frame->pts);
+                if (ret != 0) {
+                    LOGE("write audio ret = %d", ret);
+                }
+            } else {
+                int ret = srs_h264_write_raw_frames(rtmp, frame->data, frame->size, frame->pts, frame->pts);
+                if (ret != 0) {
+                    LOGE("write h264 ret = %d.", ret);
+                }
+            }
+            delete[] frame->data;
+            delete frame;
+            LOGE("delete frame");
+            pthread_mutex_unlock(&mutex);
+            LOGE("mutex unlock");
+        }
+    }
+    return NULL;
+}
 
 void Android_JNI_startPublish(JNIEnv *env, jobject object) {
-    while (!is_stop) {
-        LOGE("q.size = %d", q.size());
-        if (q.size() <= 0) {
-            continue;
-        }
-        Frame *frame = q.front();
-        q.pop();
-        if (frame->packet_type == AUDIO_TYPE) {
-            int ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, frame->data, frame->size,
-                                                frame->pts);
-            if (ret != 0) {
-                LOGE("write audio ret = %d", ret);
-            }
-        } else {
-            if (frame->size <= 0) {
-                LOGE("h264 size = %d", frame->size);
-                continue;
-            }
-            int ret = srs_h264_write_raw_frames(rtmp, frame->data, frame->size, frame->pts,
-                                                frame->pts);
-            if (ret != 0) {
-                LOGE("write h264 ret = %d.", ret);
-            }
-        }
-        delete[] frame->data;
-        delete frame;
-    }
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_create(&worker, &attr, publish, NULL);
+    pthread_mutex_init(&mutex, NULL);
 }
 
 void Android_JNI_setEncoderResolution(JNIEnv *env, jobject object, jint width, jint height) {
@@ -173,6 +179,9 @@ jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jbyteArray fram
 void Android_JNI_destroy(JNIEnv *env, jobject object) {
     is_stop = true;
     srs_rtmp_destroy(rtmp);
+    void *retval;
+    pthread_join(worker, &retval);
+    pthread_mutex_destroy(&mutex);
     rtmp = NULL;
 }
 
