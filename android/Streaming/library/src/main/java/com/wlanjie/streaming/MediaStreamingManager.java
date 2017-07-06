@@ -103,6 +103,19 @@ public class MediaStreamingManager {
     if (TextUtils.isEmpty(mStreamingSetting.getRtmpUrl()) || !mStreamingSetting.getRtmpUrl().startsWith("rtmp://")) {
       throw new IllegalArgumentException("url must be rtmp://");
     }
+    int result = Rtmp.connect(mStreamingSetting.getRtmpUrl());
+    if (result != 0) {
+      throw new RuntimeException("connect rtmp server error.");
+    }
+    new Thread(){
+      @Override
+      public void run() {
+        super.run();
+        Rtmp.startPublish();
+      }
+    }.start();
+    mVideoRenderer.startEncoder();
+    mAudioProcessor.start();
     mPresentTimeUs = System.nanoTime() / 1000;
     if (mStreamingSetting.getEncoderType() == EncoderType.SOFT) {
       OpenH264Encoder.setFrameSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
@@ -128,8 +141,6 @@ public class MediaStreamingManager {
       });
     }
 
-    mVideoRenderer.startEncoder();
-    mAudioProcessor.start();
     mAudioProcessor.setOnAudioRecordListener(new OnAudioRecordListener() {
       @Override
       public void onAudioRecord(byte[] buffer, int size) {
@@ -151,17 +162,6 @@ public class MediaStreamingManager {
       }
     });
 
-    int result = Rtmp.connect(mStreamingSetting.getRtmpUrl());
-    if (result != 0) {
-      throw new RuntimeException("connect rtmp server error.");
-    }
-    new Thread(){
-      @Override
-      public void run() {
-        super.run();
-        Rtmp.startPublish();
-      }
-    }.start();
     mIsStartPublish = true;
   }
 

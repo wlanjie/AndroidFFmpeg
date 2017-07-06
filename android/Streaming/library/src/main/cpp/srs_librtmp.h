@@ -940,9 +940,12 @@ extern const char* srs_human_format_time();
     #define srs_human_verbose(msg, ...) (void)0
     #define srs_human_raw(msg, ...) (void)0
 #else
-    #define srs_human_trace(msg, ...) printf("[%s] ", srs_human_format_time());printf(msg, ##__VA_ARGS__);printf("\n")
-    #define srs_human_verbose(msg, ...) printf("[%s] ", srs_human_format_time());printf(msg, ##__VA_ARGS__);printf("\n")
-    #define srs_human_raw(msg, ...) printf(msg, ##__VA_ARGS__)
+    #ifdef ANDROID
+    #include "log.h"
+    #define srs_human_trace(msg, ...) LOGE("[%s] ", srs_human_format_time());LOGE(msg, ##__VA_ARGS__);
+    #define srs_human_verbose(msg, ...) LOGE("[%s] ", srs_human_format_time());LOGE(msg, ##__VA_ARGS__);
+    #define srs_human_raw(msg, ...) LOGE(msg, ##__VA_ARGS__)
+    #endif
 #endif
 
 /*************************************************************

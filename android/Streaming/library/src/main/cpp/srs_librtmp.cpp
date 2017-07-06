@@ -1004,11 +1004,12 @@ extern ISrsThreadContext* _srs_context;
 
 // donot print method
 #if 1
-    #define srs_verbose(msg, ...) _srs_log->verbose(NULL, _srs_context->get_id(), msg, ##__VA_ARGS__)
-    #define srs_info(msg, ...)    _srs_log->info(NULL, _srs_context->get_id(), msg, ##__VA_ARGS__)
-    #define srs_trace(msg, ...)   _srs_log->trace(NULL, _srs_context->get_id(), msg, ##__VA_ARGS__)
-    #define srs_warn(msg, ...)    _srs_log->warn(NULL, _srs_context->get_id(), msg, ##__VA_ARGS__)
-    #define srs_error(msg, ...)   _srs_log->error(NULL, _srs_context->get_id(), msg, ##__VA_ARGS__)
+#ifdef  ANDROID
+    #define srs_verbose(msg, ...) LOGV(msg, ##__VA_ARGS__);
+    #define srs_info(msg, ...)    LOGI(msg, ##__VA_ARGS__);
+    #define srs_trace(msg, ...)   LOGD(msg, ##__VA_ARGS__);
+    #define srs_warn(msg, ...)    LOGW(msg, ##__VA_ARGS__);
+    #define srs_error(msg, ...)   LOGE(msg, ##__VA_ARGS__);
 // use __FUNCTION__ to print c method
 #elif 0
     #define srs_verbose(msg, ...) _srs_log->verbose(__FUNCTION__, _srs_context->get_id(), msg, ##__VA_ARGS__)
@@ -1023,6 +1024,7 @@ extern ISrsThreadContext* _srs_context;
     #define srs_trace(msg, ...)   _srs_log->trace(__PRETTY_FUNCTION__, _srs_context->get_id(), msg, ##__VA_ARGS__)
     #define srs_warn(msg, ...)    _srs_log->warn(__PRETTY_FUNCTION__, _srs_context->get_id(), msg, ##__VA_ARGS__)
     #define srs_error(msg, ...)   _srs_log->error(__PRETTY_FUNCTION__, _srs_context->get_id(), msg, ##__VA_ARGS__)
+#endif
 #endif
 
 // TODO: FIXME: add more verbose and info logs.
