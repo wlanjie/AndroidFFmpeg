@@ -7,12 +7,12 @@
 #define _Included_com_wlanjie_ffmpeg_library_FFmpeg
 
 #include <jni.h>
-#include <queue>
-#include <unistd.h>
 #include "srs_librtmp.h"
 #include "audioencode.h"
 #include "h264encode.h"
 #include "log.h"
+#include <queue>
+#include <unistd.h>
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -50,22 +50,28 @@ void *publish(void *arg) {
             pthread_mutex_lock(&mutex);
             Frame *frame = q.front();
             q.pop();
-            if (frame->packet_type == AUDIO_TYPE) {
-                int ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, frame->data, frame->size, frame->pts);
-                if (ret != 0) {
-                    LOGE("write audio ret = %d", ret);
+            if (frame && frame->size > 0 && frame->pts > 0) {
+                LOGE("frame = %p rtmp = %p frame.size = %d, frame.pts = %d packet_type = %d", frame,
+                     rtmp, frame->size, frame->pts, frame->packet_type);
+                if (frame->packet_type == AUDIO_TYPE) {
+//                    int ret = srs_audio_write_raw_frame(rtmp, 10, 3, 1, 1, frame->data, frame->size,
+//                                                        frame->pts);
+//                    if (ret != 0) {
+//                        LOGE("write audio ret = %d", ret);
+//                    }
+                } else {
+//                    int ret = srs_h264_write_raw_frames(rtmp, frame->data, frame->size, frame->pts,
+//                                                        frame->pts);
+//                    if (ret != 0) {
+//                        LOGE("write h264 ret = %d.", ret);
+//                    }
                 }
-            } else {
-                int ret = srs_h264_write_raw_frames(rtmp, frame->data, frame->size, frame->pts, frame->pts);
-                if (ret != 0) {
-                    LOGE("write h264 ret = %d.", ret);
-                }
+                LOGE("delete frame data");
+                delete[] frame->data;
+                LOGE("delete frame");
+                delete frame;
             }
-            delete[] frame->data;
-            delete frame;
-            LOGE("delete frame");
             pthread_mutex_unlock(&mutex);
-            LOGE("mutex unlock");
         }
     }
     return NULL;
@@ -98,20 +104,19 @@ jboolean Android_JNI_openAacEncode(JNIEnv *env, jobject object, jint channels, j
     return (jboolean) audioEncode.open_aac_encode(channels, sample_rate, bitrate);
 }
 
-jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm, int pts) {
+jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm, jint pts) {
     jbyte *pcm_frame = env->GetByteArrayElements(pcm, NULL);
     int pcm_length = env->GetArrayLength(pcm);
     int aac_size = audioEncode.encode_pcm_to_aac((char *) pcm_frame, pcm_length);
     env->ReleaseByteArrayElements(pcm, pcm_frame, NULL);
     if (aac_size > 0) {
-        char *aac = (char *) malloc(aac_size);
-        memcpy(aac, audioEncode.getAac(), aac_size);
-        Frame f;
-        f.data = aac;
-        f.size = aac_size;
-        f.pts = pts;
-        f.packet_type = AUDIO_TYPE;
-//        q.push(f);
+        Frame *f = new Frame();
+        f->data = new char[aac_size];
+        memcpy(f->data, audioEncode.getAac(), (size_t) aac_size);
+        f->size = aac_size;
+        f->pts = (int) pts;
+        f->packet_type = AUDIO_TYPE;
+        q.push(f);
     }
     return 0;
 }
@@ -141,6 +146,7 @@ jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
 }
 
 int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp) {
+    LOGE("write video sample");
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
 
@@ -154,12 +160,14 @@ int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame
     f->pts = (int) timestamp;
     f->packet_type = VIDEO_TYPE;
     q.push(f);
+    LOGE("h264 size = %d", data_size);
     env->ReleaseByteArrayElements(frame, data, NULL);
     return 0;
 }
 
 jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp,
                                     jint sampleRate, jint channel) {
+    LOGE("write audio sample");
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
     if (data_size <= 0 || data == NULL) {
@@ -172,6 +180,7 @@ jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jbyteArray fram
     f->pts = (int) timestamp;
     f->packet_type = AUDIO_TYPE;
     q.push(f);
+    LOGE("audio size = %d", data_size);
     env->ReleaseByteArrayElements(frame, data, NULL);
     return 0;
 }
@@ -185,22 +194,20 @@ void Android_JNI_destroy(JNIEnv *env, jobject object) {
     rtmp = NULL;
 }
 
-void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint width, jint height,
-                             jlong pts) {
+void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint width, jint height, jlong pts) {
     jbyte *frame = env->GetByteArrayElements(data, NULL);
     int h264_size;
     uint8_t *h264_encode;
     h264Encoder.encoder((char *) frame, width, height, (long) pts, &h264_size, &h264_encode);
     env->ReleaseByteArrayElements(data, frame, NULL);
     if (h264_size > 0) {
-        char *h264 = (char *) malloc(h264_size);
-        memcpy(h264, h264_encode, h264_size);
-//        Frame f;
-//        f.data = h264;
-//        f.size = h264_size;
-//        f.pts = (int) pts;
-//        f.packet_type = VIDEO_TYPE;
-//        q.push(f);
+        Frame *f = new Frame();
+        f->data = new char[h264_size];
+        memcpy(f->data, h264_encode, (size_t) h264_size);
+        f->size = h264_size;
+        f->pts = (int) pts;
+        f->packet_type = VIDEO_TYPE;
+        q.push(f);
     }
 }
 

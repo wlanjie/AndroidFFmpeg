@@ -130,6 +130,7 @@ public class MediaStreamingManager {
           buffer.limit(info.offset + info.size);
           byte[] h264 = new byte[info.size];
           buffer.get(h264, 0, info.size);
+          System.out.println("h264.length = " + h264.length);
           Rtmp.writeVideo(h264, (int) (System.nanoTime() / 1000 - mPresentTimeUs));
         }
       });
@@ -147,7 +148,8 @@ public class MediaStreamingManager {
             mAudioEncoder.setOnAudioEncoderListener(new OnAudioEncoderListener() {
               @Override
               public void onAudioEncode(byte[] data, int size, long timeUs) {
-                Rtmp.writeAudio(data, (int) (timeUs / 1000 - mPresentTimeUs), mAudioSetting.getSampleRate(), mAudioSetting.getChannelCount());
+                System.out.println("audio size = " + size + " data.length = " + data.length);
+                Rtmp.writeAudio(data, (int) (System.nanoTime() / 1000 - mPresentTimeUs), mAudioSetting.getSampleRate(), mAudioSetting.getChannelCount());
               }
             });
           }
