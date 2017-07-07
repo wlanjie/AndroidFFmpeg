@@ -135,7 +135,6 @@ void wlanjie::H264Encoder::encoder(char *rgba, int width, int height, long pts, 
                 image_length += layerSize;
             }
             *h264 = encoded_image_buffer;
-//            delete[] encoded_image_buffer;
         }
     }
 }
