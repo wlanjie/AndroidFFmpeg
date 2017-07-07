@@ -50,7 +50,7 @@ void wlanjie::AudioEncode::close_aac_encode() {
     }
 }
 
-int wlanjie::AudioEncode::encode_pcm_to_aac(char *pcm, int pcm_length) {
+int wlanjie::AudioEncode::encode_pcm_to_aac(char *pcm, int pcm_length, int *aac_size, uint8_t **aac) {
     AACENC_BufDesc in_buf = { 0 };
     AACENC_BufDesc out_buf = { 0 };
     AACENC_InArgs in_args = { 0 };
@@ -84,6 +84,8 @@ int wlanjie::AudioEncode::encode_pcm_to_aac(char *pcm, int pcm_length) {
     if (out_args.numOutBytes == 0) {
         return -2;
     }
+    *aac_size = out_args.numOutBytes;
+    *aac = aac_buf;
     return out_args.numOutBytes;
 }
 

@@ -34,7 +34,7 @@ namespace wlanjie {
 
         void close_aac_encode();
 
-        int encode_pcm_to_aac(char *pcm, int pcm_length);
+        int encode_pcm_to_aac(char *pcm, int pcm_length, int *aac_size, uint8_t **aac);
     };
 }
 
