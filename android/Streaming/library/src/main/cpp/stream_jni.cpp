@@ -53,9 +53,6 @@ void *publish(void *arg) {
             Frame frame = q.front();
             q.pop();
 
-            if (frame.packet_type == VIDEO_TYPE) {
-//                _outputStream.write((const char *) frame.data, frame.size);
-            }
             srs_rtmp_write_packet(rtmp, (char) (frame.packet_type == AUDIO_TYPE ? SRS_RTMP_TYPE_AUDIO : SRS_RTMP_TYPE_VIDEO),
                                   (u_int32_t) frame.pts, frame.data, frame.size);
             delete[] frame.data;
@@ -128,13 +125,13 @@ jboolean Android_JNI_openH264Encoder(JNIEnv *env, jobject object) {
 
 void Android_JNI_closeH264Encoder(JNIEnv *env, jobject object) {
     std::queue<Frame> empty;
-//    std::swap(q, empty);
+    std::swap(q, empty);
     h264Encoder.closeH264Encoder();
 }
 
 jboolean Android_JNI_openAacEncode(JNIEnv *env, jobject object, jint channels, jint sample_rate,
                                    jint bitrate) {
-    return (jboolean) audioEncode.open_aac_encode(channels, sample_rate, bitrate);
+    return (jboolean) audioEncode.open(channels, sample_rate, bitrate);
 }
 
 jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm, jint pts) {
@@ -142,16 +139,16 @@ jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm, ji
     int pcm_length = env->GetArrayLength(pcm);
     int aac_size;
     uint8_t *aac;
-    audioEncode.encode_pcm_to_aac((char *) pcm_frame, pcm_length, &aac_size, &aac);
+    audioEncode.encode((char *) pcm_frame, pcm_length, &aac_size, &aac);
     env->ReleaseByteArrayElements(pcm, pcm_frame, NULL);
     if (aac_size > 0) {
-        muxer_aac_success((char *) audioEncode.getAac(), aac_size, pts);
+        muxer_aac_success((char *) aac, aac_size, pts);
     }
     return 0;
 }
 
 void Android_JNI_closeAacEncoder() {
-    audioEncode.close_aac_encode();
+    audioEncode.close();
 }
 
 void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint width, jint height, jlong pts) {

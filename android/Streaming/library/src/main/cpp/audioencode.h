@@ -21,20 +21,16 @@ namespace wlanjie {
         int sample_rate;
         int bitrate;
 
-        uint8_t aac_buf[1024 * 1024];
     private:
         HANDLE_AACENCODER aac_handle;
         AACENC_InfoStruct info = {0};
 
     public:
-        uint8_t *getAac();
+        bool open(int channel, int sample_rate, int bitrate);
 
-    public:
-        bool open_aac_encode(int channel, int sample_rate, int bitrate);
+        void close();
 
-        void close_aac_encode();
-
-        int encode_pcm_to_aac(char *pcm, int pcm_length, int *aac_size, uint8_t **aac);
+        int encode(char *pcm, int pcm_length, int *aac_size, uint8_t **aac);
     };
 }
 

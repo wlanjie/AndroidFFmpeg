@@ -4,6 +4,7 @@
 
 #include <libAACenc/include/aacenc_lib.h>
 #include "audioencode.h"
+#include "log.h"
 
 wlanjie::AudioEncode::AudioEncode() {
 
@@ -13,14 +14,14 @@ wlanjie::AudioEncode::~AudioEncode() {
 
 }
 
-bool wlanjie::AudioEncode::open_aac_encode(int channel, int sample_rate, int bitrate) {
+bool wlanjie::AudioEncode::open(int channel, int sample_rate, int bitrate) {
     this->channel = channel;
     this->sample_rate = sample_rate;
     this->bitrate = bitrate;
     if (aacEncOpen(&aac_handle, 0, channel) != AACENC_OK) {
         return false;
     }
-    if (aacEncoder_SetParam(aac_handle, AACENC_AOT, 2) != AACENC_OK) {
+    if (aacEncoder_SetParam(aac_handle, AACENC_AOT, AOT_AAC_LC) != AACENC_OK) {
         return false;
     }
     if (aacEncoder_SetParam(aac_handle, AACENC_SAMPLERATE, sample_rate) != AACENC_OK) {
@@ -44,13 +45,13 @@ bool wlanjie::AudioEncode::open_aac_encode(int channel, int sample_rate, int bit
     return aacEncInfo(aac_handle, &info) == AACENC_OK;
 }
 
-void wlanjie::AudioEncode::close_aac_encode() {
+void wlanjie::AudioEncode::close() {
     if (aac_handle) {
         aacEncClose(&aac_handle);
     }
 }
 
-int wlanjie::AudioEncode::encode_pcm_to_aac(char *pcm, int pcm_length, int *aac_size, uint8_t **aac) {
+int wlanjie::AudioEncode::encode(char *pcm, int pcm_length, int *aac_size, uint8_t **aac) {
     AACENC_BufDesc in_buf = { 0 };
     AACENC_BufDesc out_buf = { 0 };
     AACENC_InArgs in_args = { 0 };
@@ -68,10 +69,11 @@ int wlanjie::AudioEncode::encode_pcm_to_aac(char *pcm, int pcm_length, int *aac_
     in_buf.bufSizes = &in_buffer_size;
     in_buf.bufElSizes = &in_buffer_element_size;
 
-    int out_buffer_identifier = OUT_BITSTREAM_DATA;
-    int out_buffer_size = pcm_length;
-    int out_buffer_element_size = 1;
+    uint8_t aac_buf[2048];
     void *out_ptr = aac_buf;
+    int out_buffer_identifier = OUT_BITSTREAM_DATA;
+    int out_buffer_size = sizeof(aac_buf);
+    int out_buffer_element_size = 1;
 
     out_buf.bufs = &out_ptr;
     out_buf.numBufs = 1;
@@ -79,27 +81,14 @@ int wlanjie::AudioEncode::encode_pcm_to_aac(char *pcm, int pcm_length, int *aac_
     out_buf.bufElSizes = &out_buffer_element_size;
     out_buf.bufferIdentifiers = &out_buffer_identifier;
     if (aacEncEncode(aac_handle, &in_buf, &out_buf, &in_args, &out_args) != AACENC_OK) {
+        LOGE("Encode failed.\n");
         return -1;
     }
     if (out_args.numOutBytes == 0) {
+        LOGE("Encode aac size is 0.\n");
         return -2;
     }
     *aac_size = out_args.numOutBytes;
     *aac = aac_buf;
     return out_args.numOutBytes;
 }
-
-uint8_t *wlanjie::AudioEncode::getAac() {
-    return aac_buf;
-}
-
-
-
-
-
-
-
-
-
-
-
