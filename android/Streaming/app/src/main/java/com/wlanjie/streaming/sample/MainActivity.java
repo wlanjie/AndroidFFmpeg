@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     AudioSetting audioSetting = new AudioSetting();
     StreamingSetting streamingSetting = new StreamingSetting();
     streamingSetting.setRtmpUrl("rtmp://www.ossrs.net:1935/live/wlanjie")
-        .setEncoderType(EncoderType.HARD);
+        .setEncoderType(EncoderType.SOFT);
 
     GLSurfaceView glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
     mMediaStreamingManager = new MediaStreamingManager(glSurfaceView);

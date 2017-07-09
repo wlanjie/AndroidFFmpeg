@@ -123,13 +123,14 @@ public class VideoEncoder {
   private MediaCodec getMediaCodec() {
     MediaFormat format = MediaFormat.createVideoFormat(MIME, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
     format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-    format.setInteger(MediaFormat.KEY_BIT_RATE, mStreamingSetting.getMaxBps() * 1024);
+    format.setInteger(MediaFormat.KEY_BIT_RATE, mStreamingSetting.getMaxBps() * 1000);
+//    format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
     format.setInteger(MediaFormat.KEY_FRAME_RATE, mStreamingSetting.getFps());
     format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mStreamingSetting.getIfi());
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      format.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
-      format.setInteger(MediaFormat.KEY_COMPLEXITY, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
-    }
+//    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+//      format.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
+//      format.setInteger(MediaFormat.KEY_COMPLEXITY, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
+//    }
     MediaCodec mediaCodec = null;
     try {
       mediaCodec = MediaCodec.createEncoderByType(MIME);
