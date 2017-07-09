@@ -63,6 +63,7 @@ void wlanjie::H264Encoder::closeH264Encoder() {
         WelsDestroySVCEncoder(encoder_);
         encoder_ = nullptr;
     }
+    _outputStream.close();
 }
 
 SEncParamExt wlanjie::H264Encoder::createEncoderParams() const {
@@ -76,7 +77,7 @@ SEncParamExt wlanjie::H264Encoder::createEncoderParams() const {
     // max bit/s
     encoder_params.iMaxBitrate = 512 * 1000;
     encoder_params.iRCMode = RC_OFF_MODE;
-    encoder_params.fMaxFrameRate = 20;
+    encoder_params.fMaxFrameRate = 25;
     encoder_params.bEnableFrameSkip = true;
     encoder_params.bEnableDenoise = false;
     encoder_params.uiIntraPeriod = 60;
@@ -88,7 +89,7 @@ SEncParamExt wlanjie::H264Encoder::createEncoderParams() const {
     encoder_params.iMultipleThreadIdc = 1;
     encoder_params.sSpatialLayers[0].iVideoHeight = frameHeight;
     encoder_params.sSpatialLayers[0].iVideoWidth = frameWidth;
-    encoder_params.sSpatialLayers[0].fFrameRate = 20;
+    encoder_params.sSpatialLayers[0].fFrameRate = 25;
     encoder_params.sSpatialLayers[0].iSpatialBitrate = 512 * 1000;
     encoder_params.sSpatialLayers[0].iMaxSpatialBitrate = 0;
 //    encoder_params.sSpatialLayers[0].sSliceArgument.uiSliceMode = SM_AUTO_SLICE;

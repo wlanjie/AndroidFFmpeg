@@ -43,6 +43,7 @@ srs_rtmp_t rtmp;
 bool is_stop = false;
 pthread_t worker;
 pthread_mutex_t mutex;
+std::ofstream _outputStream;
 
 void *publish(void *arg) {
     while (!is_stop) {
@@ -51,12 +52,16 @@ void *publish(void *arg) {
             pthread_mutex_lock(&mutex);
             Frame frame = q.front();
             q.pop();
+
+            if (frame.packet_type == VIDEO_TYPE) {
+//                _outputStream.write((const char *) frame.data, frame.size);
+            }
             srs_rtmp_write_packet(rtmp, (char) (frame.packet_type == AUDIO_TYPE ? SRS_RTMP_TYPE_AUDIO : SRS_RTMP_TYPE_VIDEO),
                                   (u_int32_t) frame.pts, frame.data, frame.size);
             delete[] frame.data;
             pthread_mutex_unlock(&mutex);
         }
-        usleep(1000 * 1000);
+        usleep(1000 * 500);
     }
     return NULL;
 }
@@ -110,7 +115,6 @@ void muxer_h264_success(char *data, int size, int pts) {
         frame.packet_type = VIDEO_TYPE;
         q.push(frame);
     }
-    delete[] data;
 }
 
 void Android_JNI_setEncoderResolution(JNIEnv *env, jobject object, jint width, jint height) {
@@ -159,6 +163,7 @@ void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint 
     if (h264_size > 0) {
         muxer_h264_success((char *) h264, h264_size, (int) pts);
     }
+    delete[] h264;
 }
 
 jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
@@ -176,6 +181,8 @@ jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
     if (srs_rtmp_publish_stream(rtmp) != 0) {
         return -1;
     }
+
+    _outputStream.open("/sdcard/streaming.h264", std::ios_base::binary | std::ios_base::out);
     env->ReleaseStringUTFChars(url, rtmp_url);
 
     return 0;
@@ -201,6 +208,7 @@ jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jbyteArray fram
 }
 
 void Android_JNI_destroy(JNIEnv *env, jobject object) {
+    _outputStream.close();
     is_stop = true;
     srs_rtmp_destroy(rtmp);
     void *retval;

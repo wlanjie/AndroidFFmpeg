@@ -6,7 +6,7 @@ package com.wlanjie.streaming.setting;
 public class StreamingSetting { 
  
   private String rtmpUrl;
-  private int fps = 25;
+  private int fps = 15;
   private int videoWidth = 360;
   private int videoHeight = 640;
   private int maxBps = 500;

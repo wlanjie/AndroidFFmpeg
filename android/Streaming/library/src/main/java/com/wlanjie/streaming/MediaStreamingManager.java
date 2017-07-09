@@ -69,8 +69,8 @@ public class MediaStreamingManager {
     mGLSurfaceView.setRenderer(mVideoRenderer);
     mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
-    cameraSetting.setPreviewWidth(720);
-    cameraSetting.setPreviewHeight(1280);
+    cameraSetting.setPreviewWidth(360);
+    cameraSetting.setPreviewHeight(640);
     cameraSetting.setSurfaceTexture(mVideoRenderer.getSurfaceTexture());
     if (Build.VERSION.SDK_INT < 21) {
       mCamera = new Camera1(mCallbacks, cameraSetting);
@@ -110,7 +110,7 @@ public class MediaStreamingManager {
     Rtmp.startPublish();
     mVideoRenderer.startEncoder();
     mAudioProcessor.start();
-    mPresentTimeUs = System.nanoTime() / 1000;
+    mPresentTimeUs = System.nanoTime();
     if (mStreamingSetting.getEncoderType() == EncoderType.SOFT) {
       OpenH264Encoder.setFrameSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
       OpenH264Encoder.openEncoder();
@@ -130,8 +130,7 @@ public class MediaStreamingManager {
           buffer.limit(info.offset + info.size);
           byte[] h264 = new byte[info.size];
           buffer.get(h264, 0, info.size);
-          System.out.println("h264.length = " + h264.length);
-          Rtmp.writeVideo(h264, (int) (System.nanoTime() / 1000 - mPresentTimeUs));
+          Rtmp.writeVideo(h264, (int) (System.nanoTime() - mPresentTimeUs));
         }
       });
     }
@@ -140,7 +139,7 @@ public class MediaStreamingManager {
       @Override
       public void onAudioRecord(byte[] buffer, int size) {
         if (mStreamingSetting.getEncoderType() == EncoderType.SOFT) {
-          FdkAACEncoder.encode(buffer, (int) (System.nanoTime() / 1000 - mPresentTimeUs));
+          FdkAACEncoder.encode(buffer, (int) (System.nanoTime() - mPresentTimeUs));
         } else {
           if (mAudioEncoder == null) {
             mAudioEncoder = new AudioEncoder();
@@ -148,8 +147,7 @@ public class MediaStreamingManager {
             mAudioEncoder.setOnAudioEncoderListener(new OnAudioEncoderListener() {
               @Override
               public void onAudioEncode(byte[] data, int size, long timeUs) {
-                System.out.println("audio size = " + size + " data.length = " + data.length);
-                Rtmp.writeAudio(data, (int) (System.nanoTime() / 1000 - mPresentTimeUs), mAudioSetting.getSampleRate(), mAudioSetting.getChannelCount());
+                Rtmp.writeAudio(data, (int) (System.nanoTime() - mPresentTimeUs), mAudioSetting.getSampleRate(), mAudioSetting.getChannelCount());
               }
             });
           }
