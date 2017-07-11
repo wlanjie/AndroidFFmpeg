@@ -6,6 +6,10 @@ include_directories(${openh264_header})
 #add libyuv header
 include_directories(${PROJECT_SOURCE_DIR}/libyuv/include)
 
+#add aacenc header
+include_directories(${PROJECT_SOURCE_DIR}/aacenc/inc)
+include_directories(${PROJECT_SOURCE_DIR}/aacenc/common/include)
+
 #add rtmp header
 include_directories(${PROJECT_SOURCE_DIR}/rtmp/core)
 include_directories(${PROJECT_SOURCE_DIR}/rtmp/kernel)
@@ -13,7 +17,7 @@ include_directories(${PROJECT_SOURCE_DIR}/rtmp/libs)
 include_directories(${PROJECT_SOURCE_DIR}/rtmp/protocol)
 
 #add fdk-aac header
-include_directories(${PROJECT_SOURCE_DIR}/fdk-aac)
+#include_directories(${PROJECT_SOURCE_DIR}/fdk-aac)
 
 #add libyuv library
 add_subdirectory(libyuv)
@@ -24,7 +28,7 @@ add_subdirectory(rtmp)
 #add fdk-aac library
 add_subdirectory(fdk-aac)
 
-file(GLOB source stream_jni.cpp muxer.cpp audioencode.cpp h264encode.cpp)
+file(GLOB source stream_jni.cpp muxer.cpp h264encode.cpp audio.cpp)
 add_library(wlanjie SHARED ${source})
 
 #link libyuv library
@@ -38,9 +42,9 @@ set_target_properties(YUV_LIB PROPERTIES IMPORTED_LOCATION ${YUV_LIB_DIR}/libyuv
 #set_target_properties(LIBRTMP_LIB PROPERTIES IMPORTED_LOCATION ${LIBRTMP_DIR}/librtmp.a)
 
 #link fdk-aac library
-set(AAC_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/fdk-aac)
-add_library(AAC STATIC IMPORTED)
-set_target_properties(AAC PROPERTIES IMPORTED_LOCATION ${AAC_LIB_DIR}/libaac.a)
+#set(AAC_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/fdk-aac)
+#add_library(AAC STATIC IMPORTED)
+#set_target_properties(AAC PROPERTIES IMPORTED_LOCATION ${AAC_LIB_DIR}/libaac.a)
 
 #link rtmp library
 set(RTMP_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/rtmp)
@@ -52,4 +56,9 @@ set(openh264_lib ${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/openh264-buil
 add_library(openh264 SHARED IMPORTED)
 set_target_properties(openh264 PROPERTIES IMPORTED_LOCATION ${openh264_lib}/${ANDROID_ABI}/output/lib/libopenh264.so)
 
-target_link_libraries(wlanjie YUV_LIB RTMP openh264 AAC android log dl m)
+#link vo-aac library
+set(vo-aac_lib ${CMAKE_CURRENT_LIST_DIR}/../jniLibs)
+add_library(vo-aac SHARED IMPORTED)
+set_target_properties(vo-aac PROPERTIES IMPORTED_LOCATION ${vo-aac_lib}/${ANDROID_ABI}/libVoAACEncoder.so)
+
+target_link_libraries(wlanjie YUV_LIB RTMP openh264 vo-aac android log dl m)

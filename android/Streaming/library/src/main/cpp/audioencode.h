@@ -6,7 +6,7 @@
 #define STREAMING_AUDIOENCODE_H
 
 #include <cstdint>
-#include "libAACenc/include/aacenc_lib.h"
+//#include "libAACenc/include/aacenc_lib.h"
 
 namespace wlanjie {
 
@@ -22,8 +22,8 @@ namespace wlanjie {
         int bitrate;
 
     private:
-        HANDLE_AACENCODER aac_handle;
-        AACENC_InfoStruct info = {0};
+//        HANDLE_AACENCODER aac_handle;
+//        AACENC_InfoStruct info = {0};
 
     public:
         bool open(int channel, int sample_rate, int bitrate);

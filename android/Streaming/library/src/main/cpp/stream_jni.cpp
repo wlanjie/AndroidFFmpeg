@@ -8,6 +8,7 @@
 
 #include <jni.h>
 #include "audioencode.h"
+#include "audio.h"
 #include "h264encode.h"
 #include "muxer.h"
 #include "log.h"
@@ -38,7 +39,8 @@ struct Frame {
 std::queue<Frame> q;
 
 wlanjie::H264Encoder h264Encoder;
-wlanjie::AudioEncode audioEncode;
+//wlanjie::AudioEncode audioEncode;
+wlanjie::Audio audio;
 srs_rtmp_t rtmp;
 bool is_stop = false;
 pthread_t worker;
@@ -131,7 +133,9 @@ void Android_JNI_closeH264Encoder(JNIEnv *env, jobject object) {
 
 jboolean Android_JNI_openAacEncode(JNIEnv *env, jobject object, jint channels, jint sample_rate,
                                    jint bitrate) {
-    return (jboolean) audioEncode.open(channels, sample_rate, bitrate);
+//    return (jboolean) audioEncode.open(channels, sample_rate, bitrate);
+    audio.open(sample_rate, bitrate, channels);
+    return JNI_TRUE;
 }
 
 jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm, jint pts) {
@@ -139,7 +143,8 @@ jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm, ji
     int pcm_length = env->GetArrayLength(pcm);
     int aac_size;
     uint8_t *aac;
-    audioEncode.encode((char *) pcm_frame, pcm_length, &aac_size, &aac);
+//    audioEncode.encode((char *) pcm_frame, pcm_length, &aac_size, &aac);
+    audio.encoder((char *) pcm_frame, pcm_length, &aac_size, &aac);
     env->ReleaseByteArrayElements(pcm, pcm_frame, NULL);
     if (aac_size > 0) {
         muxer_aac_success((char *) aac, aac_size, pts);
@@ -148,7 +153,8 @@ jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm, ji
 }
 
 void Android_JNI_closeAacEncoder() {
-    audioEncode.close();
+//    audioEncode.close();
+    audio.close();
 }
 
 void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint width, jint height, jlong pts) {
