@@ -20,6 +20,8 @@ void wlanjie::Audio::open(int sampleRate, int bitRate, int channels) {
     moper.Check = cmnMemCheck;
     VO_CODEC_INIT_USERDATA userData;
     memset(&userData, 0, sizeof(userData));
+    userData.memflag = VO_IMF_USERMEMOPERATOR;
+    userData.memData = (VO_PTR) &moper;
     if (audioAPI.Init(&hCodec, VO_AUDIO_CodingAAC, &userData) != VO_ERR_NONE) {
         LOGE("init vo aac failed.");
         return;
