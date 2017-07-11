@@ -115,7 +115,7 @@ public class MediaStreamingManager {
       OpenH264Encoder.setFrameSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
       OpenH264Encoder.openEncoder();
 
-      FdkAACEncoder.openEncoder(mAudioSetting.getChannelCount(), mAudioSetting.getSampleRate(), 32 * 1000);
+      FdkAACEncoder.openEncoder(mAudioSetting.getChannelCount(), mAudioSetting.getSampleRate(), mAudioSetting.getMaxBps() * 1000);
       mVideoRenderer.setOnFrameListener(new VideoRenderer.OnFrameListener() {
         @Override
         public void onFrame(byte[] rgba) {

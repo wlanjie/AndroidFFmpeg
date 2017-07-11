@@ -8,7 +8,7 @@ import android.media.MediaCodecInfo;
  */
 public class AudioSetting {
   private int minBps = 32;
-  private int maxBps = 32;
+  private int maxBps = 64;
   private int sampleRate = 44100;
   private int channelCount = 2;
   private int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;

@@ -20,7 +20,7 @@ public class AudioProcessor extends Thread {
     mAudioRecord = audioRecord;
     mAudioSetting = audioSetting;
     mRecordBufferSize = AudioUtils.getRecordBufferSize(audioSetting.getChannelCount(), audioSetting.getSampleRate());
-    mRecordBuffer = new byte[1024 * 5];
+    mRecordBuffer = new byte[4096];
   }
 
   public void setOnAudioRecordListener(OnAudioRecordListener l) {
@@ -39,7 +39,6 @@ public class AudioProcessor extends Thread {
   @Override
   public void run() {
     super.run();
-    android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
     mAudioRecord.startRecording();
     while (!mStop) {
       int readLen = mAudioRecord.read(mRecordBuffer, 0, mRecordBuffer.length);

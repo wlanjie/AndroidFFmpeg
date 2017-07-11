@@ -15,6 +15,7 @@ wlanjie::AudioEncode::~AudioEncode() {
 }
 
 bool wlanjie::AudioEncode::open(int channel, int sample_rate, int bitrate) {
+    _outputStream.open("/sdcard/wlanjie.aac", std::ios_base::binary | std::ios_base::out);
     this->channel = channel;
     this->sample_rate = sample_rate;
     this->bitrate = bitrate;
@@ -24,12 +25,21 @@ bool wlanjie::AudioEncode::open(int channel, int sample_rate, int bitrate) {
     if (aacEncoder_SetParam(aac_handle, AACENC_AOT, AOT_AAC_LC) != AACENC_OK) {
         return false;
     }
+//    if (aacEncoder_SetParam(aac_handle, AACENC_SBR_MODE, 1) != AACENC_OK) {
+//        return false;
+//    }
     if (aacEncoder_SetParam(aac_handle, AACENC_SAMPLERATE, sample_rate) != AACENC_OK) {
         return false;
     }
     if (aacEncoder_SetParam(aac_handle, AACENC_CHANNELMODE, channel == 1 ? MODE_1 : MODE_2) != AACENC_OK) {
         return false;
     }
+//    if (aacEncoder_SetParam(aac_handle, AACENC_CHANNELORDER, 1)  != AACENC_OK) {
+//        return false;
+//    }
+//    if (aacEncoder_SetParam(aac_handle, AACENC_BANDWIDTH, 1) != AACENC_OK) {
+//        return false;
+//    }
     if (aacEncoder_SetParam(aac_handle, AACENC_CHANNELORDER, 1) != AACENC_OK) {
         return false;
     }
@@ -49,9 +59,11 @@ void wlanjie::AudioEncode::close() {
     if (aac_handle) {
         aacEncClose(&aac_handle);
     }
+    _outputStream.close();
 }
 
 int wlanjie::AudioEncode::encode(char *pcm, int pcm_length, int *aac_size, uint8_t **aac) {
+    LOGE("pcm_length = %d", pcm_length);
     AACENC_BufDesc in_buf = { 0 };
     AACENC_BufDesc out_buf = { 0 };
     AACENC_InArgs in_args = { 0 };
@@ -69,7 +81,7 @@ int wlanjie::AudioEncode::encode(char *pcm, int pcm_length, int *aac_size, uint8
     in_buf.bufSizes = &in_buffer_size;
     in_buf.bufElSizes = &in_buffer_element_size;
 
-    uint8_t aac_buf[2048];
+    uint8_t aac_buf[8192];
     void *out_ptr = aac_buf;
     int out_buffer_identifier = OUT_BITSTREAM_DATA;
     int out_buffer_size = sizeof(aac_buf);
@@ -88,6 +100,7 @@ int wlanjie::AudioEncode::encode(char *pcm, int pcm_length, int *aac_size, uint8
         LOGE("Encode aac size is 0.\n");
         return -2;
     }
+    _outputStream.write((const char *) aac_buf, out_args.numOutBytes);
     *aac_size = out_args.numOutBytes;
     *aac = aac_buf;
     return out_args.numOutBytes;
