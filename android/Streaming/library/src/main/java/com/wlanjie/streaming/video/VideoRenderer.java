@@ -33,6 +33,12 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   private static final int SOFT_ENCODER_MESSAGE = 0;
   public static final int CENTER_INSIDE = 0, CENTER_CROP = 1, FIT_XY = 2;
   private int mScaleType = CENTER_CROP;
+  private final float CUBE[] = {
+      -1.0f, 1.0f,
+      -1.0f, -1.0f,
+      1.0f, 1.0f,
+      1.0f, -1.0f
+  };
 
   private Context mContext;
   private Effect mEffect;
@@ -62,7 +68,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceTexture = new SurfaceTexture(mSurfaceTextureId);
     mRendererScreen = new RendererScreen(context);
 
-    mCubeBuffer = ByteBuffer.allocateDirect(TextureRotationUtil.CUBE.length * 4)
+    mCubeBuffer = ByteBuffer.allocateDirect(CUBE.length * 4)
         .order(ByteOrder.nativeOrder())
         .asFloatBuffer();
     mCubeBuffer.put(TextureRotationUtil.CUBE).position(0);
@@ -72,7 +78,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
         .asFloatBuffer();
     mTextureBuffer.put(TextureRotationUtil.TEXTURE_NO_ROTATION).position(0);
 
-    mRecordCubeBuffer = ByteBuffer.allocateDirect(TextureRotationUtil.CUBE.length * 4)
+    mRecordCubeBuffer = ByteBuffer.allocateDirect(CUBE.length * 4)
         .order(ByteOrder.nativeOrder())
         .asFloatBuffer();
 
@@ -100,6 +106,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   }
 
   public void startEncoder() {
+    mEffect.setVideoSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
     initEncoder();
   }
 
@@ -156,18 +163,21 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceHeight = height;
     mFrameBuffer = ByteBuffer.allocate(width * height * 4);
 
-    adjustSize(mCameraSetting.getDisplayOrientation(), mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT, mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK);
-    float[][] data = adjustSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(),
-        mCameraSetting.getDisplayOrientation(), mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT, mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK);
-    mRecordCubeBuffer.clear();
-    mRecordCubeBuffer.put(data[0]).position(0);
-    mRecordTextureBuffer.clear();
-    mRecordTextureBuffer.put(data[1]).position(0);
+//    adjustSize(mCameraSetting.getDisplayOrientation(), mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT, mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK);
+//    float[][] data = adjustSize(width, height,
+//        mCameraSetting.getDisplayOrientation(), mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT, mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK);
+//    mRecordCubeBuffer.clear();
+//    mRecordCubeBuffer.put(data[0]).position(0);
+//    mRecordTextureBuffer.clear();
+//    mRecordTextureBuffer.put(data[1]).position(0);
 
-    mEffect.onInputSizeChanged(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
+    mEffect.onInputSizeChanged(mCameraSetting.getPreviewWidth(), mCameraSetting.getPreviewHeight());
     GLES20.glViewport(0, 0, width, height);
-    mEffect.onDisplaySizeChange(width, height);
 
+//    mRecordTextureBuffer.clear();
+//    mRecordTextureBuffer.put(resetTextureCord(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight()));
+    mTextureBuffer.clear();
+    mTextureBuffer.put(resetTextureCord(width, height)).position(0);
     mRendererScreen.setDisplaySize(width, height);
   }
 
@@ -261,10 +271,10 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
         float distHorizontal = (1 - 1 / ratioWidth) / 2;
         float distVertical = (1 - 1 / ratioHeight) / 2;
         textureCords = new float[]{
-            addDistance(textureCords[0], distVertical), addDistance(textureCords[1], distHorizontal),
-            addDistance(textureCords[2], distVertical), addDistance(textureCords[3], distHorizontal),
-            addDistance(textureCords[4], distVertical), addDistance(textureCords[5], distHorizontal),
-            addDistance(textureCords[6], distVertical), addDistance(textureCords[7], distHorizontal),
+            addDistance(textureCords[0], distHorizontal), addDistance(textureCords[1], distVertical),
+            addDistance(textureCords[2], distHorizontal), addDistance(textureCords[3], distVertical),
+            addDistance(textureCords[4], distHorizontal), addDistance(textureCords[5], distVertical),
+            addDistance(textureCords[6], distHorizontal), addDistance(textureCords[7], distVertical),
         };
         break;
       case FIT_XY:
@@ -272,6 +282,41 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
         break;
     }
     return new float[][]{cube, textureCords};
+  }
+
+  private float[] resetTextureCord(int width, int height) {
+    int previewWidth = mCameraSetting.getPreviewWidth();
+    int previewHeight = mCameraSetting.getPreviewHeight();
+    int cameraWidth;
+    int cameraHeight;
+    if(false) {
+      // 横屏
+      cameraWidth = Math.max(previewWidth, previewHeight);
+      cameraHeight = Math.min(previewWidth, previewHeight);
+    } else {
+      cameraWidth = Math.min(previewWidth, previewHeight);
+      cameraHeight = Math.max(previewWidth, previewHeight);
+    }
+    float hRatio = width / ((float) cameraWidth);
+    float vRatio = height / ((float) cameraHeight);
+    float ratio;
+    if (hRatio > vRatio) {
+      ratio = height / (cameraHeight * hRatio);
+      return new float[]{
+          0.0f, 0.5f + ratio / 2,
+          0.0f, 0.5f - ratio / 2,
+          1.0f, 0.5f + ratio / 2,
+          1.0f, 0.5f - ratio / 2
+      };
+    } else {
+      ratio = width / (cameraWidth * vRatio);
+      return new float[] {
+          0.5f - ratio / 2, 1.0f,
+          0.5f - ratio / 2, 0.0f,
+          0.5f + ratio / 2, 1.0f,
+          0.5f + ratio / 2, 0.0f
+      };
+    }
   }
 
   private float addDistance(float coordinate, float distance) {

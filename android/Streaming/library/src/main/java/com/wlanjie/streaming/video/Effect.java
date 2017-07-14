@@ -21,9 +21,8 @@ public final class Effect {
 
   private int mInputWidth;
   private int mInputHeight;
-
-  private int mDisplayWidth;
-  private int mDisplayHeight;
+  private int mVideoWidth;
+  private int mVideoHeight;
 
   private int mFboId;
   private int mFboTextureId;
@@ -69,12 +68,12 @@ public final class Effect {
   void onInputSizeChanged(int width, int height) {
     this.mInputWidth = width;
     this.mInputHeight = height;
-    initFboTexture(width, height);
+    initFboTexture(mInputWidth, mInputHeight);
   }
 
-  void onDisplaySizeChange(int width, int height) {
-    mDisplayWidth = width;
-    mDisplayHeight = height;
+  void setVideoSize(int width, int height) {
+    mVideoWidth = width;
+    mVideoHeight = height;
   }
 
   private void initVbo() {
@@ -88,7 +87,6 @@ public final class Effect {
     GLES20.glGenBuffers(1, mTextureCoordinatedId, 0);
     GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mTextureCoordinatedId[0]);
     GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, mTextureBuffer.capacity() * 4, mTextureBuffer, GLES20.GL_STATIC_DRAW);
-    ;
   }
 
   private void destroyVbo() {
@@ -159,9 +157,11 @@ public final class Effect {
     GLES20.glViewport(0, 0, mInputWidth, mInputHeight);
     GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFboId);
     GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-    GLES20.glReadPixels(0, 0, mInputWidth, mInputHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mFboBuffer);
+    if (mVideoWidth > 0 && mVideoHeight > 0) {
+      GLES20.glViewport(0, 0, mVideoWidth, mVideoHeight);
+      GLES20.glReadPixels(0, 0, mVideoWidth, mVideoHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mFboBuffer);
+    }
     GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
-    GLES20.glViewport(0, 0, mDisplayWidth, mDisplayHeight);
 
     GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0);
 

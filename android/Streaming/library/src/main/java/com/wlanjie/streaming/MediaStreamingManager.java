@@ -72,13 +72,13 @@ public class MediaStreamingManager {
     cameraSetting.setPreviewWidth(360);
     cameraSetting.setPreviewHeight(640);
     cameraSetting.setSurfaceTexture(mVideoRenderer.getSurfaceTexture());
-    if (Build.VERSION.SDK_INT < 21) {
+//    if (Build.VERSION.SDK_INT < 21) {
       mCamera = new Camera1(mCallbacks, cameraSetting);
-    } else if (Build.VERSION.SDK_INT < 23) {
-      mCamera = new Camera2(mCallbacks, cameraSetting, mGLSurfaceView.getContext());
-    } else {
-      mCamera = new Camera2Api23(mCallbacks, cameraSetting, mGLSurfaceView.getContext());
-    }
+//    } else if (Build.VERSION.SDK_INT < 23) {
+//      mCamera = new Camera2(mCallbacks, cameraSetting, mGLSurfaceView.getContext());
+//    } else {
+//      mCamera = new Camera2Api23(mCallbacks, cameraSetting, mGLSurfaceView.getContext());
+//    }
   }
 
   /**
