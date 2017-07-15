@@ -176,18 +176,20 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
       cameraHeight = Math.max(previewWidth, previewHeight);
     }
 
-    adjustSize(width, height, cameraWidth, cameraHeight,
-        mCameraSetting.getDisplayOrientation(),
-        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
-        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mCubeBuffer, mTextureBuffer);
-
+//    adjustSize(width, height, cameraWidth, cameraHeight,
+//        mCameraSetting.getDisplayOrientation(),
+//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
+//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mCubeBuffer, mTextureBuffer);
+//
+//    adjustSize(width, height, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(),
+//        mCameraSetting.getDisplayOrientation(),
+//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
+//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mRecordCubeBuffer, mRecordTextureBuffer);
+    mTextureBuffer.clear();
+    mTextureBuffer.put(resetTextureCord(width, height, cameraWidth, cameraHeight)).position(0);
     mEffect.onInputSizeChanged(cameraWidth, cameraHeight);
     GLES20.glViewport(0, 0, width, height);
 
-//    mRecordTextureBuffer.clear();
-//    mRecordTextureBuffer.put(resetTextureCord(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight()));
-//    mTextureBuffer.clear();
-//    mTextureBuffer.put(resetTextureCord(width, height, cameraWidth, cameraHeight)).position(0);
     mRendererScreen.setDisplaySize(width, height);
   }
 
@@ -218,6 +220,9 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   public void destroy() {
     mEffect.destroy();
     mRendererScreen.destroy();
+    if (mRendererVideoEncoder != null) {
+      mRendererVideoEncoder.destroy();
+    }
   }
 
   public void setOnFrameListener(OnFrameListener l) {

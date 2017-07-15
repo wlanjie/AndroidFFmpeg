@@ -69,8 +69,8 @@ public class MediaStreamingManager {
     mGLSurfaceView.setRenderer(mVideoRenderer);
     mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
-    cameraSetting.setPreviewWidth(360);
-    cameraSetting.setPreviewHeight(640);
+    cameraSetting.setPreviewWidth(720);
+    cameraSetting.setPreviewHeight(1280);
     cameraSetting.setSurfaceTexture(mVideoRenderer.getSurfaceTexture());
     if (Build.VERSION.SDK_INT < 21) {
       mCamera = new Camera1(mCallbacks, cameraSetting);
