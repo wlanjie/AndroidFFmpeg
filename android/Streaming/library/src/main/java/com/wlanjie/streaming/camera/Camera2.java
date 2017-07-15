@@ -64,6 +64,9 @@ public class Camera2 implements LivingCamera {
     public void onOpened(@NonNull CameraDevice camera) {
       mCamera = camera;
       Size size = chooseOptimalSize();
+      mCameraSetting.setPreviewWidth(size.getWidth());
+      mCameraSetting.setPreviewHeight(size.getHeight());
+//      mCameraSetting.setDisplayOrientation(mCameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION));
       startPreview(size.getWidth(), size.getHeight());
       mCallback.onCameraOpened(size.getWidth(), size.getHeight());
     }
@@ -345,10 +348,8 @@ public class Camera2 implements LivingCamera {
     if (!isCameraOpened()) {
       return;
     }
-    Size previewSize = chooseOptimalSize();
-    mCameraSetting.getSurfaceTexture().setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+    mCameraSetting.getSurfaceTexture().setDefaultBufferSize(width, height);
 
-//        mPreview.setBufferSize(previewSize.getWidth(), previewSize.getHeight());
     try {
       mPreviewRequestBuilder = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
 

@@ -48,7 +48,6 @@ std::ofstream _outputStream;
 void *publish(void *arg) {
     while (!is_stop) {
         while (!q.empty()) {
-            LOGE("q.size = %d", q.size());
             pthread_mutex_lock(&mutex);
             Frame frame = q.front();
             q.pop();
@@ -159,8 +158,8 @@ void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint 
     env->ReleaseByteArrayElements(data, frame, NULL);
     if (h264_size > 0) {
         muxer_h264_success((char *) h264, h264_size, (int) pts);
+        delete[] h264;
     }
-    delete[] h264;
 }
 
 jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
@@ -186,7 +185,6 @@ jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
 }
 
 int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp) {
-    LOGE("write video sample");
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
     muxer_h264_success((char *) data, data_size, timestamp);
@@ -196,7 +194,6 @@ int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame
 
 jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp,
                                     jint sampleRate, jint channel) {
-    LOGE("write audio sample");
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
     muxer_aac_success((char *) data, data_size, timestamp);

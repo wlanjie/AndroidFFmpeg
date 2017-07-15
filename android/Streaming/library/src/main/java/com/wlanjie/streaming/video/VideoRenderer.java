@@ -163,21 +163,31 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceHeight = height;
     mFrameBuffer = ByteBuffer.allocate(width * height * 4);
 
-//    adjustSize(mCameraSetting.getDisplayOrientation(), mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT, mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK);
-//    float[][] data = adjustSize(width, height,
-//        mCameraSetting.getDisplayOrientation(), mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT, mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK);
-//    mRecordCubeBuffer.clear();
-//    mRecordCubeBuffer.put(data[0]).position(0);
-//    mRecordTextureBuffer.clear();
-//    mRecordTextureBuffer.put(data[1]).position(0);
+    int previewWidth = mCameraSetting.getPreviewWidth();
+    int previewHeight = mCameraSetting.getPreviewHeight();
+    int cameraWidth;
+    int cameraHeight;
+    if(false) {
+      // 横屏
+      cameraWidth = Math.max(previewWidth, previewHeight);
+      cameraHeight = Math.min(previewWidth, previewHeight);
+    } else {
+      cameraWidth = Math.min(previewWidth, previewHeight);
+      cameraHeight = Math.max(previewWidth, previewHeight);
+    }
 
-    mEffect.onInputSizeChanged(mCameraSetting.getPreviewWidth(), mCameraSetting.getPreviewHeight());
+    adjustSize(width, height, cameraWidth, cameraHeight,
+        mCameraSetting.getDisplayOrientation(),
+        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
+        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mCubeBuffer, mTextureBuffer);
+
+    mEffect.onInputSizeChanged(cameraWidth, cameraHeight);
     GLES20.glViewport(0, 0, width, height);
 
 //    mRecordTextureBuffer.clear();
 //    mRecordTextureBuffer.put(resetTextureCord(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight()));
-    mTextureBuffer.clear();
-    mTextureBuffer.put(resetTextureCord(width, height)).position(0);
+//    mTextureBuffer.clear();
+//    mTextureBuffer.put(resetTextureCord(width, height, cameraWidth, cameraHeight)).position(0);
     mRendererScreen.setDisplaySize(width, height);
   }
 
@@ -205,14 +215,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     return mSurfaceTexture;
   }
 
-  public int getSurfaceWidth() {
-    return mSurfaceWidth;
-  }
-
-  public int getSurfaceHeight() {
-    return mSurfaceHeight;
-  }
-
   public void destroy() {
     mEffect.destroy();
     mRendererScreen.destroy();
@@ -226,34 +228,17 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     void onFrame(byte[] rgba);
   }
 
-  private void adjustSize(int rotation, boolean flipHorizontal, boolean flipVertical) {
-    float[][] data = adjustSize(mSurfaceWidth, mSurfaceHeight, rotation,
-        flipHorizontal, flipVertical);
-
-    mCubeBuffer.clear();
-    mCubeBuffer.put(data[0]).position(0);
-    mTextureBuffer.clear();
-    mTextureBuffer.put(data[1]).position(0);
-  }
-
-  /**
-   * 调整画面大小
-   *
-   * @param width          宽
-   * @param height         高
-   * @param rotation       角度
-   * @param flipHorizontal 是否水平翻转
-   * @param flipVertical   是否垂直翻转
-   */
-  private float[][] adjustSize(int width, int height, int rotation, boolean flipHorizontal, boolean flipVertical) {
+  private void adjustSize(int width, int height, int inputWidth, int inputHeight,
+                               int rotation, boolean flipHorizontal, boolean flipVertical,
+                               FloatBuffer cubeBuffer, FloatBuffer textureBuffer) {
     float[] textureCords = TextureRotationUtil.getRotation(Rotation.fromInt(rotation),
         flipHorizontal, flipVertical);
     float[] cube = TextureRotationUtil.CUBE;
-    float ratio1 = (float) width / mCameraSetting.getPreviewWidth();
-    float ratio2 = (float) height / mCameraSetting.getPreviewHeight();
+    float ratio1 = (float) width / inputWidth;
+    float ratio2 = (float) height / inputHeight;
     float ratioMax = Math.max(ratio1, ratio2);
-    int imageWidthNew = Math.round(mCameraSetting.getPreviewWidth() * ratioMax);
-    int imageHeightNew = Math.round(mCameraSetting.getPreviewHeight() * ratioMax);
+    int imageWidthNew = Math.round(inputWidth * ratioMax);
+    int imageHeightNew = Math.round(inputHeight * ratioMax);
 
     float ratioWidth = imageWidthNew / (float) width;
     float ratioHeight = imageHeightNew / (float) height;
@@ -277,31 +262,19 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
             addDistance(textureCords[6], distHorizontal), addDistance(textureCords[7], distVertical),
         };
         break;
-      case FIT_XY:
-
-        break;
     }
-    return new float[][]{cube, textureCords};
+    cubeBuffer.clear();
+    cubeBuffer.put(cube).position(0);
+    textureBuffer.clear();
+    textureBuffer.put(textureCords).position(0);
   }
 
-  private float[] resetTextureCord(int width, int height) {
-    int previewWidth = mCameraSetting.getPreviewWidth();
-    int previewHeight = mCameraSetting.getPreviewHeight();
-    int cameraWidth;
-    int cameraHeight;
-    if(false) {
-      // 横屏
-      cameraWidth = Math.max(previewWidth, previewHeight);
-      cameraHeight = Math.min(previewWidth, previewHeight);
-    } else {
-      cameraWidth = Math.min(previewWidth, previewHeight);
-      cameraHeight = Math.max(previewWidth, previewHeight);
-    }
-    float hRatio = width / ((float) cameraWidth);
-    float vRatio = height / ((float) cameraHeight);
+  private float[] resetTextureCord(int width, int height, int inputWidth, int inputHeight) {
+    float hRatio = width / ((float) inputWidth);
+    float vRatio = height / ((float) inputHeight);
     float ratio;
     if (hRatio > vRatio) {
-      ratio = height / (cameraHeight * hRatio);
+      ratio = height / (inputHeight * hRatio);
       return new float[]{
           0.0f, 0.5f + ratio / 2,
           0.0f, 0.5f - ratio / 2,
@@ -309,7 +282,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
           1.0f, 0.5f - ratio / 2
       };
     } else {
-      ratio = width / (cameraWidth * vRatio);
+      ratio = width / (inputWidth * vRatio);
       return new float[] {
           0.5f - ratio / 2, 1.0f,
           0.5f - ratio / 2, 0.0f,

@@ -74,6 +74,7 @@ public final class Effect {
   void setVideoSize(int width, int height) {
     mVideoWidth = width;
     mVideoHeight = height;
+    mFboBuffer = IntBuffer.allocate(width * height);
   }
 
   private void initVbo() {
@@ -106,7 +107,6 @@ public final class Effect {
     }
     int[] fbo = new int[1];
     int[] texture = new int[1];
-    mFboBuffer = IntBuffer.allocate(width * height);
 
     GLES20.glGenFramebuffers(1, fbo, 0);
     GLES20.glGenTextures(1, texture, 0);
