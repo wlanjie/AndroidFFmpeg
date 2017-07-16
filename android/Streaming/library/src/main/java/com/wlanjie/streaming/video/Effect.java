@@ -105,6 +105,7 @@ public final class Effect {
     if (mFboId != 0 && width != mInputWidth && height != mInputHeight) {
       destroyFboTexture();
     }
+//    mFboBuffer = IntBuffer.allocate(width * height);
     int[] fbo = new int[1];
     int[] texture = new int[1];
 

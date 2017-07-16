@@ -2,4 +2,7 @@
     <string name="app_name">Streaming</string>
     <string name="publish">推流</string>
     <string name="stop">停止</string>
+    <string name="hard_encode">硬编</string>
+    <string name="soft_encode">软编</string>
+    <string name="start">开始</string>
 </resources>

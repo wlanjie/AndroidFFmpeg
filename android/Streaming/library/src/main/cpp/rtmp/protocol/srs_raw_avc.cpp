@@ -269,12 +269,12 @@ int SrsRawH264Stream::mux_avc2flv(string video, int8_t frame_type, int8_t avc_pa
     //      1bytes, FrameType | CodecID
     //      1bytes, AVCPacketType
     //      3bytes, CompositionTime, the cts.
-    // @see: E.4.3 Video Tags, video_file_format_spec_v10_1.pdf, page 78
+    // @see: E.4.3 VideoParameter Tags, video_file_format_spec_v10_1.pdf, page 78
     int size = (int)video.length() + 5;
     char* data = new char[size];
     char* p = data;
     
-    // @see: E.4.3 Video Tags, video_file_format_spec_v10_1.pdf, page 78
+    // @see: E.4.3 VideoParameter Tags, video_file_format_spec_v10_1.pdf, page 78
     // Frame Type, Type of video frame.
     // CodecID, Codec Identifier.
     // set the rtmp header

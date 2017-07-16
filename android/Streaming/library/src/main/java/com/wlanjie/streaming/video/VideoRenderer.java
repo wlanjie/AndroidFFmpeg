@@ -42,8 +42,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
 
   private Context mContext;
   private Effect mEffect;
-  private int mSurfaceWidth;
-  private int mSurfaceHeight;
   private ByteBuffer mFrameBuffer;
   private float[] mSurfaceMatrix = new float[16];
   private SurfaceTexture mSurfaceTexture;
@@ -159,8 +157,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
 
   @Override
   public void onSurfaceChanged(GL10 gl, int width, int height) {
-    mSurfaceWidth = width;
-    mSurfaceHeight = height;
     mFrameBuffer = ByteBuffer.allocate(width * height * 4);
 
     int previewWidth = mCameraSetting.getPreviewWidth();
@@ -176,17 +172,16 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
       cameraHeight = Math.max(previewWidth, previewHeight);
     }
 
-//    adjustSize(width, height, cameraWidth, cameraHeight,
-//        mCameraSetting.getDisplayOrientation(),
-//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
-//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mCubeBuffer, mTextureBuffer);
-//
-//    adjustSize(width, height, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(),
-//        mCameraSetting.getDisplayOrientation(),
-//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
-//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mRecordCubeBuffer, mRecordTextureBuffer);
-    mTextureBuffer.clear();
-    mTextureBuffer.put(resetTextureCord(width, height, cameraWidth, cameraHeight)).position(0);
+    adjustSize(width, height, cameraWidth, cameraHeight,
+        mCameraSetting.getDisplayOrientation(),
+        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
+        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mCubeBuffer, mTextureBuffer);
+
+    adjustSize(width, height, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(),
+        mCameraSetting.getDisplayOrientation(),
+        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
+        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mRecordCubeBuffer, mRecordTextureBuffer);
+
     mEffect.onInputSizeChanged(cameraWidth, cameraHeight);
     GLES20.glViewport(0, 0, width, height);
 
@@ -208,7 +203,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     }
     if (mRendererVideoEncoder != null) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-        mRendererVideoEncoder.drawEncoder(textureId, mVideoEncoder, mCubeBuffer, mTextureBuffer);
+        mRendererVideoEncoder.drawEncoder(textureId, mVideoEncoder, mCubeBuffer, mRecordTextureBuffer);
       }
     }
   }

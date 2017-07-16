@@ -1,35 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/activity_main"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:id="@+id/activity_main"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical">
 
-    <android.opengl.GLSurfaceView
-        android:id="@+id/gl_surface_view"
+    <EditText
+        android:id="@+id/rtmp_url"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="48dp"
+        android:textSize="16sp"
+        android:textColor="@color/colorPrimary"/>
 
-    <android.support.v7.widget.Toolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize" />
-
-    <LinearLayout
+    <RadioGroup
+        android:id="@+id/encode_group"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_gravity="bottom|center_horizontal">
+        android:layout_height="48dp"
+        android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/publish"
+        <RadioButton
+            android:id="@+id/hard_encode"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/publish" />
+            android:text="@string/hard_encode"/>
 
-        <Button
-            android:id="@+id/stop"
+        <RadioButton
+            android:id="@+id/soft_encode"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/stop" />
-    </LinearLayout>
-</FrameLayout>
+            android:checked="true"
+            android:text="@string/soft_encode"/>
+    </RadioGroup>
+
+    <Button
+        android:id="@+id/start"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:gravity="center_horizontal"
+        android:textSize="16sp"
+        android:textColor="@color/colorPrimary"
+        android:text="@string/start"/>
+</LinearLayout>

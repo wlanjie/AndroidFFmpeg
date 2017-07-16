@@ -23,7 +23,14 @@ wlanjie::H264Encoder::~H264Encoder() {
 
 }
 
+void wlanjie::H264Encoder::setVideoParameter(wlanjie::VideoParameter videoParameter) {
+    this->parameter = videoParameter;
+}
+
+
 bool wlanjie::H264Encoder::openH264Encoder() {
+    LOGE("frameWidth = %d frameHeight = %d videoWidth = %d videoHeight = %d frameRate = %d bitrate = %d",
+        parameter.frameWidth, parameter.frameHeight, parameter.videoWidth, parameter.videoHeight, parameter.frameRate, parameter.bitrate);
     WelsCreateSVCEncoder(&encoder_);
     SEncParamExt encoder_params = createEncoderParams();
     int ret = 0;
@@ -42,14 +49,14 @@ bool wlanjie::H264Encoder::openH264Encoder() {
     memset(&_sourcePicture, 0, sizeof(Source_Picture_s));
 
     uint8_t *data_ = NULL;
-    _sourcePicture.iPicWidth = frameWidth;
-    _sourcePicture.iPicHeight = frameHeight;
-    _sourcePicture.iStride[0] = frameWidth;
-    _sourcePicture.iStride[1] = _sourcePicture.iStride[2] = frameWidth >> 1;
-    data_ = static_cast<uint8_t  *> (realloc(data_, frameWidth * frameHeight * 3 / 2));
+    _sourcePicture.iPicWidth = parameter.frameWidth;
+    _sourcePicture.iPicHeight = parameter.frameHeight;
+    _sourcePicture.iStride[0] = parameter.frameWidth;
+    _sourcePicture.iStride[1] = _sourcePicture.iStride[2] = parameter.frameWidth >> 1;
+    data_ = static_cast<uint8_t  *> (realloc(data_, parameter.frameWidth * parameter.frameHeight * 3 / 2));
     _sourcePicture.pData[0] = data_;
-    _sourcePicture.pData[1] = _sourcePicture.pData[0] + frameWidth * frameHeight;
-    _sourcePicture.pData[2] = _sourcePicture.pData[1] + (frameWidth * frameHeight >> 2);
+    _sourcePicture.pData[1] = _sourcePicture.pData[0] + parameter.frameWidth * parameter.frameHeight;
+    _sourcePicture.pData[2] = _sourcePicture.pData[1] + (parameter.frameWidth * parameter.frameHeight >> 2);
     _sourcePicture.iColorFormat = videoFormatI420;
 
     memset(&info, 0, sizeof(SFrameBSInfo));
@@ -70,14 +77,14 @@ SEncParamExt wlanjie::H264Encoder::createEncoderParams() const {
     SEncParamExt encoder_params;
     encoder_->GetDefaultParams(&encoder_params);
     encoder_params.iUsageType = CAMERA_VIDEO_REAL_TIME;
-    encoder_params.iPicWidth = frameWidth;
-    encoder_params.iPicHeight = frameHeight;
+    encoder_params.iPicWidth = parameter.frameWidth;
+    encoder_params.iPicHeight = parameter.frameHeight;
     // uses bit/s kbit/s
-    encoder_params.iTargetBitrate = 512 * 1000;
+    encoder_params.iTargetBitrate = parameter.bitrate * 1000;
     // max bit/s
-    encoder_params.iMaxBitrate = 512 * 1000;
+    encoder_params.iMaxBitrate = parameter.bitrate * 1000;
     encoder_params.iRCMode = RC_OFF_MODE;
-    encoder_params.fMaxFrameRate = 25;
+    encoder_params.fMaxFrameRate = parameter.frameRate;
     encoder_params.bEnableFrameSkip = true;
     encoder_params.bEnableDenoise = false;
     encoder_params.uiIntraPeriod = 60;
@@ -87,31 +94,26 @@ SEncParamExt wlanjie::H264Encoder::createEncoderParams() const {
     encoder_params.bEnableLongTermReference = false;
     encoder_params.bEnableSceneChangeDetect = true;
     encoder_params.iMultipleThreadIdc = 1;
-    encoder_params.sSpatialLayers[0].iVideoHeight = frameHeight;
-    encoder_params.sSpatialLayers[0].iVideoWidth = frameWidth;
-    encoder_params.sSpatialLayers[0].fFrameRate = 25;
-    encoder_params.sSpatialLayers[0].iSpatialBitrate = 512 * 1000;
+    encoder_params.sSpatialLayers[0].iVideoWidth = parameter.videoWidth;
+    encoder_params.sSpatialLayers[0].iVideoHeight = parameter.videoHeight;
+    encoder_params.sSpatialLayers[0].fFrameRate = parameter.frameRate;
+    encoder_params.sSpatialLayers[0].iSpatialBitrate = parameter.bitrate * 1000;
     encoder_params.sSpatialLayers[0].iMaxSpatialBitrate = 0;
 //    encoder_params.sSpatialLayers[0].sSliceArgument.uiSliceMode = SM_AUTO_SLICE;
     encoder_params.eSpsPpsIdStrategy = CONSTANT_ID;
     return encoder_params;
 }
 
-void wlanjie::H264Encoder::setFrameSize(int width, int height) {
-    this->frameHeight = height;
-    this->frameWidth = width;
-}
-
-void wlanjie::H264Encoder::encoder(char *rgba, int width, int height, long pts, int *h264_length, uint8_t **h264) {
+void wlanjie::H264Encoder::encoder(char *rgba, long pts, int *h264_length, uint8_t **h264) {
     if (encoder_ == NULL) {
         return;
     }
     _sourcePicture.uiTimeStamp = pts;
-    libyuv::RGBAToI420((const uint8 *) rgba, width * 4,
+    libyuv::RGBAToI420((const uint8 *) rgba, parameter.frameWidth * 4,
                    _sourcePicture.pData[0], _sourcePicture.iStride[0],
                    _sourcePicture.pData[1], _sourcePicture.iStride[1],
                    _sourcePicture.pData[2], _sourcePicture.iStride[2],
-                   width, height);
+                   parameter.frameWidth, parameter.frameHeight);
     int ret = encoder_->EncodeFrame(&_sourcePicture, &info);
     if (!ret) {
         if (info.eFrameType != videoFrameTypeSkip) {
