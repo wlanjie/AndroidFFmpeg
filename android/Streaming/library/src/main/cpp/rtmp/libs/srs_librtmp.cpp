@@ -2246,7 +2246,7 @@ char* srs_human_amf0_print(srs_amf0_t amf0, char** pdata, int* psize)
 const char* srs_human_flv_tag_type2string(char type)
 {
     static const char* audio = "Audio";
-    static const char* video = "Video";
+    static const char* video = "VideoParameter";
     static const char* data = "Data";
     static const char* unknown = "Unknown";
     

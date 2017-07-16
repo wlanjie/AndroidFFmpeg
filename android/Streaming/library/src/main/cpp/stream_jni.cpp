@@ -48,7 +48,6 @@ std::ofstream _outputStream;
 void *publish(void *arg) {
     while (!is_stop) {
         while (!q.empty()) {
-            LOGE("q.size = %d", q.size());
             pthread_mutex_lock(&mutex);
             Frame frame = q.front();
             q.pop();
@@ -114,8 +113,34 @@ void muxer_h264_success(char *data, int size, int pts) {
     }
 }
 
-void Android_JNI_setEncoderResolution(JNIEnv *env, jobject object, jint width, jint height) {
-    h264Encoder.setFrameSize(width, height);
+void Android_JNI_setVideoParameter(JNIEnv *env, jobject object, jobject videoParameterObject) {
+    jclass videoParameterClass = env->GetObjectClass(videoParameterObject);
+    jmethodID getFrameWidthId = env->GetMethodID(videoParameterClass, "getFrameWidth", "()I");
+    jint frameWidth = env->CallIntMethod(videoParameterObject, getFrameWidthId);
+
+    jmethodID getFrameHeightId = env->GetMethodID(videoParameterClass, "getFrameHeight", "()I");
+    jint frameHeight = env->CallIntMethod(videoParameterObject, getFrameHeightId);
+
+    jmethodID getVideoWidthId = env->GetMethodID(videoParameterClass, "getVideoWidth", "()I");
+    jint videoWidth = env->CallIntMethod(videoParameterObject, getVideoWidthId);
+
+    jmethodID getVideoHeightId = env->GetMethodID(videoParameterClass, "getVideoHeight", "()I");
+    jint videoHeight = env->CallIntMethod(videoParameterObject, getVideoHeightId);
+
+    jmethodID getBitrateId = env->GetMethodID(videoParameterClass, "getBitrate", "()I");
+    jint bitrate = env->CallIntMethod(videoParameterObject, getBitrateId);
+
+    jmethodID getFrameRateId = env->GetMethodID(videoParameterClass, "getFrameRate", "()I");
+    jint frameRate = env->CallIntMethod(videoParameterObject, getFrameRateId);
+
+    wlanjie::VideoParameter parameter;
+    parameter.frameWidth = frameWidth;
+    parameter.frameHeight = frameHeight;
+    parameter.videoWidth = videoWidth;
+    parameter.videoHeight = videoHeight;
+    parameter.frameRate = frameRate;
+    parameter.bitrate = bitrate;
+    h264Encoder.setVideoParameter(parameter);
 }
 
 jboolean Android_JNI_openH264Encoder(JNIEnv *env, jobject object) {
@@ -135,6 +160,9 @@ jboolean Android_JNI_openAacEncode(JNIEnv *env, jobject object, jint channels, j
 }
 
 jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm, jint pts) {
+    if (is_stop) {
+        return 0;
+    }
     jbyte *pcm_frame = env->GetByteArrayElements(pcm, NULL);
     int pcm_length = env->GetArrayLength(pcm);
     int aac_size;
@@ -151,16 +179,19 @@ void Android_JNI_closeAacEncoder() {
     audioEncode.close();
 }
 
-void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jint width, jint height, jlong pts) {
+void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jlong pts) {
+    if (is_stop) {
+        return;
+    }
     jbyte *frame = env->GetByteArrayElements(data, NULL);
     int h264_size;
     uint8_t *h264;
-    h264Encoder.encoder((char *) frame, width, height, (long) pts, &h264_size, &h264);
+    h264Encoder.encoder((char *) frame, (long) pts, &h264_size, &h264);
     env->ReleaseByteArrayElements(data, frame, NULL);
     if (h264_size > 0) {
         muxer_h264_success((char *) h264, h264_size, (int) pts);
+        delete[] h264;
     }
-    delete[] h264;
 }
 
 jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
@@ -186,7 +217,6 @@ jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
 }
 
 int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp) {
-    LOGE("write video sample");
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
     muxer_h264_success((char *) data, data_size, timestamp);
@@ -196,7 +226,6 @@ int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame
 
 jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp,
                                     jint sampleRate, jint channel) {
-    LOGE("write audio sample");
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
     muxer_aac_success((char *) data, data_size, timestamp);
@@ -223,10 +252,10 @@ static JNINativeMethod rtmp_methods[] = {
 };
 
 static JNINativeMethod video_encoder_methods[] = {
-        {"openEncoder",  "()Z",      (void *) Android_JNI_openH264Encoder},
-        {"closeEncoder", "()V",      (void *) Android_JNI_closeH264Encoder},
-        {"setFrameSize", "(II)V",    (void *) Android_JNI_setEncoderResolution},
-        {"encode",       "([BIIJ)V", (void *) Android_JNI_encode_h264},
+        {"openEncoder",         "()Z",      (void *) Android_JNI_openH264Encoder},
+        {"closeEncoder",        "()V",      (void *) Android_JNI_closeH264Encoder},
+        {"setVideoParameter",   "(Lcom/wlanjie/streaming/video/VideoParameter;)V", (void *) Android_JNI_setVideoParameter },
+        {"encode",              "([BJ)V", (void *) Android_JNI_encode_h264},
 };
 
 static JNINativeMethod audio_encoder_methods[] = {

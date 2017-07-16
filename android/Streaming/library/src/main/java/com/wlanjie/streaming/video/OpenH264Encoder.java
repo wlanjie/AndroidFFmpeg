@@ -7,6 +7,6 @@ public class OpenH264Encoder {
 
   public native static boolean openEncoder();
   public native static void closeEncoder();
-  public native static void setFrameSize(int width, int height);
-  public native static void encode(byte[] data, int width, int height, long pts);
+  public native static void setVideoParameter(VideoParameter parameter);
+  public native static void encode(byte[] data, long pts);
 }

@@ -12,18 +12,27 @@
 
 namespace wlanjie {
 
+    struct VideoParameter {
+        int frameWidth;
+        int frameHeight;
+        int videoWidth;
+        int videoHeight;
+        int bitrate;
+        int frameRate;
+    };
+
     class H264Encoder {
     public:
         H264Encoder();
         ~H264Encoder();
 
-        void setFrameSize(int width, int height);
+        void setVideoParameter(VideoParameter videoParameter);
 
         bool openH264Encoder();
 
         void closeH264Encoder();
 
-        void encoder(char *rgba, int width, int height, long pts, int *h264_length, uint8_t **h264);
+        void encoder(char *rgba, long pts, int *h264_length, uint8_t **h264);
     private:
         SEncParamExt createEncoderParams() const;
 
@@ -32,9 +41,7 @@ namespace wlanjie {
         SFrameBSInfo info;
         Source_Picture_s _sourcePicture;
         std::ofstream _outputStream;
-
-        int frameWidth;
-        int frameHeight;
+        VideoParameter parameter;
     };
 
 }

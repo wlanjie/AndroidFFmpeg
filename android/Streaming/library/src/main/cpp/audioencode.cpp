@@ -63,7 +63,6 @@ void wlanjie::AudioEncode::close() {
 }
 
 int wlanjie::AudioEncode::encode(char *pcm, int pcm_length, int *aac_size, uint8_t **aac) {
-    LOGE("pcm_length = %d", pcm_length);
     AACENC_BufDesc in_buf = { 0 };
     AACENC_BufDesc out_buf = { 0 };
     AACENC_InArgs in_args = { 0 };

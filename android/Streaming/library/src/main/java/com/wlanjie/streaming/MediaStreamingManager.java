@@ -24,6 +24,7 @@ import com.wlanjie.streaming.setting.EncoderType;
 import com.wlanjie.streaming.setting.StreamingSetting;
 import com.wlanjie.streaming.video.OnMediaCodecEncoderListener;
 import com.wlanjie.streaming.video.OpenH264Encoder;
+import com.wlanjie.streaming.video.VideoParameter;
 import com.wlanjie.streaming.video.VideoRenderer;
 
 import java.nio.ByteBuffer;
@@ -112,14 +113,14 @@ public class MediaStreamingManager {
     mAudioProcessor.start();
     mPresentTimeUs = System.nanoTime();
     if (mStreamingSetting.getEncoderType() == EncoderType.SOFT) {
-      OpenH264Encoder.setFrameSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
+      createVideoParameter();
       OpenH264Encoder.openEncoder();
 
       FdkAACEncoder.openEncoder(mAudioSetting.getChannelCount(), mAudioSetting.getSampleRate(), mAudioSetting.getMaxBps() * 1000);
       mVideoRenderer.setOnFrameListener(new VideoRenderer.OnFrameListener() {
         @Override
         public void onFrame(byte[] rgba) {
-          OpenH264Encoder.encode(rgba, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(), System.nanoTime() / 1000 - mPresentTimeUs);
+          OpenH264Encoder.encode(rgba, System.nanoTime() / 1000 - mPresentTimeUs);
         }
       });
     } else {
@@ -157,6 +158,29 @@ public class MediaStreamingManager {
     });
 
     mIsStartPublish = true;
+  }
+
+  private void createVideoParameter() {
+    VideoParameter videoParameter = new VideoParameter();
+    videoParameter.setBitrate(512);
+    videoParameter.setFrameRate(25);
+    videoParameter.setVideoWidth(mStreamingSetting.getVideoWidth());
+    videoParameter.setVideoHeight(mStreamingSetting.getVideoHeight());
+    int previewWidth = mCameraSetting.getPreviewWidth();
+    int previewHeight = mCameraSetting.getPreviewHeight();
+    int cameraWidth;
+    int cameraHeight;
+    if(false) {
+      // 横屏
+      cameraWidth = Math.max(previewWidth, previewHeight);
+      cameraHeight = Math.min(previewWidth, previewHeight);
+    } else {
+      cameraWidth = Math.min(previewWidth, previewHeight);
+      cameraHeight = Math.max(previewWidth, previewHeight);
+    }
+    videoParameter.setFrameWidth(mStreamingSetting.getVideoWidth());
+    videoParameter.setFrameHeight(mStreamingSetting.getVideoHeight());
+    OpenH264Encoder.setVideoParameter(videoParameter);
   }
 
   public void stopStreaming() {
