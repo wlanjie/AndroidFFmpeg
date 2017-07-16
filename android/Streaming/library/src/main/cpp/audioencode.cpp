@@ -15,6 +15,7 @@ wlanjie::AudioEncode::~AudioEncode() {
 }
 
 bool wlanjie::AudioEncode::open(int channel, int sample_rate, int bitrate) {
+    LOGD("audio encode open");
     _outputStream.open("/sdcard/wlanjie.aac", std::ios_base::binary | std::ios_base::out);
     this->channel = channel;
     this->sample_rate = sample_rate;

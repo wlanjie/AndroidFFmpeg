@@ -177,7 +177,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
         mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
         mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mCubeBuffer, mTextureBuffer);
 
-    adjustSize(width, height, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(),
+    adjustSize(cameraWidth, cameraHeight, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(),
         mCameraSetting.getDisplayOrientation(),
         mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
         mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mRecordCubeBuffer, mRecordTextureBuffer);
@@ -203,7 +203,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     }
     if (mRendererVideoEncoder != null) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-        mRendererVideoEncoder.drawEncoder(textureId, mVideoEncoder, mCubeBuffer, mRecordTextureBuffer);
+        mRendererVideoEncoder.drawEncoder(textureId, mVideoEncoder, mRecordCubeBuffer, mRecordTextureBuffer);
       }
     }
   }

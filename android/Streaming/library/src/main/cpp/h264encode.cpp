@@ -29,8 +29,7 @@ void wlanjie::H264Encoder::setVideoParameter(wlanjie::VideoParameter videoParame
 
 
 bool wlanjie::H264Encoder::openH264Encoder() {
-    LOGE("frameWidth = %d frameHeight = %d videoWidth = %d videoHeight = %d frameRate = %d bitrate = %d",
-        parameter.frameWidth, parameter.frameHeight, parameter.videoWidth, parameter.videoHeight, parameter.frameRate, parameter.bitrate);
+    LOGD("h264 encode open");
     WelsCreateSVCEncoder(&encoder_);
     SEncParamExt encoder_params = createEncoderParams();
     int ret = 0;
@@ -101,6 +100,8 @@ SEncParamExt wlanjie::H264Encoder::createEncoderParams() const {
     encoder_params.sSpatialLayers[0].iMaxSpatialBitrate = 0;
 //    encoder_params.sSpatialLayers[0].sSliceArgument.uiSliceMode = SM_AUTO_SLICE;
     encoder_params.eSpsPpsIdStrategy = CONSTANT_ID;
+    LOGE("frameWidth = %d frameHeight = %d videoWidth = %d videoHeight = %d frameRate = %d bitrate = %d",
+         parameter.frameWidth, parameter.frameHeight, parameter.videoWidth, parameter.videoHeight, parameter.frameRate, parameter.bitrate);
     return encoder_params;
 }
 

@@ -159,7 +159,7 @@ jboolean Android_JNI_openAacEncode(JNIEnv *env, jobject object, jint channels, j
     return (jboolean) audioEncode.open(channels, sample_rate, bitrate);
 }
 
-jint Android_JNI_encoderPcmToAac(JNIEnv *env, jobject object, jbyteArray pcm, jint pts) {
+jint Android_JNI_encode_audio(JNIEnv *env, jobject object, jbyteArray pcm, jint pts) {
     if (is_stop) {
         return 0;
     }
@@ -179,7 +179,7 @@ void Android_JNI_closeAacEncoder() {
     audioEncode.close();
 }
 
-void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jlong pts) {
+void Android_JNI_encode_video(JNIEnv *env, jobject object, jbyteArray data, jlong pts) {
     if (is_stop) {
         return;
     }
@@ -196,17 +196,23 @@ void Android_JNI_encode_h264(JNIEnv *env, jobject object, jbyteArray data, jlong
 
 jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
     if (rtmp != NULL) {
+        LOGE("rtmp not NULL");
         return -1;
     }
+    is_stop = false;
     const char *rtmp_url = env->GetStringUTFChars(url, 0);
     rtmp = srs_rtmp_create(rtmp_url);
-    if (srs_rtmp_handshake(rtmp) != 0) {
+    int result = 0;
+    if ((result = srs_rtmp_handshake(rtmp)) != 0) {
+        LOGE("srs_rtmp_handshake error = %d", result);
         return -1;
     }
-    if (srs_rtmp_connect_app(rtmp) != 0) {
+    if ((result = srs_rtmp_connect_app(rtmp)) != 0) {
+        LOGE("srs_rtmp_connect_app error =%d", result);
         return -1;
     }
-    if (srs_rtmp_publish_stream(rtmp) != 0) {
+    if ((result = srs_rtmp_publish_stream(rtmp)) != 0) {
+        LOGE("srs_rtmp_publish_stream = %d", result);
         return -1;
     }
 
@@ -216,7 +222,7 @@ jint Android_JNI_connect(JNIEnv *env, jobject object, jstring url) {
     return 0;
 }
 
-int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp) {
+int Android_JNI_write_video(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp) {
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
     muxer_h264_success((char *) data, data_size, timestamp);
@@ -224,8 +230,8 @@ int Android_JNI_write_video_sample(JNIEnv *env, jobject object, jbyteArray frame
     return 0;
 }
 
-jint Android_JNI_write_audio_sample(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp,
-                                    jint sampleRate, jint channel) {
+jint Android_JNI_write_audio(JNIEnv *env, jobject object, jbyteArray frame, jlong timestamp,
+                             jint sampleRate, jint channel) {
     jbyte *data = env->GetByteArrayElements(frame, NULL);
     jsize data_size = env->GetArrayLength(frame);
     muxer_aac_success((char *) data, data_size, timestamp);
@@ -246,8 +252,8 @@ void Android_JNI_destroy(JNIEnv *env, jobject object) {
 static JNINativeMethod rtmp_methods[] = {
         {"startPublish", "()V",                   (void *) Android_JNI_startPublish},
         {"connect",      "(Ljava/lang/String;)I", (void *) Android_JNI_connect},
-        {"writeVideo",   "([BJ)I",                (void *) Android_JNI_write_video_sample},
-        {"writeAudio",   "([BJII)I",              (void *) Android_JNI_write_audio_sample},
+        {"writeVideo",   "([BJ)I",                (void *) Android_JNI_write_video},
+        {"writeAudio",   "([BJII)I",              (void *) Android_JNI_write_audio},
         {"destroy",      "()V",                   (void *) Android_JNI_destroy},
 };
 
@@ -255,12 +261,12 @@ static JNINativeMethod video_encoder_methods[] = {
         {"openEncoder",         "()Z",      (void *) Android_JNI_openH264Encoder},
         {"closeEncoder",        "()V",      (void *) Android_JNI_closeH264Encoder},
         {"setVideoParameter",   "(Lcom/wlanjie/streaming/video/VideoParameter;)V", (void *) Android_JNI_setVideoParameter },
-        {"encode",              "([BJ)V", (void *) Android_JNI_encode_h264},
+        {"encode",              "([BJ)V", (void *) Android_JNI_encode_video},
 };
 
 static JNINativeMethod audio_encoder_methods[] = {
         {"openEncoder",  "(III)Z", (void *) Android_JNI_openAacEncode},
-        {"encode",       "([BI)I", (void *) Android_JNI_encoderPcmToAac},
+        {"encode",       "([BI)I", (void *) Android_JNI_encode_audio},
         {"closeEncoder", "()V",    (void *) Android_JNI_closeAacEncoder},
 };
 

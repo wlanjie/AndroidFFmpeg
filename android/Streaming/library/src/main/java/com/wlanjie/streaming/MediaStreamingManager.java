@@ -46,6 +46,7 @@ public class MediaStreamingManager {
   private LivingCamera mCamera;
   private long mPresentTimeUs;
   private volatile boolean mIsStartPublish = false;
+  private CameraCallback mCameraCallback;
 
   public MediaStreamingManager(final GLSurfaceView glSurfaceView) {
     mGLSurfaceView = glSurfaceView;
@@ -56,6 +57,10 @@ public class MediaStreamingManager {
         glSurfaceView.requestRender();
       }
     });
+  }
+
+  public void setCameraCallback(CameraCallback callback) {
+    mCameraCallback = callback;
   }
 
   public void prepare(CameraSetting cameraSetting, StreamingSetting streamingSetting, AudioSetting audioSetting) {
@@ -70,8 +75,8 @@ public class MediaStreamingManager {
     mGLSurfaceView.setRenderer(mVideoRenderer);
     mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
-    cameraSetting.setPreviewWidth(360);
-    cameraSetting.setPreviewHeight(640);
+    cameraSetting.setPreviewWidth(720);
+    cameraSetting.setPreviewHeight(1280);
     cameraSetting.setSurfaceTexture(mVideoRenderer.getSurfaceTexture());
     if (Build.VERSION.SDK_INT < 21) {
       mCamera = new Camera1(mCallbacks, cameraSetting);
@@ -120,6 +125,9 @@ public class MediaStreamingManager {
       mVideoRenderer.setOnFrameListener(new VideoRenderer.OnFrameListener() {
         @Override
         public void onFrame(byte[] rgba) {
+          if (!mIsStartPublish) {
+            return;
+          }
           OpenH264Encoder.encode(rgba, System.nanoTime() / 1000 - mPresentTimeUs);
         }
       });
@@ -127,6 +135,9 @@ public class MediaStreamingManager {
       mVideoRenderer.setOnMediaCodecEncoderListener(new OnMediaCodecEncoderListener() {
         @Override
         public void onEncode(ByteBuffer buffer, MediaCodec.BufferInfo info) {
+          if (!mIsStartPublish) {
+            return;
+          }
           buffer.position(info.offset);
           buffer.limit(info.offset + info.size);
           byte[] h264 = new byte[info.size];
@@ -140,6 +151,9 @@ public class MediaStreamingManager {
       @Override
       public void onAudioRecord(byte[] buffer, int size) {
         if (mStreamingSetting.getEncoderType() == EncoderType.SOFT) {
+          if (!mIsStartPublish) {
+            return;
+          }
           FdkAACEncoder.encode(buffer, (int) (System.nanoTime() - mPresentTimeUs));
         } else {
           if (mAudioEncoder == null) {
@@ -148,6 +162,9 @@ public class MediaStreamingManager {
             mAudioEncoder.setOnAudioEncoderListener(new OnAudioEncoderListener() {
               @Override
               public void onAudioEncode(byte[] data, int size, long timeUs) {
+                if (!mIsStartPublish) {
+                  return;
+                }
                 Rtmp.writeAudio(data, (int) (System.nanoTime() - mPresentTimeUs), mAudioSetting.getSampleRate(), mAudioSetting.getChannelCount());
               }
             });
@@ -178,8 +195,8 @@ public class MediaStreamingManager {
       cameraWidth = Math.min(previewWidth, previewHeight);
       cameraHeight = Math.max(previewWidth, previewHeight);
     }
-    videoParameter.setFrameWidth(mStreamingSetting.getVideoWidth());
-    videoParameter.setFrameHeight(mStreamingSetting.getVideoHeight());
+    videoParameter.setFrameWidth(cameraWidth);
+    videoParameter.setFrameHeight(cameraHeight);
     OpenH264Encoder.setVideoParameter(videoParameter);
   }
 
@@ -195,6 +212,8 @@ public class MediaStreamingManager {
     }
     mAudioProcessor.stopEncode();
     mAudioProcessor.interrupt();
+    Rtmp.destroy();
+    mVideoRenderer.destroy();
     mIsStartPublish = false;
   }
 
@@ -202,22 +221,30 @@ public class MediaStreamingManager {
 
     @Override
     public void onCameraOpened(int previewWidth, int previewHeight) {
-
+      if (mCameraCallback != null) {
+        mCameraCallback.onCameraOpened(previewWidth, previewHeight);
+      }
     }
 
     @Override
     public void onCameraClosed() {
-
+      if (mCameraCallback != null) {
+        mCameraCallback.onCameraClosed();
+      }
     }
 
     @Override
     public void onPreviewFrame(byte[] data) {
-
+      if (mCameraCallback != null) {
+        mCameraCallback.onPreviewFrame(data);
+      }
     }
 
     @Override
     public void onPreview(int previewWidth, int previewHeight) {
-
+      if (mCameraCallback != null) {
+        mCameraCallback.onPreview(previewWidth, previewHeight);
+      }
     }
   }
 

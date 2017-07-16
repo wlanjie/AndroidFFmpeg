@@ -7,6 +7,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 
 import com.wlanjie.streaming.MediaStreamingManager;
+import com.wlanjie.streaming.camera.CameraCallback;
 import com.wlanjie.streaming.setting.AudioSetting;
 import com.wlanjie.streaming.setting.CameraSetting;
 import com.wlanjie.streaming.setting.EncoderType;
@@ -38,13 +39,33 @@ public class StreamingActivity extends AppCompatActivity {
     GLSurfaceView glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
     mMediaStreamingManager = new MediaStreamingManager(glSurfaceView);
     mMediaStreamingManager.prepare(cameraSetting, streamingSetting, audioSetting);
+    mMediaStreamingManager.setCameraCallback(new CameraCallback() {
+      @Override
+      public void onCameraOpened(int previewWidth, int previewHeight) {
+        mMediaStreamingManager.startStreaming();
+      }
+
+      @Override
+      public void onCameraClosed() {
+
+      }
+
+      @Override
+      public void onPreviewFrame(byte[] data) {
+
+      }
+
+      @Override
+      public void onPreview(int previewWidth, int previewHeight) {
+
+      }
+    });
   }
 
   @Override
   protected void onResume() {
     super.onResume();
     mMediaStreamingManager.resume();
-    mMediaStreamingManager.startStreaming();
   }
 
   @Override

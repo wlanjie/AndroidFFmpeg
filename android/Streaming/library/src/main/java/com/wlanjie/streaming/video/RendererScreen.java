@@ -75,8 +75,6 @@ public class RendererScreen {
 
     GLES20.glDisableVertexAttribArray(mScreenPosition);
     GLES20.glDisableVertexAttribArray(mScreenTextureCoordinate);
-
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
   }
 
   public void draw(int textureId) {

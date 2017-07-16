@@ -28,9 +28,7 @@ public final class Effect {
   private int mFboTextureId;
   private IntBuffer mFboBuffer;
 
-  private int[] mCubeId;
   private final FloatBuffer mCubeBuffer;
-  private int[] mTextureCoordinatedId;
   private final FloatBuffer mTextureBuffer;
 
   private int mProgramId;
@@ -56,8 +54,6 @@ public final class Effect {
   }
 
   public void init() {
-    initVbo();
-
     mProgramId = OpenGLUtils.loadProgram(OpenGLUtils.readSharedFromRawResource(mResources, R.raw.vertex_oes), OpenGLUtils.readSharedFromRawResource(mResources, R.raw.fragment_oes));
     mPosition = GLES20.glGetAttribLocation(mProgramId, "position");
     mUniformTexture = GLES20.glGetUniformLocation(mProgramId, "inputImageTexture");
@@ -74,38 +70,13 @@ public final class Effect {
   void setVideoSize(int width, int height) {
     mVideoWidth = width;
     mVideoHeight = height;
-    mFboBuffer = IntBuffer.allocate(width * height);
-  }
-
-  private void initVbo() {
-    mCubeId = new int[1];
-    mTextureCoordinatedId = new int[1];
-
-    GLES20.glGenBuffers(1, mCubeId, 0);
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mCubeId[0]);
-    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, mCubeBuffer.capacity() * 4, mCubeBuffer, GLES20.GL_STATIC_DRAW);
-
-    GLES20.glGenBuffers(1, mTextureCoordinatedId, 0);
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mTextureCoordinatedId[0]);
-    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, mTextureBuffer.capacity() * 4, mTextureBuffer, GLES20.GL_STATIC_DRAW);
-  }
-
-  private void destroyVbo() {
-    if (mCubeId != null) {
-      GLES20.glDeleteBuffers(1, mCubeId, 0);
-      mCubeId = null;
-    }
-    if (mTextureCoordinatedId != null) {
-      GLES20.glDeleteBuffers(1, mTextureCoordinatedId, 0);
-      mTextureCoordinatedId = null;
-    }
   }
 
   private void initFboTexture(int width, int height) {
     if (mFboId != 0 && width != mInputWidth && height != mInputHeight) {
       destroyFboTexture();
     }
-//    mFboBuffer = IntBuffer.allocate(width * height);
+    mFboBuffer = IntBuffer.allocate(width * height);
     int[] fbo = new int[1];
     int[] texture = new int[1];
 
@@ -159,8 +130,7 @@ public final class Effect {
     GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFboId);
     GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
     if (mVideoWidth > 0 && mVideoHeight > 0) {
-      GLES20.glViewport(0, 0, mVideoWidth, mVideoHeight);
-      GLES20.glReadPixels(0, 0, mVideoWidth, mVideoHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mFboBuffer);
+      GLES20.glReadPixels(0, 0, mInputWidth, mInputHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mFboBuffer);
     }
     GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
 
@@ -183,7 +153,6 @@ public final class Effect {
 
   public final void destroy() {
     destroyFboTexture();
-    destroyVbo();
     GLES20.glDeleteProgram(mProgramId);
   }
 }
