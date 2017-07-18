@@ -177,7 +177,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
         mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
         mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mCubeBuffer, mTextureBuffer);
 
-    adjustSize(cameraWidth, cameraHeight, mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(),
+    adjustSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(), cameraWidth, cameraHeight,
         mCameraSetting.getDisplayOrientation(),
         mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
         mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mRecordCubeBuffer, mRecordTextureBuffer);

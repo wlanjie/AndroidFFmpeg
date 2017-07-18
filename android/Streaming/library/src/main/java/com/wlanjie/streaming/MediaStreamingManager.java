@@ -22,6 +22,7 @@ import com.wlanjie.streaming.setting.AudioSetting;
 import com.wlanjie.streaming.setting.CameraSetting;
 import com.wlanjie.streaming.setting.EncoderType;
 import com.wlanjie.streaming.setting.StreamingSetting;
+import com.wlanjie.streaming.util.VideoUtil;
 import com.wlanjie.streaming.video.OnMediaCodecEncoderListener;
 import com.wlanjie.streaming.video.OpenH264Encoder;
 import com.wlanjie.streaming.video.VideoParameter;
@@ -64,6 +65,10 @@ public class MediaStreamingManager {
   }
 
   public void prepare(CameraSetting cameraSetting, StreamingSetting streamingSetting, AudioSetting audioSetting) {
+    int videoWidth = VideoUtil.getVideoSize(streamingSetting.getVideoWidth());
+    int videoHeight = VideoUtil.getVideoSize(streamingSetting.getVideoHeight());
+    streamingSetting.setVideoWidth(videoWidth);
+    streamingSetting.setVideoHeight(videoHeight);
     mCameraSetting = cameraSetting;
     mStreamingSetting = streamingSetting;
     mAudioSetting = audioSetting;

@@ -10,6 +10,7 @@ import android.os.SystemClock;
 import android.support.annotation.RequiresApi;
 
 import com.wlanjie.streaming.setting.StreamingSetting;
+import com.wlanjie.streaming.util.VideoUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
