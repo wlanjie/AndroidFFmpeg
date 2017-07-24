@@ -63,7 +63,7 @@ mMediaStreamingManager.stopStreaming();
 ```
 
 
-### 最近离职了,开始找工作了,如果不介意高中学历,有合适的机会谢谢帮忙推荐 [简历](https://github.com/wlanjie/Resume)
+### 最近离职了,开始找工作了,有合适的机会谢谢帮忙推荐 [简历](https://github.com/wlanjie/Resume)
 
 ### 关于我
 
