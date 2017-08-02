@@ -40,6 +40,7 @@ namespace wlanjie {
         ISVCEncoder *encoder_;
         SFrameBSInfo info;
         Source_Picture_s _sourcePicture;
+        Source_Picture_s _scaleSourcePicture;
         std::ofstream _outputStream;
         VideoParameter parameter;
     };

@@ -249,12 +249,17 @@ void Android_JNI_destroy(JNIEnv *env, jobject object) {
     rtmp = NULL;
 }
 
+void Android_JNI_enable_log(JNIEnv *env, jobject object) {
+#define LOG
+}
+
 static JNINativeMethod rtmp_methods[] = {
         {"startPublish", "()V",                   (void *) Android_JNI_startPublish},
         {"connect",      "(Ljava/lang/String;)I", (void *) Android_JNI_connect},
         {"writeVideo",   "([BJ)I",                (void *) Android_JNI_write_video},
         {"writeAudio",   "([BJII)I",              (void *) Android_JNI_write_audio},
         {"destroy",      "()V",                   (void *) Android_JNI_destroy},
+        {"enableLog",   "()V",                   (void *) Android_JNI_enable_log}
 };
 
 static JNINativeMethod video_encoder_methods[] = {

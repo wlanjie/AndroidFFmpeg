@@ -22,6 +22,7 @@ import com.wlanjie.streaming.setting.AudioSetting;
 import com.wlanjie.streaming.setting.CameraSetting;
 import com.wlanjie.streaming.setting.EncoderType;
 import com.wlanjie.streaming.setting.StreamingSetting;
+import com.wlanjie.streaming.util.StreamingLog;
 import com.wlanjie.streaming.util.VideoUtil;
 import com.wlanjie.streaming.video.OnMediaCodecEncoderListener;
 import com.wlanjie.streaming.video.OpenH264Encoder;
@@ -65,6 +66,10 @@ public class MediaStreamingManager {
   }
 
   public void prepare(CameraSetting cameraSetting, StreamingSetting streamingSetting, AudioSetting audioSetting) {
+    if (StreamingLog.isOpen()) {
+      Rtmp.enableLog();
+    }
+
     int videoWidth = VideoUtil.getVideoSize(streamingSetting.getVideoWidth());
     int videoHeight = VideoUtil.getVideoSize(streamingSetting.getVideoHeight());
     streamingSetting.setVideoWidth(videoWidth);
@@ -186,6 +191,10 @@ public class MediaStreamingManager {
     VideoParameter videoParameter = new VideoParameter();
     videoParameter.setBitrate(512);
     videoParameter.setFrameRate(25);
+    StreamingLog.d("soft video width = " + mStreamingSetting.getVideoWidth());
+    StreamingLog.d("soft video height = " + mStreamingSetting.getVideoHeight());
+    StreamingLog.d("soft frame width = " + mCameraSetting.getPreviewWidth());
+    StreamingLog.d("soft frame height = " + mCameraSetting.getPreviewHeight());
     videoParameter.setVideoWidth(mStreamingSetting.getVideoWidth());
     videoParameter.setVideoHeight(mStreamingSetting.getVideoHeight());
     int previewWidth = mCameraSetting.getPreviewWidth();

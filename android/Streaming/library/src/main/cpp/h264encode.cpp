@@ -12,7 +12,7 @@
 extern void logEncode(void *context, int level, const char *message);
 
 void logEncode(void *context, int level, const char *message) {
-    __android_log_print(ANDROID_LOG_VERBOSE, "wlanjie", message, 1);
+    LOGD("%s", message);
 }
 
 wlanjie::H264Encoder::H264Encoder() {
@@ -58,6 +58,18 @@ bool wlanjie::H264Encoder::openH264Encoder() {
     _sourcePicture.pData[2] = _sourcePicture.pData[1] + (parameter.frameWidth * parameter.frameHeight >> 2);
     _sourcePicture.iColorFormat = videoFormatI420;
 
+    memset(&_scaleSourcePicture, 0, sizeof(Source_Picture_s));
+    uint8_t *scale_data_ = NULL;
+    _scaleSourcePicture.iPicWidth = parameter.videoWidth;
+    _scaleSourcePicture.iPicHeight = parameter.videoHeight;
+    _scaleSourcePicture.iStride[0] = parameter.videoWidth;
+    _scaleSourcePicture.iStride[1] = _scaleSourcePicture.iStride[2] = parameter.videoWidth >> 1;
+    scale_data_ = static_cast<uint8_t  *> (realloc(scale_data_, parameter.videoWidth * parameter.videoHeight * 3 / 2));
+    _scaleSourcePicture.pData[0] = scale_data_;
+    _scaleSourcePicture.pData[1] = _scaleSourcePicture.pData[0] + parameter.videoWidth * parameter.videoHeight;
+    _scaleSourcePicture.pData[2] = _scaleSourcePicture.pData[1] + (parameter.videoWidth * parameter.videoHeight >> 2);
+    _scaleSourcePicture.iColorFormat = videoFormatI420;
+
     memset(&info, 0, sizeof(SFrameBSInfo));
     _outputStream.open("/sdcard/wlanjie.h264", std::ios_base::binary | std::ios_base::out);
     return false;
@@ -76,23 +88,27 @@ SEncParamExt wlanjie::H264Encoder::createEncoderParams() const {
     SEncParamExt encoder_params;
     encoder_->GetDefaultParams(&encoder_params);
     encoder_params.iUsageType = CAMERA_VIDEO_REAL_TIME;
-    encoder_params.iPicWidth = parameter.frameWidth;
-    encoder_params.iPicHeight = parameter.frameHeight;
+    encoder_params.iPicWidth = parameter.videoWidth;
+    encoder_params.iPicHeight = parameter.videoHeight;
     // uses bit/s kbit/s
     encoder_params.iTargetBitrate = parameter.bitrate * 1000;
     // max bit/s
     encoder_params.iMaxBitrate = parameter.bitrate * 1000;
     encoder_params.iRCMode = RC_OFF_MODE;
     encoder_params.fMaxFrameRate = parameter.frameRate;
+
     encoder_params.bEnableFrameSkip = true;
     encoder_params.bEnableDenoise = false;
+    encoder_params.bEnableLongTermReference = false;
+    encoder_params.bEnableSceneChangeDetect = true;
+    encoder_params.bPrefixNalAddingCtrl = false;
+
     encoder_params.uiIntraPeriod = 60;
     encoder_params.uiMaxNalSize = 0;
     encoder_params.iTemporalLayerNum = 1;
     encoder_params.iSpatialLayerNum = 1;
-    encoder_params.bEnableLongTermReference = false;
-    encoder_params.bEnableSceneChangeDetect = true;
     encoder_params.iMultipleThreadIdc = 1;
+
     encoder_params.sSpatialLayers[0].iVideoWidth = parameter.videoWidth;
     encoder_params.sSpatialLayers[0].iVideoHeight = parameter.videoHeight;
     encoder_params.sSpatialLayers[0].fFrameRate = parameter.frameRate;
@@ -115,7 +131,21 @@ void wlanjie::H264Encoder::encoder(char *rgba, long pts, int *h264_length, uint8
                    _sourcePicture.pData[1], _sourcePicture.iStride[1],
                    _sourcePicture.pData[2], _sourcePicture.iStride[2],
                    parameter.frameWidth, parameter.frameHeight);
-    int ret = encoder_->EncodeFrame(&_sourcePicture, &info);
+    if (parameter.videoWidth != parameter.frameWidth || parameter.videoHeight != parameter.frameHeight) {
+        libyuv::I420Scale(
+                _sourcePicture.pData[0], _sourcePicture.iStride[0],
+                _sourcePicture.pData[1], _sourcePicture.iStride[1],
+                _sourcePicture.pData[2], _sourcePicture.iStride[2],
+                parameter.frameWidth, parameter.frameHeight,
+                _scaleSourcePicture.pData[0], _scaleSourcePicture.iStride[0],
+                _scaleSourcePicture.pData[1], _scaleSourcePicture.iStride[1],
+                _scaleSourcePicture.pData[2], _scaleSourcePicture.iStride[2],
+                parameter.videoWidth, parameter.videoHeight,
+                libyuv::FilterMode::kFilterNone
+        );
+    }
+
+    int ret = encoder_->EncodeFrame(parameter.videoWidth != parameter.frameWidth || parameter.videoHeight != parameter.frameHeight ? &_scaleSourcePicture : &_sourcePicture, &info);
     if (!ret) {
         if (info.eFrameType != videoFrameTypeSkip) {
             int len = 0;

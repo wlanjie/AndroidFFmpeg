@@ -14,4 +14,6 @@ public class Rtmp {
   public static native void startPublish();
 
   public static native void destroy();
+
+  public static native void enableLog();
 }
