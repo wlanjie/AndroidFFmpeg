@@ -6,7 +6,6 @@ import android.opengl.GLES20;
 
 import com.wlanjie.streaming.R;
 import com.wlanjie.streaming.util.OpenGLUtils;
-import com.wlanjie.streaming.util.TextureRotationUtil;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -32,15 +31,15 @@ public class RendererScreen {
 
   public RendererScreen(Context context) {
     mResources = context.getResources();
-    mCubeBuffer = ByteBuffer.allocateDirect(TextureRotationUtil.CUBE.length * 4)
+    mCubeBuffer = ByteBuffer.allocateDirect(OpenGLUtils.CUBE.length * 4)
       .order(ByteOrder.nativeOrder())
       .asFloatBuffer();
-    mCubeBuffer.put(TextureRotationUtil.CUBE).position(0);
+    mCubeBuffer.put(OpenGLUtils.CUBE).position(0);
 
-    mTextureBuffer = ByteBuffer.allocateDirect(TextureRotationUtil.TEXTURE_NO_ROTATION.length * 4)
+    mTextureBuffer = ByteBuffer.allocateDirect(OpenGLUtils.TEXTURE.length * 4)
       .order(ByteOrder.nativeOrder())
       .asFloatBuffer();
-    mTextureBuffer.put(TextureRotationUtil.TEXTURE_NO_ROTATION).position(0);
+    mTextureBuffer.put(OpenGLUtils.TEXTURE).position(0);
   }
 
   public void init() {

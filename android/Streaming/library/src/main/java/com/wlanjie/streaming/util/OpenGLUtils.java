@@ -17,6 +17,20 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class OpenGLUtils {
 
+  public static final float TEXTURE[] = {
+      0.0f, 1.0f,
+      0.0f, 0.0f,
+      1.0f, 1.0f,
+      1.0f, 0.0f
+  };
+
+  public static final float CUBE[] = {
+      -1.0f, 1.0f,
+      -1.0f, -1.0f,
+      1.0f, 1.0f,
+      1.0f, -1.0f
+  };
+
   public static String readSharedFromRawResource(Resources resources, int resourceId) {
     final InputStream inputStream = resources.openRawResource(resourceId);
     final InputStreamReader reader = new InputStreamReader(inputStream);

@@ -4,19 +4,15 @@ import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
-import android.opengl.Matrix;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 
-import com.wlanjie.streaming.camera.CameraFacingId;
 import com.wlanjie.streaming.setting.CameraSetting;
 import com.wlanjie.streaming.setting.EncoderType;
 import com.wlanjie.streaming.setting.StreamingSetting;
 import com.wlanjie.streaming.util.OpenGLUtils;
-import com.wlanjie.streaming.util.Rotation;
-import com.wlanjie.streaming.util.TextureRotationUtil;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -31,14 +27,6 @@ import javax.microedition.khronos.opengles.GL10;
  */
 public class VideoRenderer implements GLSurfaceView.Renderer {
   private static final int SOFT_ENCODER_MESSAGE = 0;
-  public static final int CENTER_INSIDE = 0, CENTER_CROP = 1, FIT_XY = 2;
-  private int mScaleType = CENTER_CROP;
-  private final float CUBE[] = {
-      -1.0f, 1.0f,
-      -1.0f, -1.0f,
-      1.0f, 1.0f,
-      1.0f, -1.0f
-  };
 
   private Context mContext;
   private Effect mEffect;
@@ -54,8 +42,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   private final RendererScreen mRendererScreen;
   private FloatBuffer mCubeBuffer;
   private FloatBuffer mTextureBuffer;
-  FloatBuffer mRecordCubeBuffer;
-  FloatBuffer mRecordTextureBuffer;
+  private FloatBuffer mRecordTextureBuffer;
   private VideoEncoder mVideoEncoder;
   private RendererVideoEncoder mRendererVideoEncoder;
 
@@ -66,21 +53,17 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceTexture = new SurfaceTexture(mSurfaceTextureId);
     mRendererScreen = new RendererScreen(context);
 
-    mCubeBuffer = ByteBuffer.allocateDirect(CUBE.length * 4)
+    mCubeBuffer = ByteBuffer.allocateDirect(OpenGLUtils.CUBE.length * 4)
         .order(ByteOrder.nativeOrder())
         .asFloatBuffer();
-    mCubeBuffer.put(TextureRotationUtil.CUBE).position(0);
+    mCubeBuffer.put(OpenGLUtils.CUBE).position(0);
 
-    mTextureBuffer = ByteBuffer.allocateDirect(TextureRotationUtil.TEXTURE_NO_ROTATION.length * 4)
+    mTextureBuffer = ByteBuffer.allocateDirect(OpenGLUtils.TEXTURE.length * 4)
         .order(ByteOrder.nativeOrder())
         .asFloatBuffer();
-    mTextureBuffer.put(TextureRotationUtil.TEXTURE_NO_ROTATION).position(0);
+    mTextureBuffer.put(OpenGLUtils.TEXTURE).position(0);
 
-    mRecordCubeBuffer = ByteBuffer.allocateDirect(CUBE.length * 4)
-        .order(ByteOrder.nativeOrder())
-        .asFloatBuffer();
-
-    mRecordTextureBuffer = ByteBuffer.allocateDirect(TextureRotationUtil.TEXTURE_NO_ROTATION.length * 4)
+    mRecordTextureBuffer = ByteBuffer.allocateDirect(OpenGLUtils.TEXTURE.length * 4)
         .order(ByteOrder.nativeOrder())
         .asFloatBuffer();
   }
@@ -172,16 +155,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
       cameraHeight = Math.max(previewWidth, previewHeight);
     }
 
-//    adjustSize(width, height, cameraWidth, cameraHeight,
-//        mCameraSetting.getDisplayOrientation(),
-//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
-//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mCubeBuffer, mTextureBuffer);
-//
-//    adjustSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(), cameraWidth, cameraHeight,
-//        mCameraSetting.getDisplayOrientation(),
-//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
-//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mRecordCubeBuffer, mRecordTextureBuffer);
-
     mEffect.onInputSizeChanged(cameraWidth, cameraHeight);
     GLES20.glViewport(0, 0, width, height);
 
@@ -233,47 +206,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     void onFrame(byte[] rgba);
   }
 
-  private void adjustSize(int width, int height, int inputWidth, int inputHeight,
-                               int rotation, boolean flipHorizontal, boolean flipVertical,
-                               FloatBuffer cubeBuffer, FloatBuffer textureBuffer) {
-    float[] textureCords = TextureRotationUtil.getRotation(Rotation.fromInt(rotation),
-        flipHorizontal, flipVertical);
-    float[] cube = TextureRotationUtil.CUBE;
-    float ratio1 = (float) width / inputWidth;
-    float ratio2 = (float) height / inputHeight;
-    float ratioMax = Math.max(ratio1, ratio2);
-    int imageWidthNew = Math.round(inputWidth * ratioMax);
-    int imageHeightNew = Math.round(inputHeight * ratioMax);
-
-    float ratioWidth = imageWidthNew / (float) width;
-    float ratioHeight = imageHeightNew / (float) height;
-
-    switch (mScaleType) {
-      case CENTER_INSIDE:
-        cube = new float[]{
-            TextureRotationUtil.CUBE[0] / ratioHeight, TextureRotationUtil.CUBE[1] / ratioWidth,
-            TextureRotationUtil.CUBE[2] / ratioHeight, TextureRotationUtil.CUBE[3] / ratioWidth,
-            TextureRotationUtil.CUBE[4] / ratioHeight, TextureRotationUtil.CUBE[5] / ratioWidth,
-            TextureRotationUtil.CUBE[6] / ratioHeight, TextureRotationUtil.CUBE[7] / ratioWidth,
-        };
-        break;
-      case CENTER_CROP:
-        float distHorizontal = (1 - 1 / ratioWidth) / 2;
-        float distVertical = (1 - 1 / ratioHeight) / 2;
-        textureCords = new float[]{
-            addDistance(textureCords[0], distHorizontal), addDistance(textureCords[1], distVertical),
-            addDistance(textureCords[2], distHorizontal), addDistance(textureCords[3], distVertical),
-            addDistance(textureCords[4], distHorizontal), addDistance(textureCords[5], distVertical),
-            addDistance(textureCords[6], distHorizontal), addDistance(textureCords[7], distVertical),
-        };
-        break;
-    }
-    cubeBuffer.clear();
-    cubeBuffer.put(cube).position(0);
-    textureBuffer.clear();
-    textureBuffer.put(textureCords).position(0);
-  }
-
   private float[] resetTextureCord(int width, int height, int inputWidth, int inputHeight) {
     float hRatio = width / ((float) inputWidth);
     float vRatio = height / ((float) inputHeight);
@@ -295,9 +227,5 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
           0.5f + ratio / 2, 0.0f
       };
     }
-  }
-
-  private float addDistance(float coordinate, float distance) {
-    return coordinate == 0.0f ? distance : 1 - distance;
   }
 }
