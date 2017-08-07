@@ -18,11 +18,9 @@ package com.wlanjie.streaming.camera;
 
 import android.annotation.SuppressLint;
 import android.graphics.ImageFormat;
-import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Build;
 import android.support.v4.util.SparseArrayCompat;
-import android.view.SurfaceHolder;
 
 import com.wlanjie.streaming.setting.CameraSetting;
 

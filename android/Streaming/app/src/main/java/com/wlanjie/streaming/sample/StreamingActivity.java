@@ -4,7 +4,11 @@ import android.content.Intent;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
+import android.view.Menu;
+import android.view.MenuItem;
 
 import com.wlanjie.streaming.MediaStreamingManager;
 import com.wlanjie.streaming.camera.CameraCallback;
@@ -25,6 +29,13 @@ public class StreamingActivity extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_streaming);
 
+    Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+    setSupportActionBar(toolbar);
+    ActionBar actionBar = getSupportActionBar();
+    if (actionBar != null) {
+      actionBar.setDisplayShowTitleEnabled(false);
+    }
+
     Intent intent = getIntent();
     EncoderType encoderType = intent.getIntExtra(Constant.ENCODE_TYPE, EncoderType.SOFT.ordinal()) == EncoderType.SOFT.ordinal()
         ? EncoderType.SOFT : EncoderType.HARD;
@@ -42,7 +53,9 @@ public class StreamingActivity extends AppCompatActivity {
     mMediaStreamingManager.setCameraCallback(new CameraCallback() {
       @Override
       public void onCameraOpened(int previewWidth, int previewHeight) {
-        mMediaStreamingManager.startStreaming();
+        if (!mMediaStreamingManager.isStartPublish()) {
+          mMediaStreamingManager.startStreaming();
+        }
       }
 
       @Override
@@ -61,6 +74,23 @@ public class StreamingActivity extends AppCompatActivity {
       }
     });
   }
+
+  @Override
+  public boolean onCreateOptionsMenu(Menu menu) {
+    getMenuInflater().inflate(R.menu.main, menu);
+    return super.onCreateOptionsMenu(menu);
+  }
+
+  @Override
+  public boolean onOptionsItemSelected(MenuItem item) {
+    switch (item.getItemId()) {
+      case R.id.switch_camera:
+        mMediaStreamingManager.switchCamera();
+        break;
+    }
+    return super.onOptionsItemSelected(item);
+  }
+
 
   @Override
   protected void onResume() {

@@ -36,6 +36,8 @@ import java.nio.ByteBuffer;
  */
 public class MediaStreamingManager {
 
+  public final static int CAMERA_FACING_BACK = 0;
+  public final static int CAMERA_FACING_FRONT = 1;
   private final GLSurfaceView mGLSurfaceView;
   private final VideoRenderer mVideoRenderer;
   private AudioSetting mAudioSetting;
@@ -44,7 +46,6 @@ public class MediaStreamingManager {
   private AudioProcessor mAudioProcessor;
   private AudioEncoder mAudioEncoder;
   private CallbackBridge mCallbacks = new CallbackBridge();
-  private byte[] aac = new byte[1024 * 1024];
   private LivingCamera mCamera;
   private long mPresentTimeUs;
   private volatile boolean mIsStartPublish = false;
@@ -101,7 +102,7 @@ public class MediaStreamingManager {
    * open camera
    */
   public void resume() {
-    mCamera.setFacing(1);
+    mCamera.setFacing(CAMERA_FACING_FRONT);
     mCamera.start();
   }
 
@@ -113,6 +114,9 @@ public class MediaStreamingManager {
   }
 
   public void startStreaming() {
+    if (mIsStartPublish) {
+      return;
+    }
     if (mStreamingSetting == null) {
       throw new IllegalArgumentException("StreamingSetting is null.");
     }
@@ -187,6 +191,10 @@ public class MediaStreamingManager {
     mIsStartPublish = true;
   }
 
+  public boolean isStartPublish() {
+    return mIsStartPublish;
+  }
+
   private void createVideoParameter() {
     VideoParameter videoParameter = new VideoParameter();
     videoParameter.setBitrate(512);
@@ -229,6 +237,10 @@ public class MediaStreamingManager {
     Rtmp.destroy();
     mVideoRenderer.destroy();
     mIsStartPublish = false;
+  }
+
+  public void switchCamera() {
+    mCamera.setFacing(mCamera.getFacing() == CAMERA_FACING_FRONT ? CAMERA_FACING_BACK : CAMERA_FACING_FRONT);
   }
 
   class CallbackBridge implements CameraCallback {
