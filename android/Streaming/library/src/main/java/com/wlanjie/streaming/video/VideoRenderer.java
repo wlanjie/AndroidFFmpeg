@@ -172,19 +172,24 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
       cameraHeight = Math.max(previewWidth, previewHeight);
     }
 
-    adjustSize(width, height, cameraWidth, cameraHeight,
-        mCameraSetting.getDisplayOrientation(),
-        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
-        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mCubeBuffer, mTextureBuffer);
-
-    adjustSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(), cameraWidth, cameraHeight,
-        mCameraSetting.getDisplayOrientation(),
-        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
-        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mRecordCubeBuffer, mRecordTextureBuffer);
+//    adjustSize(width, height, cameraWidth, cameraHeight,
+//        mCameraSetting.getDisplayOrientation(),
+//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
+//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mCubeBuffer, mTextureBuffer);
+//
+//    adjustSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(), cameraWidth, cameraHeight,
+//        mCameraSetting.getDisplayOrientation(),
+//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_FRONT,
+//        mCameraSetting.getFacing() == CameraFacingId.CAMERA_FACING_BACK, mRecordCubeBuffer, mRecordTextureBuffer);
 
     mEffect.onInputSizeChanged(cameraWidth, cameraHeight);
     GLES20.glViewport(0, 0, width, height);
 
+    mTextureBuffer.clear();
+    mTextureBuffer.put(resetTextureCord(width, height, cameraWidth, cameraHeight)).position(0);
+
+    mRecordTextureBuffer.clear();
+    mRecordTextureBuffer.put(resetTextureCord(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight(), cameraWidth, cameraHeight)).position(0);
     mRendererScreen.setDisplaySize(width, height);
   }
 
@@ -203,7 +208,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     }
     if (mRendererVideoEncoder != null) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-        mRendererVideoEncoder.drawEncoder(textureId, mVideoEncoder, mRecordCubeBuffer, mRecordTextureBuffer);
+        mRendererVideoEncoder.drawEncoder(textureId, mVideoEncoder, mCubeBuffer, mRecordTextureBuffer);
       }
     }
   }
