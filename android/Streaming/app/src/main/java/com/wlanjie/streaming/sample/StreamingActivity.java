@@ -67,11 +67,6 @@ public class StreamingActivity extends AppCompatActivity {
       public void onPreviewFrame(byte[] data) {
 
       }
-
-      @Override
-      public void onPreview(int previewWidth, int previewHeight) {
-
-      }
     });
   }
 

@@ -289,7 +289,6 @@ public class Camera1 implements LivingCamera {
     mCameraSetting.setPreviewHeight(size.getHeight());
     mCameraParameters.setPreviewSize(size.getWidth(), size.getHeight());
     mCamera.setParameters(mCameraParameters);
-//        mCallback.onPreview(size.getWidth(), size.getHeight());
 
     final byte[] previewBuffer = new byte[size.getWidth() * size.getHeight() * 3 / 2];
     mCamera.addCallbackBuffer(previewBuffer);

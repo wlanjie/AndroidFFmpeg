@@ -16,6 +16,7 @@
 
 package com.wlanjie.streaming.camera;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.ImageFormat;
@@ -57,38 +58,6 @@ public class Camera2 implements LivingCamera {
 
   private final CameraManager mCameraManager;
 
-  private final CameraDevice.StateCallback mCameraDeviceCallback
-      = new CameraDevice.StateCallback() {
-
-    @Override
-    public void onOpened(@NonNull CameraDevice camera) {
-      mCamera = camera;
-      Size size = chooseOptimalSize();
-      mCameraSetting.setPreviewWidth(size.getWidth());
-      mCameraSetting.setPreviewHeight(size.getHeight());
-//      mCameraSetting.setDisplayOrientation(mCameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION));
-      startPreview(size.getWidth(), size.getHeight());
-      mCallback.onCameraOpened(size.getWidth(), size.getHeight());
-    }
-
-    @Override
-    public void onClosed(@NonNull CameraDevice camera) {
-      mCallback.onCameraClosed();
-    }
-
-    @Override
-    public void onDisconnected(@NonNull CameraDevice camera) {
-      mCamera = null;
-    }
-
-    @Override
-    public void onError(@NonNull CameraDevice camera, int error) {
-      Log.e(TAG, "onError: " + camera.getId() + " (" + error + ")");
-      mCamera = null;
-    }
-
-  };
-
   private CameraCallback mCallback;
 
   private CameraSetting mCameraSetting;
@@ -113,8 +82,6 @@ public class Camera2 implements LivingCamera {
 
   private final SizeMap mPreviewSizes = new SizeMap();
 
-  private final SizeMap mPictureSizes = new SizeMap();
-
   private int mFacing;
 
   private AspectRatio mAspectRatio = Constants.DEFAULT_ASPECT_RATIO;
@@ -128,6 +95,37 @@ public class Camera2 implements LivingCamera {
     mCameraSetting = cameraSetting;
     mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
   }
+
+  private final CameraDevice.StateCallback mCameraDeviceCallback
+      = new CameraDevice.StateCallback() {
+
+    @Override
+    public void onOpened(@NonNull CameraDevice camera) {
+      mCamera = camera;
+      Size size = chooseOptimalSize();
+      mCameraSetting.setPreviewWidth(size.getWidth());
+      mCameraSetting.setPreviewHeight(size.getHeight());
+      startPreview(size.getWidth(), size.getHeight());
+      mCallback.onCameraOpened(size.getWidth(), size.getHeight());
+    }
+
+    @Override
+    public void onClosed(@NonNull CameraDevice camera) {
+      mCallback.onCameraClosed();
+    }
+
+    @Override
+    public void onDisconnected(@NonNull CameraDevice camera) {
+      mCamera = null;
+    }
+
+    @Override
+    public void onError(@NonNull CameraDevice camera, int error) {
+      Log.e(TAG, "onError: " + camera.getId() + " (" + error + ")");
+      mCamera = null;
+    }
+
+  };
 
   private void startBackgroundThread() {
     mBackgroundThread = new HandlerThread("CameraBackground");
@@ -301,7 +299,7 @@ public class Camera2 implements LivingCamera {
 
   /**
    * <p>Collects some information from {@link #mCameraCharacteristics}.</p>
-   * <p>This rewrites {@link #mPreviewSizes}, {@link #mPictureSizes}, and optionally,
+   * <p>This rewrites {@link #mPreviewSizes}, and optionally,
    * {@link #mAspectRatio}.</p>
    */
   private void collectCameraInfo() {
@@ -314,17 +312,9 @@ public class Camera2 implements LivingCamera {
     for (android.util.Size size : map.getOutputSizes(SurfaceTexture.class)) {
       mPreviewSizes.add(new Size(size.getWidth(), size.getHeight()));
     }
-    mPictureSizes.clear();
-    collectPictureSizes(mPictureSizes, map);
 
     if (!mPreviewSizes.ratios().contains(mAspectRatio)) {
       mAspectRatio = mPreviewSizes.ratios().iterator().next();
-    }
-  }
-
-  protected void collectPictureSizes(SizeMap sizes, StreamConfigurationMap map) {
-    for (android.util.Size size : map.getOutputSizes(ImageFormat.JPEG)) {
-      mPictureSizes.add(new Size(size.getWidth(), size.getHeight()));
     }
   }
 
@@ -332,6 +322,7 @@ public class Camera2 implements LivingCamera {
    * <p>Starts opening a camera device.</p>
    * <p>The result will be processed in {@link #mCameraDeviceCallback}.</p>
    */
+  @SuppressLint("MissingPermission")
   private void startOpeningCamera() {
     try {
       mCameraManager.openCamera(mCameraId, mCameraDeviceCallback, null);
@@ -375,7 +366,7 @@ public class Camera2 implements LivingCamera {
   }
 
   /**
-   * Update the camera preview. {@link #startPreview()} needs to be called an advance.
+   * Update the camera preview. {@link #startPreview(int, int)} needs to be called an advance.
    */
   private void updatePreview() {
     if (!isCameraOpened()) {
@@ -446,7 +437,7 @@ public class Camera2 implements LivingCamera {
   /**
    * Updates the internal state of flash to {@link #mFlash}.
    */
-  void updateFlash() {
+  private void updateFlash() {
     switch (mFlash) {
       case Constants.FLASH_OFF:
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE,

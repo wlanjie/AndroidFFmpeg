@@ -1,7 +1,7 @@
 package com.wlanjie.streaming.camera;
 
 /**
- * Created by caowu15 on 2017/6/28.
+ * Created by wlanjie on 2017/6/28.
  */
 
 public enum CameraFacingId {

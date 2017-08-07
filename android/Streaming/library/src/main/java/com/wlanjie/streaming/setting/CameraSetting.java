@@ -12,8 +12,8 @@ public class CameraSetting {
   private CameraFacingId facing = CameraFacingId.CAMERA_FACING_FRONT;
   private SurfaceTexture surfaceTexture;
   private int displayOrientation = 0;
-  private int previewWidth;
-  private int previewHeight;
+  private int previewWidth = 720;
+  private int previewHeight = 1280;
 
   public CameraFacingId getFacing() {
     return facing;

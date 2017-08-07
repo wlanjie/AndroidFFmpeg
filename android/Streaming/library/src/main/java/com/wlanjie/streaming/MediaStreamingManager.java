@@ -14,7 +14,6 @@ import com.wlanjie.streaming.audio.OnAudioEncoderListener;
 import com.wlanjie.streaming.audio.OnAudioRecordListener;
 import com.wlanjie.streaming.camera.Camera1;
 import com.wlanjie.streaming.camera.Camera2;
-import com.wlanjie.streaming.camera.Camera2Api23;
 import com.wlanjie.streaming.camera.CameraCallback;
 import com.wlanjie.streaming.camera.LivingCamera;
 import com.wlanjie.streaming.rtmp.Rtmp;
@@ -86,15 +85,13 @@ public class MediaStreamingManager {
     mGLSurfaceView.setRenderer(mVideoRenderer);
     mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
-    cameraSetting.setPreviewWidth(720);
-    cameraSetting.setPreviewHeight(1280);
+    cameraSetting.setPreviewWidth(mCameraSetting.getPreviewWidth());
+    cameraSetting.setPreviewHeight(mCameraSetting.getPreviewHeight());
     cameraSetting.setSurfaceTexture(mVideoRenderer.getSurfaceTexture());
     if (Build.VERSION.SDK_INT < 21) {
       mCamera = new Camera1(mCallbacks, cameraSetting);
-    } else if (Build.VERSION.SDK_INT < 23) {
-      mCamera = new Camera2(mCallbacks, cameraSetting, mGLSurfaceView.getContext());
     } else {
-      mCamera = new Camera2Api23(mCallbacks, cameraSetting, mGLSurfaceView.getContext());
+      mCamera = new Camera2(mCallbacks, cameraSetting, mGLSurfaceView.getContext());
     }
   }
 
@@ -263,13 +260,6 @@ public class MediaStreamingManager {
     public void onPreviewFrame(byte[] data) {
       if (mCameraCallback != null) {
         mCameraCallback.onPreviewFrame(data);
-      }
-    }
-
-    @Override
-    public void onPreview(int previewWidth, int previewHeight) {
-      if (mCameraCallback != null) {
-        mCameraCallback.onPreview(previewWidth, previewHeight);
       }
     }
   }
