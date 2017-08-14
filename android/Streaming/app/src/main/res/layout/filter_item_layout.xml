@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/filter_root"
+    android:layout_width="74.0dip"
+    android:layout_height="84.0dip"
+    android:layout_gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="5dip">
+
+    <FrameLayout
+        android:layout_width="fill_parent"
+        android:layout_height="64.0dip">
+
+        <ImageView
+            android:id="@+id/filter_thumb_image"
+            android:layout_width="64.0dip"
+            android:layout_height="64.0dip"
+            android:scaleType="centerCrop"
+            android:src="@drawable/filter_thumb_original"/>
+
+        <FrameLayout
+            android:id="@+id/filter_thumb_selected"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:visibility="gone">
+
+            <View
+                android:id="@+id/filter_thumb_selected_bg"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"/>
+
+            <ImageView
+                android:id="@+id/filter_thumb_selected_icon"
+                android:layout_width="34.0dip"
+                android:layout_height="34.0dip"
+                android:layout_gravity="center"
+                android:src="@drawable/selector_filter_selected"/>
+        </FrameLayout>
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/filter_thumb_name"
+        android:layout_width="fill_parent"
+        android:layout_height="20.0dip"
+        android:layout_gravity="bottom"
+        android:gravity="center"
+        android:text="@string/filter_none"
+        android:textColor="@android:color/white"
+        android:textSize="10.0sp"/>
+</FrameLayout>
