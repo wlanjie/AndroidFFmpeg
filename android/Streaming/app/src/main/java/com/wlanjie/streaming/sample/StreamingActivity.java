@@ -31,6 +31,7 @@ import com.wlanjie.streaming.video.SurfaceTextureCallback;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 /**
  * Created by wlanjie on 2017/7/16.
@@ -165,12 +166,7 @@ public class StreamingActivity extends AppCompatActivity implements SurfaceTextu
     if (mFilter != null) {
       mFilter.onDisplaySizeChanged(width, height);
     }
-    mCameraInputFilter.onDisplaySizeChanged(width, height);
-    int[] fbo = new int[1];
-    int[] texture = new int[1];
-
-    GLES20.glGenFramebuffers(1, fbo, 0);
-    GLES20.glGenTextures(1, texture, 0);
+//    mCameraInputFilter.onDisplaySizeChanged(width, height);
   }
 
   @Override
@@ -182,6 +178,9 @@ public class StreamingActivity extends AppCompatActivity implements SurfaceTextu
 
   @Override
   public int onDrawFrame(int textureId, int textureWidth, int textureHeight, float[] transformMatrix) {
+//    if (mFilter == null) {
+//      return -1;
+//    }
     if (mFilter != mChangeFilter) {
       if (mFilter != null) {
         mFilter.destroy();
@@ -192,17 +191,19 @@ public class StreamingActivity extends AppCompatActivity implements SurfaceTextu
       }
       mFilter = mChangeFilter;
     }
-    if (mFilter != null) {
-      mFilter.onInputSizeChanged(textureWidth, textureHeight);
-      mFilter.onDisplaySizeChanged(1440, 2320);
-      if (!isInit) {
-        mCameraInputFilter.initCameraFrameBuffer(textureWidth, textureHeight);
-        isInit = true;
-      }
+
+    if (!isInit) {
+      mCameraInputFilter.initCameraFrameBuffer(textureWidth, textureHeight);
+      isInit = true;
     }
+    mCameraInputFilter.onInputSizeChanged(textureWidth, textureHeight);
+    mCameraInputFilter.onDisplaySizeChanged(textureWidth, textureHeight);
+
     mCameraInputFilter.setTextureTransformMatrix(transformMatrix);
     int id = mCameraInputFilter.onDrawToTexture(textureId);
     if (mFilter != null) {
+      mFilter.onInputSizeChanged(textureWidth, textureHeight);
+      mFilter.onDisplaySizeChanged(1440, 2320);
       mFilter.onDrawFrame(id);
     }
     return id;

@@ -124,7 +124,7 @@ public class MagicCameraInputFilter extends GPUImageFilter{
         GLES20.glDisableVertexAttribArray(mGLAttribTextureCoordinate);
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0);
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
-        GLES20.glViewport(0, 0, mOutputWidth, mOutputHeight);
+//        GLES20.glViewport(0, 0, mOutputWidth, mOutputHeight);
         return mFrameBufferTextures[0];
     }
 

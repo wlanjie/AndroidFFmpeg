@@ -129,6 +129,9 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
         public void handleMessage(Message msg) {
           super.handleMessage(msg);
           IntBuffer buffer = mEffect.getRgbaBuffer();
+          if (buffer == null) {
+            return;
+          }
           mFrameBuffer.asIntBuffer().put(buffer.array());
           if (mOnFrameListener != null) {
             mOnFrameListener.onFrame(mFrameBuffer.array());
@@ -216,6 +219,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
       textureId = mSurfaceTextureCallback.onDrawFrame(mSurfaceTextureId, getCameraWidth(), getCameraHeight(), mSurfaceMatrix);
       if (textureId <= 0) {
         textureId = mEffect.drawToFboTexture(mSurfaceTextureId);
+        mRendererScreen.draw(textureId, mCubeBuffer, mTextureBuffer);
       } else {
         mEffect.readPixel(textureId);
       }

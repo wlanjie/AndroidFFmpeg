@@ -148,6 +148,7 @@ public class GPUImageFilter {
     }
 
     public int onDrawFrame(final int textureId) {
+        GLES20.glViewport(0, 0, mOutputWidth, mOutputHeight);
         GLES20.glUseProgram(mGLProgId);
         runPendingOnDrawTasks();
         if (!mIsInitialized)
