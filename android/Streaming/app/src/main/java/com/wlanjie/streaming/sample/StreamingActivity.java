@@ -13,7 +13,6 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.seu.magicfilter.filter.base.MagicCameraInputFilter;
 import com.seu.magicfilter.filter.base.gpuimage.GPUImageFilter;
 import com.seu.magicfilter.filter.helper.MagicFilterFactory;
 import com.seu.magicfilter.filter.helper.MagicFilterType;
@@ -26,6 +25,7 @@ import com.wlanjie.streaming.setting.CameraSetting;
 import com.wlanjie.streaming.setting.EncoderType;
 import com.wlanjie.streaming.setting.StreamingSetting;
 import com.wlanjie.streaming.util.OpenGLUtils;
+import com.wlanjie.streaming.video.MagicCameraInputFilter;
 import com.wlanjie.streaming.video.SurfaceTextureCallback;
 
 import java.nio.ByteBuffer;
@@ -155,7 +155,7 @@ public class StreamingActivity extends AppCompatActivity implements SurfaceTextu
     mBeautyFilter = new GPUImageFilter();
     mBeautyFilter.init();
     mFilter = MagicFilterFactory.initFilters(MagicFilterType.NONE);
-    mCameraInputFilter = new MagicCameraInputFilter();
+    mCameraInputFilter = new MagicCameraInputFilter(this);
     mCameraInputFilter.init();
   }
 
@@ -192,21 +192,19 @@ public class StreamingActivity extends AppCompatActivity implements SurfaceTextu
       mFilter = mChangeFilter;
     }
 
-    if (!isInit) {
-      mCameraInputFilter.initCameraFrameBuffer(textureWidth, textureHeight);
-      isInit = true;
-    }
-    mCameraInputFilter.onInputSizeChanged(textureWidth, textureHeight);
-    mCameraInputFilter.onDisplaySizeChanged(textureWidth, textureHeight);
-
-    mCameraInputFilter.setTextureTransformMatrix(transformMatrix);
-    int id = mCameraInputFilter.onDrawToTexture(textureId);
+//    if (!isInit) {
+//      mCameraInputFilter.initCameraFrameBuffer(textureWidth, textureHeight);
+//      isInit = true;
+//    }
+//
+//    mCameraInputFilter.setTextureTransformMatrix(transformMatrix);
+//    int id = mCameraInputFilter.onDrawToTexture(textureId);
     if (mFilter != null) {
       mFilter.onInputSizeChanged(textureWidth, textureHeight);
       mFilter.onDisplaySizeChanged(1440, 2320);
-      mFilter.onDrawFrame(id);
+      mFilter.onDrawFrame(textureId);
     }
-    return id;
+    return 2;
   }
 
   @Override

@@ -75,7 +75,7 @@ public final class Effect {
   void onInputSizeChanged(int width, int height) {
     this.mInputWidth = width;
     this.mInputHeight = height;
-//    initFboTexture(mInputWidth, mInputHeight);
+    initFboTexture(mInputWidth, mInputHeight);
   }
 
   void setVideoSize(int width, int height) {
@@ -123,7 +123,7 @@ public final class Effect {
   }
 
   int drawToFboTexture(int textureId, FloatBuffer cubeBuffer, FloatBuffer textureBuffer) {
-    readPixel(textureId);
+//    readPixel(textureId);
 
     GLES20.glUseProgram(mProgramId);
     GLES20.glEnableVertexAttribArray(mPosition);
@@ -151,46 +151,24 @@ public final class Effect {
   }
 
   void readPixel(int textureId) {
-//    GLES20.glUseProgram(mProgramId);
-//
 //    GLES20.glEnableVertexAttribArray(mPosition);
 //    GLES20.glVertexAttribPointer(mPosition, 2, GLES20.GL_FLOAT, false, 4 * 2, mCubeBuffer);
 //
 //    GLES20.glEnableVertexAttribArray(mTextureCoordinate);
 //    GLES20.glVertexAttribPointer(mTextureCoordinate, 2, GLES20.GL_FLOAT, false, 4 * 2, mReadPixelTextureBuffer);
-//
+
 //    GLES20.glUniformMatrix4fv(mTextureTransform, 1, false, mTextureTransformMatrix, 0);
-
-    if (mFboId == -1) {
-      int[] fbo = new int[1];
-      mFboId = fbo[0];
-
-      mFboBuffer = IntBuffer.allocate(mInputWidth * mInputHeight);
-      GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-      GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, mInputWidth, mInputHeight, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
-      GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-      GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-      GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-      GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-      GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFboId);
-      GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, textureId, 0);
-      GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
-      GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
-    }
     GLES20.glViewport(0, 0, mInputWidth, mInputHeight);
-    GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+//    GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
     GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-    GLES20.glUniform1i(mUniformTexture, 0);
-
+//    GLES20.glUniform1i(mUniformTexture, 0);
     GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFboId);
     GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
     if (mVideoWidth > 0 && mVideoHeight > 0) {
       GLES20.glReadPixels(0, 0, mInputWidth, mInputHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mFboBuffer);
     }
     GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
-
     GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
-
     GLES20.glDisableVertexAttribArray(mPosition);
     GLES20.glDisableVertexAttribArray(mTextureCoordinate);
   }
