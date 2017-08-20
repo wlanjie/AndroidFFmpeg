@@ -1,6 +1,6 @@
 package com.wlanjie.streaming.sample;
 
-import com.seu.magicfilter.filter.helper.MagicFilterType;
+import com.seu.magicfilter.utils.MagicFilterType;
 
 /**
  * Created by wlanjie on 2017/8/8.

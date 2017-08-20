@@ -9,7 +9,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.seu.magicfilter.filter.helper.MagicFilterType;
+import com.seu.magicfilter.utils.MagicFilterType;
 
 /**
  * Created by why8222 on 2016/3/17.

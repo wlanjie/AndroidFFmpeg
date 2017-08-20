@@ -46,7 +46,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   private VideoEncoder mVideoEncoder;
   private RendererVideoEncoder mRendererVideoEncoder;
   private SurfaceTextureCallback mSurfaceTextureCallback;
-  private MagicCameraInputFilter mCameraInputFilter;
 
   public VideoRenderer(Context context) {
     mContext = context;
@@ -54,7 +53,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceTextureId = OpenGLUtils.getExternalOESTextureID();
     mSurfaceTexture = new SurfaceTexture(mSurfaceTextureId);
     mRendererScreen = new RendererScreen(context);
-    mCameraInputFilter = new MagicCameraInputFilter(context);
 
     mCubeBuffer = ByteBuffer.allocateDirect(OpenGLUtils.CUBE.length * 4)
         .order(ByteOrder.nativeOrder())
@@ -93,7 +91,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
 
     mRendererScreen.init();
     mEffect.init();
-    mCameraInputFilter.init();
   }
 
   public void startEncoder() {
@@ -131,7 +128,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
         public void handleMessage(Message msg) {
           super.handleMessage(msg);
           IntBuffer buffer = mEffect.getRgbaBuffer();
-//          IntBuffer buffer = mCameraInputFilter.getBuffer();
           if (buffer == null) {
             return;
           }
@@ -198,7 +194,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
       cameraHeight = Math.max(previewWidth, previewHeight);
     }
 
-    mCameraInputFilter.initCameraFrameBuffer(cameraWidth, cameraHeight);
     mEffect.onInputSizeChanged(cameraWidth, cameraHeight);
     GLES20.glViewport(0, 0, width, height);
 
@@ -218,23 +213,19 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceTexture.updateTexImage();
     mSurfaceTexture.getTransformMatrix(mSurfaceMatrix);
     mEffect.setTextureTransformMatrix(mSurfaceMatrix);
-    mCameraInputFilter.setTextureTransformMatrix(mSurfaceMatrix);
-    int fobId = mEffect.drawToFboTexture(mSurfaceTextureId);
     int textureId;
     if (mSurfaceTextureCallback != null) {
-      textureId = mSurfaceTextureCallback.onDrawFrame(fobId, getCameraWidth(), getCameraHeight(), mSurfaceMatrix);
+      textureId = mSurfaceTextureCallback.onDrawFrame(mSurfaceTextureId, getCameraWidth(), getCameraHeight(), mSurfaceMatrix);
       if (textureId <= 0) {
         textureId = mEffect.drawToFboTexture(mSurfaceTextureId);
         mRendererScreen.draw(textureId, mCubeBuffer, mTextureBuffer);
-      } else {
-        mEffect.readPixel(fobId);
-//        mCameraInputFilter.readPixel(textureId);
       }
     } else {
       textureId = mEffect.drawToFboTexture(mSurfaceTextureId);
       mRendererScreen.draw(textureId, mCubeBuffer, mTextureBuffer);
     }
     if (mHandler != null) {
+      mEffect.readPixel(textureId);
       mHandler.sendEmptyMessage(SOFT_ENCODER_MESSAGE);
     }
     if (mRendererVideoEncoder != null) {

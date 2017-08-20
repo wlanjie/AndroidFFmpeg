@@ -209,6 +209,10 @@ public class MagicCameraInputFilter {
         return mFrameBufferTextures[0];
     }
 
+    public int getFrameBufferId() {
+        return mFrameBuffers[0];
+    }
+
     private IntBuffer mIntBuffer;
 
     public IntBuffer getBuffer() {
