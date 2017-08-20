@@ -30,7 +30,6 @@ import com.seu.magicfilter.utils.TextureRotationUtil;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 import java.util.LinkedList;
 
 public class GPUImageFilter {
@@ -61,7 +60,6 @@ public class GPUImageFilter {
 
     private int[] mGLFboId;
     private int[] mGLFboTexId;
-    private IntBuffer mGLFboBuffer;
 
     public GPUImageFilter() {
         this(MagicFilterType.NONE);
@@ -169,7 +167,6 @@ public class GPUImageFilter {
 
         mGLFboId = new int[1];
         mGLFboTexId = new int[1];
-        mGLFboBuffer = IntBuffer.allocate(width * height);
 
         GLES20.glGenFramebuffers(1, mGLFboId, 0);
         GLES20.glGenTextures(1, mGLFboTexId, 0);
@@ -260,7 +257,6 @@ public class GPUImageFilter {
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mGLFboId[0]);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 
-        GLES20.glReadPixels(0, 0, mInputWidth, mInputHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mGLFboBuffer);
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
         GLES20.glViewport(0, 0, mOutputWidth, mOutputHeight);
 
@@ -290,10 +286,6 @@ public class GPUImageFilter {
     
     public int getProgram() {
         return mGLProgId;
-    }
-
-    public IntBuffer getGLFboBuffer() {
-        return mGLFboBuffer;
     }
 
     protected Context getContext() {

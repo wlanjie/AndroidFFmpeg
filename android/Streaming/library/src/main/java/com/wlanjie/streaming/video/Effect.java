@@ -159,11 +159,11 @@ public final class Effect {
     GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, textureId, 0);
     GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
     GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+
+    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFboId);
     GLES20.glViewport(0, 0, mInputWidth, mInputHeight);
     GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
     GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-    GLES20.glUniform1i(mUniformTexture, 0);
-    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFboId);
     GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
     if (mVideoWidth > 0 && mVideoHeight > 0) {
       GLES20.glReadPixels(0, 0, mInputWidth, mInputHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mFboBuffer);

@@ -41,6 +41,7 @@ namespace wlanjie {
         SFrameBSInfo info;
         Source_Picture_s _sourcePicture;
         Source_Picture_s _scaleSourcePicture;
+        Source_Picture_s _rotationSourcePicture;
         std::ofstream _outputStream;
         VideoParameter parameter;
     };

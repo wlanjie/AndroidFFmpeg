@@ -15,19 +15,13 @@ import android.view.MenuItem;
 import com.seu.magicfilter.base.gpuimage.GPUImageFilter;
 import com.seu.magicfilter.utils.MagicFilterFactory;
 import com.seu.magicfilter.utils.MagicFilterType;
-import com.seu.magicfilter.utils.TextureRotationUtil;
 import com.wlanjie.streaming.MediaStreamingManager;
 import com.wlanjie.streaming.camera.CameraCallback;
 import com.wlanjie.streaming.setting.AudioSetting;
 import com.wlanjie.streaming.setting.CameraSetting;
 import com.wlanjie.streaming.setting.EncoderType;
 import com.wlanjie.streaming.setting.StreamingSetting;
-import com.wlanjie.streaming.video.MagicCameraInputFilter;
 import com.wlanjie.streaming.video.SurfaceTextureCallback;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
 
 /**
  * Created by wlanjie on 2017/7/16.
@@ -35,11 +29,10 @@ import java.nio.FloatBuffer;
 public class StreamingActivity extends AppCompatActivity implements SurfaceTextureCallback, FilterAdapter.onFilterChangeListener {
 
   private MediaStreamingManager mMediaStreamingManager;
-  private GPUImageFilter mBeautyFilter;
   private GPUImageFilter mFilter;
-  private FloatBuffer mCubeBuffer;
-  private FloatBuffer mTextureBuffer;
   private GPUImageFilter mChangeFilter;
+  private int mSurfaceWidth;
+  private int mSurfaceHeight;
 
   @Override
   protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -92,26 +85,6 @@ public class StreamingActivity extends AppCompatActivity implements SurfaceTextu
     FilterAdapter adapter = new FilterAdapter(this, Util.TYPES);
     adapter.setOnFilterChangeListener(this);
     recyclerView.setAdapter(adapter);
-
-//    mCubeBuffer = ByteBuffer.allocateDirect(OpenGLUtils.CUBE.length * 4)
-//        .order(ByteOrder.nativeOrder())
-//        .asFloatBuffer();
-//    mCubeBuffer.put(OpenGLUtils.CUBE).position(0);
-//
-//    mTextureBuffer = ByteBuffer.allocateDirect(OpenGLUtils.TEXTURE.length * 4)
-//        .order(ByteOrder.nativeOrder())
-//        .asFloatBuffer();
-//    mTextureBuffer.put(OpenGLUtils.TEXTURE).position(0);
-
-    mCubeBuffer = ByteBuffer.allocateDirect(TextureRotationUtil.CUBE.length * 4)
-        .order(ByteOrder.nativeOrder())
-        .asFloatBuffer();
-    mCubeBuffer.put(TextureRotationUtil.CUBE).position(0);
-
-    mTextureBuffer = ByteBuffer.allocateDirect(TextureRotationUtil.TEXTURE_NO_ROTATION.length * 4)
-        .order(ByteOrder.nativeOrder())
-        .asFloatBuffer();
-    mTextureBuffer.put(TextureRotationUtil.TEXTURE_NO_ROTATION).position(0);
   }
 
   @Override
@@ -146,14 +119,13 @@ public class StreamingActivity extends AppCompatActivity implements SurfaceTextu
 
   @Override
   public void onSurfaceCreated() {
-    mBeautyFilter = new GPUImageFilter();
-    mBeautyFilter.init(this);
     mFilter = MagicFilterFactory.initFilters(MagicFilterType.NONE);
   }
 
   @Override
   public void onSurfaceChanged(int width, int height) {
-    mBeautyFilter.onDisplaySizeChanged(width, height);
+    mSurfaceWidth = width;
+    mSurfaceHeight = height;
     if (mFilter != null) {
       mFilter.onDisplaySizeChanged(width, height);
     }
@@ -180,7 +152,7 @@ public class StreamingActivity extends AppCompatActivity implements SurfaceTextu
     }
 
     if (mFilter != null) {
-      mFilter.onDisplaySizeChanged(1440, 2320);
+      mFilter.onDisplaySizeChanged(mSurfaceWidth, mSurfaceHeight);
       return mFilter.onDrawFrame(textureId);
     }
     return -1;
