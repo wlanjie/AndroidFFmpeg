@@ -94,7 +94,6 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   }
 
   public void startEncoder() {
-    mEffect.setVideoSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
     initEncoder();
   }
 
@@ -127,7 +126,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
         @Override
         public void handleMessage(Message msg) {
           super.handleMessage(msg);
-          IntBuffer buffer = mEffect.getRgbaBuffer();
+          IntBuffer buffer = mRendererScreen.getFboBuffer();
           if (buffer == null) {
             return;
           }
@@ -195,6 +194,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     }
 
     mEffect.onInputSizeChanged(cameraWidth, cameraHeight);
+    mRendererScreen.setInputSize(cameraWidth, cameraHeight);
     GLES20.glViewport(0, 0, width, height);
 
     mTextureBuffer.clear();
@@ -213,19 +213,16 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceTexture.updateTexImage();
     mSurfaceTexture.getTransformMatrix(mSurfaceMatrix);
     mEffect.setTextureTransformMatrix(mSurfaceMatrix);
-    int textureId;
+    int textureId = 0;
     if (mSurfaceTextureCallback != null) {
       textureId = mSurfaceTextureCallback.onDrawFrame(mSurfaceTextureId, getCameraWidth(), getCameraHeight(), mSurfaceMatrix);
-      if (textureId <= 0) {
-        textureId = mEffect.drawToFboTexture(mSurfaceTextureId);
-        mRendererScreen.draw(textureId, mCubeBuffer, mTextureBuffer);
-      }
-    } else {
+    }
+    if (textureId <= 0 || textureId == mSurfaceTextureId) {
       textureId = mEffect.drawToFboTexture(mSurfaceTextureId);
       mRendererScreen.draw(textureId, mCubeBuffer, mTextureBuffer);
     }
     if (mHandler != null) {
-      mEffect.readPixel(textureId);
+      mRendererScreen.readPixel(textureId);
       mHandler.sendEmptyMessage(SOFT_ENCODER_MESSAGE);
     }
     if (mRendererVideoEncoder != null) {

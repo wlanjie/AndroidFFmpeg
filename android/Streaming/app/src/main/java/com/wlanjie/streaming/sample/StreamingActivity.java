@@ -155,7 +155,7 @@ public class StreamingActivity extends AppCompatActivity implements SurfaceTextu
       mFilter.onDisplaySizeChanged(mSurfaceWidth, mSurfaceHeight);
       return mFilter.onDrawFrame(textureId);
     }
-    return -1;
+    return textureId;
   }
 
   @Override
