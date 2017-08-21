@@ -75,7 +75,9 @@ mMediaStreamingManager.stopStreaming();
 ```
 mMediaStreamingManager.setSurfaceTextureCallback(this);
 ```
-``` public int onDrawFrame(int textureId, int textureWidth, int textureHeight, float[] transformMatrix) ```
+```
+public int onDrawFrame(int textureId, int textureWidth, int textureHeight, float[] transformMatrix)
+```
 
 在onDrawFrame函数中实现滤镜处理,这里的textureId参数为```GLES11Ext.GL_TEXTURE_EXTERNAL_OES```类型,```textureWidth```为纹理的宽度,```textureHeight```为纹理的高度,```transformMatrix```为纹理的```textureTransform```数组,返回值如果<=0或者是textureId代表不处理滤镜,否则需要返回一个```GLES20.GL_TEXTURE_2D```类型的纹理id,示例中使用了[MagicCamera](https://github.com/wuhaoyu1990/MagicCamera)作为滤镜处理库.
 
