@@ -25,6 +25,14 @@ Android NDK r12
 - [x] 更多可选项配置(正在开发中).
 - [x] 水印(正在开发中).
 
+### 视频编码配置
+- 硬编 使用MediaCodec编码.
+- 软编 使用FBO读取纹理数据,由于使用FBO读取的数据是上下颠倒的,故而使用libyuv将图像旋转了180度,openh264编码.
+
+### 音频编码配置
+- 硬编 使用MediaCodec编码.
+- 软编 使用fdk-aac编码为aac数据.
+
 使用方式:
 
 onCreate中设置初始化
@@ -62,6 +70,14 @@ mMediaStreamingManager.startStreaming();
 mMediaStreamingManager.stopStreaming();
 ```
 
+### 自定义滤镜
+实现setSurfaceTextureCallback接口
+```
+mMediaStreamingManager.setSurfaceTextureCallback(this);
+```
+``` public int onDrawFrame(int textureId, int textureWidth, int textureHeight, float[] transformMatrix) ```
+
+在onDrawFrame函数中实现滤镜处理,这里的textureId参数为```GLES11Ext.GL_TEXTURE_EXTERNAL_OES```类型,```textureWidth```为纹理的宽度,```textureHeight```为纹理的高度,```transformMatrix```为纹理的```textureTransform```数组,返回值如果<=0或者是textureId代表不处理滤镜,否则需要返回一个```GLES20.GL_TEXTURE_2D```类型的纹理id,示例中使用了[MagicCamera](https://github.com/wuhaoyu1990/MagicCamera)作为滤镜处理库.
 
 ### 最近离职了,开始找工作了,有合适的机会谢谢帮忙推荐 [简历](https://github.com/wlanjie/Resume)
 
