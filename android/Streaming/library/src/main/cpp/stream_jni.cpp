@@ -71,6 +71,9 @@ void Android_JNI_startPublish(JNIEnv *env, jobject object) {
 
 
 void muxer_aac_success(char *data, int size, int pts) {
+    if (data == NULL || size <= 0) {
+        return;
+    }
     char *aac = NULL;
     int aac_length = 0;
     int aac_packet_type = 0;

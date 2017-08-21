@@ -25,6 +25,7 @@ import com.wlanjie.streaming.util.StreamingLog;
 import com.wlanjie.streaming.util.VideoUtil;
 import com.wlanjie.streaming.video.OnMediaCodecEncoderListener;
 import com.wlanjie.streaming.video.OpenH264Encoder;
+import com.wlanjie.streaming.video.SurfaceTextureCallback;
 import com.wlanjie.streaming.video.VideoParameter;
 import com.wlanjie.streaming.video.VideoRenderer;
 
@@ -63,6 +64,10 @@ public class MediaStreamingManager {
 
   public void setCameraCallback(CameraCallback callback) {
     mCameraCallback = callback;
+  }
+
+  public void setSurfaceTextureCallback(SurfaceTextureCallback callback) {
+    mVideoRenderer.setSurfaceTextureCallback(callback);
   }
 
   public void prepare(CameraSetting cameraSetting, StreamingSetting streamingSetting, AudioSetting audioSetting) {

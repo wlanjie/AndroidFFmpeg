@@ -10,7 +10,6 @@ import com.wlanjie.streaming.util.OpenGLUtils;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 
 /**
  * Created by wlanjie on 2016/12/12.
@@ -20,16 +19,12 @@ public final class Effect {
 
   private int mInputWidth;
   private int mInputHeight;
-  private int mVideoWidth;
-  private int mVideoHeight;
 
-  private int mFboId;
-  private int mFboTextureId;
-  private IntBuffer mFboBuffer;
+  private int mFboId = -1;
+  private int mFboTextureId = -1;
 
   private final FloatBuffer mCubeBuffer;
   private final FloatBuffer mTextureBuffer;
-  private final FloatBuffer mReadPixelTextureBuffer;
 
   private int mProgramId;
   private int mPosition;
@@ -37,13 +32,6 @@ public final class Effect {
   private int mTextureCoordinate;
   private int mTextureTransform;
   private float[] mTextureTransformMatrix;
-  private final float[] TEXTURE_BUFFER = {
-      1.0f, 0.0f,
-      1.0f, 1.0f,
-      0.0f, 0.0f,
-      0.0f, 1.0f
-  };
-
   private final Resources mResources;
 
   Effect(Resources resources) {
@@ -57,11 +45,6 @@ public final class Effect {
         .order(ByteOrder.nativeOrder())
         .asFloatBuffer();
     mTextureBuffer.put(OpenGLUtils.TEXTURE).position(0);
-
-    mReadPixelTextureBuffer = ByteBuffer.allocateDirect(TEXTURE_BUFFER.length * 4)
-        .order(ByteOrder.nativeOrder())
-        .asFloatBuffer();
-    mReadPixelTextureBuffer.put(TEXTURE_BUFFER).position(0);
   }
 
   public void init() {
@@ -78,16 +61,10 @@ public final class Effect {
     initFboTexture(mInputWidth, mInputHeight);
   }
 
-  void setVideoSize(int width, int height) {
-    mVideoWidth = width;
-    mVideoHeight = height;
-  }
-
   private void initFboTexture(int width, int height) {
     if (mFboId != 0 && width != mInputWidth && height != mInputHeight) {
       destroyFboTexture();
     }
-    mFboBuffer = IntBuffer.allocate(width * height);
     int[] fbo = new int[1];
     int[] texture = new int[1];
 
@@ -118,15 +95,8 @@ public final class Effect {
     }
   }
 
-  IntBuffer getRgbaBuffer() {
-    return mFboBuffer;
-  }
-
   int drawToFboTexture(int textureId, FloatBuffer cubeBuffer, FloatBuffer textureBuffer) {
-    readPixel(textureId);
-
     GLES20.glUseProgram(mProgramId);
-
     GLES20.glEnableVertexAttribArray(mPosition);
     GLES20.glVertexAttribPointer(mPosition, 2, GLES20.GL_FLOAT, false, 4 * 2, cubeBuffer);
 
@@ -148,41 +118,7 @@ public final class Effect {
 
     GLES20.glDisableVertexAttribArray(mPosition);
     GLES20.glDisableVertexAttribArray(mTextureCoordinate);
-
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
-
     return mFboTextureId;
-  }
-
-  private void readPixel(int textureId) {
-    GLES20.glUseProgram(mProgramId);
-
-    GLES20.glEnableVertexAttribArray(mPosition);
-    GLES20.glVertexAttribPointer(mPosition, 2, GLES20.GL_FLOAT, false, 4 * 2, mCubeBuffer);
-
-    GLES20.glEnableVertexAttribArray(mTextureCoordinate);
-    GLES20.glVertexAttribPointer(mTextureCoordinate, 2, GLES20.GL_FLOAT, false, 4 * 2, mReadPixelTextureBuffer);
-
-    GLES20.glUniformMatrix4fv(mTextureTransform, 1, false, mTextureTransformMatrix, 0);
-
-    GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-    GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textureId);
-    GLES20.glUniform1i(mUniformTexture, 0);
-
-    GLES20.glViewport(0, 0, mInputWidth, mInputHeight);
-    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, mFboId);
-    GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-    if (mVideoWidth > 0 && mVideoHeight > 0) {
-      GLES20.glReadPixels(0, 0, mInputWidth, mInputHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mFboBuffer);
-    }
-    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
-
-    GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0);
-
-    GLES20.glDisableVertexAttribArray(mPosition);
-    GLES20.glDisableVertexAttribArray(mTextureCoordinate);
-
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
   }
 
   int drawToFboTexture(int textureId) {

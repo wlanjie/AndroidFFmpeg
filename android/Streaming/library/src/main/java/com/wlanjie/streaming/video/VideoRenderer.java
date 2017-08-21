@@ -45,6 +45,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
   private FloatBuffer mRecordTextureBuffer;
   private VideoEncoder mVideoEncoder;
   private RendererVideoEncoder mRendererVideoEncoder;
+  private SurfaceTextureCallback mSurfaceTextureCallback;
 
   public VideoRenderer(Context context) {
     mContext = context;
@@ -76,18 +77,23 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mCameraSetting = cameraSetting;
   }
 
+  public void setSurfaceTextureCallback(SurfaceTextureCallback callback) {
+    mSurfaceTextureCallback = callback;
+  }
+
   @Override
   public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+    if (mSurfaceTextureCallback != null) {
+      mSurfaceTextureCallback.onSurfaceCreated();
+    }
     GLES20.glDisable(GL10.GL_DITHER);
     GLES20.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
     mRendererScreen.init();
     mEffect.init();
-
   }
 
   public void startEncoder() {
-    mEffect.setVideoSize(mStreamingSetting.getVideoWidth(), mStreamingSetting.getVideoHeight());
     initEncoder();
   }
 
@@ -120,7 +126,10 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
         @Override
         public void handleMessage(Message msg) {
           super.handleMessage(msg);
-          IntBuffer buffer = mEffect.getRgbaBuffer();
+          IntBuffer buffer = mRendererScreen.getFboBuffer();
+          if (buffer == null) {
+            return;
+          }
           mFrameBuffer.asIntBuffer().put(buffer.array());
           if (mOnFrameListener != null) {
             mOnFrameListener.onFrame(mFrameBuffer.array());
@@ -138,8 +147,37 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     }
   }
 
+  private int getCameraWidth() {
+    int previewWidth = mCameraSetting.getPreviewWidth();
+    int previewHeight = mCameraSetting.getPreviewHeight();
+    int cameraWidth;
+    if(false) {
+      // 横屏
+      cameraWidth = Math.max(previewWidth, previewHeight);
+    } else {
+      cameraWidth = Math.min(previewWidth, previewHeight);
+    }
+    return cameraWidth;
+  }
+
+  private int getCameraHeight() {
+    int previewWidth = mCameraSetting.getPreviewWidth();
+    int previewHeight = mCameraSetting.getPreviewHeight();
+    int cameraHeight;
+    if(false) {
+      // 横屏
+      cameraHeight = Math.min(previewWidth, previewHeight);
+    } else {
+      cameraHeight = Math.max(previewWidth, previewHeight);
+    }
+    return cameraHeight;
+  }
+
   @Override
   public void onSurfaceChanged(GL10 gl, int width, int height) {
+    if (mSurfaceTextureCallback != null) {
+      mSurfaceTextureCallback.onSurfaceChanged(width, height);
+    }
     mFrameBuffer = ByteBuffer.allocate(width * height * 4);
 
     int previewWidth = mCameraSetting.getPreviewWidth();
@@ -156,6 +194,7 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     }
 
     mEffect.onInputSizeChanged(cameraWidth, cameraHeight);
+    mRendererScreen.setInputSize(cameraWidth, cameraHeight);
     GLES20.glViewport(0, 0, width, height);
 
     mTextureBuffer.clear();
@@ -174,9 +213,16 @@ public class VideoRenderer implements GLSurfaceView.Renderer {
     mSurfaceTexture.updateTexImage();
     mSurfaceTexture.getTransformMatrix(mSurfaceMatrix);
     mEffect.setTextureTransformMatrix(mSurfaceMatrix);
-    int textureId = mEffect.drawToFboTexture(mSurfaceTextureId);
-    mRendererScreen.draw(textureId, mCubeBuffer, mTextureBuffer);
+    int textureId = 0;
+    if (mSurfaceTextureCallback != null) {
+      textureId = mSurfaceTextureCallback.onDrawFrame(mSurfaceTextureId, getCameraWidth(), getCameraHeight(), mSurfaceMatrix);
+    }
+    if (textureId <= 0 || textureId == mSurfaceTextureId) {
+      textureId = mEffect.drawToFboTexture(mSurfaceTextureId);
+      mRendererScreen.draw(textureId, mCubeBuffer, mTextureBuffer);
+    }
     if (mHandler != null) {
+      mRendererScreen.readPixel(textureId);
       mHandler.sendEmptyMessage(SOFT_ENCODER_MESSAGE);
     }
     if (mRendererVideoEncoder != null) {

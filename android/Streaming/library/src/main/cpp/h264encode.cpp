@@ -46,7 +46,6 @@ bool wlanjie::H264Encoder::openH264Encoder() {
     encoder_->SetOption(ENCODER_OPTION_DATAFORMAT, &video_format);
 
     memset(&_sourcePicture, 0, sizeof(Source_Picture_s));
-
     uint8_t *data_ = NULL;
     _sourcePicture.iPicWidth = parameter.frameWidth;
     _sourcePicture.iPicHeight = parameter.frameHeight;
@@ -69,6 +68,18 @@ bool wlanjie::H264Encoder::openH264Encoder() {
     _scaleSourcePicture.pData[1] = _scaleSourcePicture.pData[0] + parameter.videoWidth * parameter.videoHeight;
     _scaleSourcePicture.pData[2] = _scaleSourcePicture.pData[1] + (parameter.videoWidth * parameter.videoHeight >> 2);
     _scaleSourcePicture.iColorFormat = videoFormatI420;
+
+    memset(&_rotationSourcePicture, 0, sizeof(Source_Picture_s));
+    uint8_t *rotation_data_ = NULL;
+    _rotationSourcePicture.iPicWidth = parameter.frameWidth;
+    _rotationSourcePicture.iPicHeight = parameter.frameHeight;
+    _rotationSourcePicture.iStride[0] = parameter.frameWidth;
+    _rotationSourcePicture.iStride[1] = _rotationSourcePicture.iStride[2] = parameter.frameWidth >> 1;
+    rotation_data_ = static_cast<uint8_t  *> (realloc(data_, parameter.frameWidth * parameter.frameHeight * 3 / 2));
+    _rotationSourcePicture.pData[0] = rotation_data_;
+    _rotationSourcePicture.pData[1] = _rotationSourcePicture.pData[0] + parameter.frameWidth * parameter.frameHeight;
+    _rotationSourcePicture.pData[2] = _rotationSourcePicture.pData[1] + (parameter.frameWidth * parameter.frameHeight >> 2);
+    _rotationSourcePicture.iColorFormat = videoFormatI420;
 
     memset(&info, 0, sizeof(SFrameBSInfo));
     _outputStream.open("/sdcard/wlanjie.h264", std::ios_base::binary | std::ios_base::out);
@@ -131,11 +142,21 @@ void wlanjie::H264Encoder::encoder(char *rgba, long pts, int *h264_length, uint8
                    _sourcePicture.pData[1], _sourcePicture.iStride[1],
                    _sourcePicture.pData[2], _sourcePicture.iStride[2],
                    parameter.frameWidth, parameter.frameHeight);
+    libyuv::I420Rotate(
+            _sourcePicture.pData[0], _sourcePicture.iStride[0],
+            _sourcePicture.pData[1], _sourcePicture.iStride[1],
+            _sourcePicture.pData[2], _sourcePicture.iStride[2],
+            _rotationSourcePicture.pData[0], _rotationSourcePicture.iStride[0],
+            _rotationSourcePicture.pData[1], _rotationSourcePicture.iStride[1],
+            _rotationSourcePicture.pData[2], _rotationSourcePicture.iStride[2],
+            parameter.frameWidth, parameter.frameHeight,
+            libyuv::RotationMode::kRotate180
+    );
     if (parameter.videoWidth != parameter.frameWidth || parameter.videoHeight != parameter.frameHeight) {
         libyuv::I420Scale(
-                _sourcePicture.pData[0], _sourcePicture.iStride[0],
-                _sourcePicture.pData[1], _sourcePicture.iStride[1],
-                _sourcePicture.pData[2], _sourcePicture.iStride[2],
+                _rotationSourcePicture.pData[0], _rotationSourcePicture.iStride[0],
+                _rotationSourcePicture.pData[1], _rotationSourcePicture.iStride[1],
+                _rotationSourcePicture.pData[2], _rotationSourcePicture.iStride[2],
                 parameter.frameWidth, parameter.frameHeight,
                 _scaleSourcePicture.pData[0], _scaleSourcePicture.iStride[0],
                 _scaleSourcePicture.pData[1], _scaleSourcePicture.iStride[1],
