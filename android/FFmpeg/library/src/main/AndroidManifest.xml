@@ -8,7 +8,7 @@
     <application android:allowBackup="true"
         android:label="@string/app_name"
         android:supportsRtl="true" >
-        <activity android:name=".MainActivity"
+        <activity android:name=".SimpleActivity"
             android:theme="@android:style/Theme.NoTitleBar"
             android:hardwareAccelerated="false">
             <intent-filter>
