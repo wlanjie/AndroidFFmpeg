@@ -1,17 +1,10 @@
-package com.wlanjie.ffmpeg.library;
+package com.wlanjie.ffmpeg;
 
-import android.media.AudioFormat;
-import android.media.AudioManager;
 import android.media.AudioTrack;
-import android.util.Log;
-import android.view.InputDevice;
 import android.view.Surface;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Arrays;
 
 /**
  * Created by wlanjie on 16/4/26.

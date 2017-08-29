@@ -7,7 +7,7 @@
 
 #include <android/log.h>
 
-#define TAG "streaming"
+#define TAG "FFmpeg"
 
 #ifdef LOG
 #define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, TAG ,__VA_ARGS__)

@@ -1,4 +1,4 @@
-package com.wlanjie.ffmpeg.library;
+package com.wlanjie.ffmpeg;
 
 /**
  * Created by wlanjie on 16/5/16.

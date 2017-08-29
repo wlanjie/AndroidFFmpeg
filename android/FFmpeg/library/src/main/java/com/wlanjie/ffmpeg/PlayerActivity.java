@@ -1,4 +1,4 @@
-package com.wlanjie.ffmpeg.library;
+package com.wlanjie.ffmpeg;
 
 import android.app.Activity;
 import android.os.Bundle;
