@@ -41,7 +41,6 @@ void remux(const char *input, const char *output) {
     inputContext.openInput(uri, inputFormat, ec);
     inputContext.findStreamInfo(ec);
 
-
     OutputFormat outputFormat("mp4");
     FormatContext outputContext;
     outputContext.setFormat(outputFormat);
@@ -81,123 +80,6 @@ void remux(const char *input, const char *output) {
 
     outputContext.close();
     inputContext.close();
-}
-
-int scale(const char *input, const char *output) {
-    string uri { input };
-    string out { output };
-    error_code ec;
-    InputFormat inputFormat("mp4");
-    FormatContext inputContext;
-    inputContext.openInput(uri, inputFormat, ec);
-    inputContext.findStreamInfo(ec);
-
-    OutputFormat outputFormat("mp4");
-    FormatContext outputContext;
-    outputContext.setFormat(outputFormat);
-    for (size_t i = 0; i < inputContext.streamsCount(); ++i) {
-        auto stream = inputContext.stream(i);
-        if (stream.mediaType() == AVMEDIA_TYPE_VIDEO) {
-            videoStreamIndex = i;
-        } else if (stream.mediaType() == AVMEDIA_TYPE_AUDIO) {
-            audioStreamIndex = i;
-        }
-    }
-
-//    auto videoCodecContext = GenericCodecContext(inputContext.stream(videoStreamIndex));
-//    auto audioCodecContext = GenericCodecContext(inputContext.stream(audioStreamIndex));
-    auto videoCodecContext = findEncodingCodec(AV_CODEC_ID_H264);
-    auto audioCodecContext = findEncodingCodec(AV_CODEC_ID_AAC);
-    auto videoStream = outputContext.addStream(videoCodecContext, ec);
-    videoStream.setFrameRate(inputContext.stream(videoStreamIndex).frameRate());
-    videoStream.setTimeBase(Rational{ 1, 1000 });
-
-    auto audioStream = outputContext.addStream(audioCodecContext, ec);
-
-    VideoDecoderContext videoDecoderContext(inputContext.stream(videoStreamIndex));
-    videoDecoderContext.open(ec);
-
-    AudioDecoderContext audioDecoderContext(inputContext.stream(audioStreamIndex));
-    audioDecoderContext.open(ec);
-
-    VideoEncoderContext videoEncoderContext { videoStream };
-    videoEncoderContext.setWidth(videoDecoderContext.width() / 2);
-    videoEncoderContext.setHeight(videoDecoderContext.height() / 2);
-    videoEncoderContext.setPixelFormat(videoDecoderContext.pixelFormat());
-    videoDecoderContext.setTimeBase(Rational{ 1, 1000 });
-    videoEncoderContext.setBitRate(videoDecoderContext.bitRate());
-    videoEncoderContext.addFlags(outputContext.outputFormat().isFlags(AVFMT_GLOBALHEADER) ? CODEC_FLAG_GLOBAL_HEADER : 0);
-    videoEncoderContext.open(ec);
-
-//    AudioEncoderContext audioEncoderContext { audioStream };
-//    audioEncoderContext.setSampleRate(audioDecoderContext.sampleRate());
-//    audioEncoderContext.setSampleFormat(audioDecoderContext.sampleFormat());
-//    audioDecoderContext.setChannelLayout(audioDecoderContext.channelLayout());
-//    audioEncoderContext.setTimeBase(Rational{ 1, audioDecoderContext.sampleRate() });
-//    audioEncoderContext.setBitRate(audioDecoderContext.bitRate());
-//    audioEncoderContext.open(ec);
-
-    Codec audioOutputCodec = findEncodingCodec("aac");
-    Stream audioOutputStream = outputContext.addStream(audioOutputCodec);
-    AudioEncoderContext audioEncoderContext (audioOutputStream);
-    auto sampleFormats = audioOutputCodec.supportedSampleFormats();
-    auto sampleRates = audioOutputCodec.supportedSamplerates();
-    auto layouts = audioOutputCodec.supportedChannelLayouts();
-    audioEncoderContext.setSampleRate(44100);
-    audioEncoderContext.setSampleFormat(sampleFormats[0]);
-    audioEncoderContext.setChannelLayout(AV_CH_LAYOUT_STEREO);
-    audioEncoderContext.setTimeBase(Rational( 1, audioEncoderContext.sampleRate() ));
-    audioEncoderContext.setBitRate(audioDecoderContext.bitRate());
-    audioEncoderContext.open(ec);
-
-    outputContext.openOutput(out, ec);
-    outputContext.writeHeader(ec);
-    outputContext.dump();
-
-    while (true) {
-        auto packet = inputContext.readPacket(ec);
-        if (ec) {
-            break;
-        }
-        // EOF
-        if (!packet) {
-            break;
-        }
-        if (packet.streamIndex() == videoStreamIndex) {
-            auto frame = videoDecoderContext.decode(packet, ec);
-            if (ec) {
-                break;
-            }
-            if (!frame) {
-                continue;
-            }
-            auto videoPacket = videoEncoderContext.encode(frame, ec);
-            if (ec) {
-                break;
-            }
-            outputContext.writePacket(videoPacket);
-        } else if (packet.streamIndex() == audioStreamIndex) {
-//            auto samples = audioDecoderContext.decode(packet, ec);
-//            if (ec) {
-//                break;
-//            }
-//            if (!samples) {
-//                continue;
-//            }
-//            auto audioPacket = audioEncoderContext.encode(samples, ec);
-//            if (ec) {
-//                break;
-//            }
-//            outputContext.writePacket(audioPacket, ec);
-//            if (ec) {
-//
-//            }
-        }
-    }
-    outputContext.writeTrailer(ec);
-    outputContext.close();
-    inputContext.close();
-    return 0;
 }
 
 int scale2(const char *input) {
@@ -271,7 +153,6 @@ int scale2(const char *input) {
     videoEncoderContext.setWidth(videoDecoderContext.width() / 2);
     videoEncoderContext.setHeight(videoDecoderContext.height() / 2);
     videoEncoderContext.setPixelFormat(videoDecoderContext.pixelFormat());
-//    videoEncoderContext.setTimeBase(Rational{ 1, 1000 });
     videoEncoderContext.setTimeBase(videoDecoderContext.timeBase());
     videoEncoderContext.setBitRate(videoDecoderContext.bitRate());
     videoEncoderContext.addFlags(outputContext.outputFormat().isFlags(AVFMT_GLOBALHEADER) ? CODEC_FLAG_GLOBAL_HEADER : 0);
@@ -293,6 +174,7 @@ int scale2(const char *input) {
     audioEncoderContext.setTimeBase(Rational( 1, audioEncoderContext.sampleRate() ));
     audioEncoderContext.setBitRate(audioDecoderContext.bitRate());
     audioEncoderContext.open(ec);
+
     if (ec) {
         LOGE("Can't open audio encoder.\n");
         return -400;
@@ -308,7 +190,6 @@ int scale2(const char *input) {
         LOGE("Can't not write header \n");
         return -7;
     }
-    outputContext.flush();
 
     VideoRescaler videoRescaler;
     AudioResampler resampler(audioEncoderContext.channelLayout(), audioEncoderContext.sampleRate(), audioEncoderContext.sampleFormat(),
@@ -339,7 +220,6 @@ int scale2(const char *input) {
             // Change timebase
             inpFrame.setTimeBase(videoEncoderContext.timeBase());
             inpFrame.setStreamIndex(videoStreamIndex);
-            inpFrame.setPictureType();
             VideoFrame outFrame{ videoDecoderContext.pixelFormat(), videoDecoderContext.width() / 2, videoDecoderContext.height() / 2 };
             // SCALE
             videoRescaler.rescale(outFrame, inpFrame, ec);
@@ -348,86 +228,109 @@ int scale2(const char *input) {
                 break;
             }
             // ENCODE
-            Packet encoderPacket = videoEncoderContext.encode(outFrame, ec);
+            Packet videoPacket = videoEncoderContext.encode(outFrame, ec);
             if (ec) {
                 LOGE("Encoding error: %s", ec.message());
                 return -10;
-            } else if (!encoderPacket) {
+            } else if (!videoPacket) {
                 LOGE("Empty packet.\n");
                 continue;
             }
-            // Only one output stream
-            encoderPacket.setStreamIndex(0);
-            outputContext.writePacket(encoderPacket, ec);
-        } else if (packet.streamIndex() == audioStreamIndex) {
-//            auto samples = audioDecoderContext.decode(packet, ec);
-//            if (ec) {
-//                return 1;
-//            }
-//            // Empty samples set should not be pushed to the resampler, but it is valid case for the
-//            // end of reading: during samples empty, some cached data can be stored at the resampler
-//            // internal buffer, so we should consume it.
-//            if (samples) {
-//                resampler.push(samples, ec);
-//                if (ec) {
-//                    continue;
-//                }
-//            }
-//
-//            // Pop resampler data
-//            bool getAll = !samples;
-//            while (true) {
-//                AudioSamples ouSamples(audioEncoderContext.sampleFormat(), audioEncoderContext.frameSize(), audioEncoderContext.channelLayout(), audioEncoderContext.sampleRate());
-//
-//                // Resample:
-//                bool hasFrame = resampler.pop(ouSamples, getAll, ec);
-//                if (ec) {
-//                    break;
-//                }
-//                if (!hasFrame) {
-//                    break;
-//                }
-//                // ENCODE
-//                ouSamples.setStreamIndex(audioStreamIndex);
-//                ouSamples.setTimeBase(audioEncoderContext.timeBase());
-//
-//                Packet audioPacket = audioEncoderContext.encode(ouSamples, ec);
-//                if (ec) {
-//                    return 1;
-//                }
-//                if (!audioPacket) {
-//                    continue;
-//                }
-//                outputContext.writePacket(audioPacket, ec);
-//                if (ec) {
-//                    return -1;
-//                }
-//            }
-//
-//            // For the first packets samples can be empty: decoder caching
-//            if (!packet && !samples) {
-//                break;
-//            }
-        }
 
-        if (ec) {
-            LOGE("Error write packet: %s", ec.message());
-            return -11;
+            videoPacket.setStreamIndex(videoStreamIndex);
+            outputContext.writePacket(videoPacket, ec);
+        } else if (packet.streamIndex() == audioStreamIndex) {
+            auto samples = audioDecoderContext.decode(packet, ec);
+            if (ec) {
+                return 1;
+            }
+            // Empty samples set should not be pushed to the resampler, but it is valid case for the
+            // end of reading: during samples empty, some cached data can be stored at the resampler
+            // internal buffer, so we should consume it.
+            if (samples) {
+                resampler.push(samples, ec);
+                if (ec) {
+                    continue;
+                }
+            }
+
+            // Pop resampler data
+            bool getAll = !samples;
+            while (true) {
+                AudioSamples ouSamples(audioEncoderContext.sampleFormat(), audioEncoderContext.frameSize(), audioEncoderContext.channelLayout(), audioEncoderContext.sampleRate());
+
+                // Resample:
+                bool hasFrame = resampler.pop(ouSamples, getAll, ec);
+                if (ec) {
+                    break;
+                }
+                if (!hasFrame) {
+                    break;
+                }
+                // ENCODE
+                ouSamples.setStreamIndex(audioStreamIndex);
+                ouSamples.setTimeBase(audioEncoderContext.timeBase());
+
+                Packet audioPacket = audioEncoderContext.encode(ouSamples, ec);
+                if (ec) {
+                    return 1;
+                }
+                if (!audioPacket) {
+                    continue;
+                }
+                audioPacket.setStreamIndex(audioStreamIndex);
+                outputContext.writePacket(audioPacket, ec);
+                if (ec) {
+                    return -1;
+                }
+            }
         }
     }
+
+    // flush audio
+    while (true) {
+        AudioSamples null(nullptr);
+        Packet audioPacket = audioEncoderContext.encode(null, ec);
+        if (ec || !audioPacket)
+            break;
+
+        audioPacket.setStreamIndex(audioStreamIndex);
+        outputContext.writePacket(audioPacket, ec);
+        if (ec) {
+            return -1;
+        }
+    }
+
+    while (true) {
+        VideoFrame null(nullptr);
+        Packet videoPacket = videoEncoderContext.encode(null, ec);
+        if (ec || !videoPacket) {
+            break;
+        }
+        videoPacket.setStreamIndex(videoStreamIndex);
+        outputContext.writePacket(videoPacket, ec);
+        if (ec) {
+            return -1;
+        }
+    }
+
     outputContext.writeTrailer(ec);
     if (ec) {
         LOGE("Write Trailer error.\n");
         return -9;
     }
     outputContext.flush();
+    videoDecoderContext.close();
+    videoEncoderContext.close();
+    audioDecoderContext.close();
+    audioEncoderContext.close();
+    outputContext.close();
     inputContext.close();
-//    outputContext.close();
+    return 0;
 }
 
 jint Android_JNI_openInput(JNIEnv *env, jobject object, jstring path) {
     const char *uri = env->GetStringUTFChars(path, 0);
-//    scale(uri, "/sdcard/output.mp4");
     scale2(uri);
     env->ReleaseStringUTFChars(path, uri);
     return 0;
