@@ -82,8 +82,13 @@ void remux(const char *input, const char *output) {
     inputContext.close();
 }
 
-int scale2(const char *input) {
+int scale(const char *input) {
     FormatContext inputContext;
+    OutputFormat outputFormat;
+    FormatContext outputContext;
+    outputFormat.setFormat("mp4");
+    outputContext.setFormat(outputFormat);
+
     VideoDecoderContext videoDecoderContext;
     AudioDecoderContext audioDecoderContext;
     string uriString { input };
@@ -98,13 +103,20 @@ int scale2(const char *input) {
         LOGE("Can't find stream: %s", ec.message());
         return -2;
     }
-
+    Codec videoCodec;
+    Stream videoOutputStream;
+    Codec audioOutputCodec;
+    Stream audioOutputStream;
     for (size_t i = 0; i < inputContext.streamsCount(); ++i) {
         Stream st = inputContext.stream(i);
         if (st.mediaType() == AVMEDIA_TYPE_VIDEO) {
             videoStreamIndex = i;
+            videoCodec = findEncodingCodec(AV_CODEC_ID_H264);
+            videoOutputStream = outputContext.addStream(videoCodec);
         } else if (st.mediaType() == AVMEDIA_TYPE_AUDIO) {
             audioStreamIndex = i;
+            audioOutputCodec = findEncodingCodec(AV_CODEC_ID_AAC);
+            audioOutputStream = outputContext.addStream(audioOutputCodec);
         }
     }
     Stream videoStream = inputContext.stream(videoStreamIndex);
@@ -138,17 +150,10 @@ int scale2(const char *input) {
         }
     }
 
-    OutputFormat outputFormat;
-    FormatContext outputContext;
-    outputFormat.setFormat("mp4");
-    outputContext.setFormat(outputFormat);
     outputContext.openOutput("/sdcard/output.mp4", ec);
 
-    Codec videoCodec = findEncodingCodec(AV_CODEC_ID_H264);
-    Stream videoOutputStream = outputContext.addStream(videoCodec);
     videoOutputStream.setTimeBase(videoDecoderContext.timeBase());
     videoOutputStream.setFrameRate(videoStream.frameRate());
-
     VideoEncoderContext videoEncoderContext ( videoOutputStream );
     videoEncoderContext.setWidth(videoDecoderContext.width() / 2);
     videoEncoderContext.setHeight(videoDecoderContext.height() / 2);
@@ -162,8 +167,6 @@ int scale2(const char *input) {
         return -6;
     }
 
-    Codec audioOutputCodec = findEncodingCodec(AV_CODEC_ID_AAC);
-    Stream audioOutputStream = outputContext.addStream(audioOutputCodec);
     AudioEncoderContext audioEncoderContext (audioOutputStream);
     auto sampleFormats = audioOutputCodec.supportedSampleFormats();
     auto sampleRates = audioOutputCodec.supportedSamplerates();
@@ -331,7 +334,7 @@ int scale2(const char *input) {
 
 jint Android_JNI_openInput(JNIEnv *env, jobject object, jstring path) {
     const char *uri = env->GetStringUTFChars(path, 0);
-    scale2(uri);
+    scale(uri);
     env->ReleaseStringUTFChars(path, uri);
     return 0;
 }
