@@ -76,4 +76,4 @@ set(LIBX264_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/x264-build
 add_library(X264 STATIC IMPORTED)
 set_target_properties(X264 PROPERTIES IMPORTED_LOCATION ${LIBX264_LIB_DIR}/${ANDROID_ABI}/output/lib/libx264.a)
 
-target_link_libraries(wlanjie YUV_LIB X264 android log dl m z GLESv1_CM GLESv2 ffmpeg)
+target_link_libraries(wlanjie YUV_LIB X264 android log dl m z GLESv1_CM GLESv2 ffmpeg jnigraphics)

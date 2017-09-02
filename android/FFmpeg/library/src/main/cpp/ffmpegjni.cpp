@@ -6,6 +6,7 @@
 #define _Included_com_wlanjie_ffmpeg_library_FFmpeg
 
 #include <jni.h>
+#include <android/bitmap.h>
 #include <system_error>
 
 #include "log.h"
@@ -16,6 +17,8 @@
 #include "codeccontext.h"
 #include "videorescaler.h"
 #include "audioresampler.h"
+
+#include "libyuv.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -194,7 +197,7 @@ int scale(const char *input) {
         return -7;
     }
 
-    VideoRescaler videoRescaler;
+    VideoRescaler videoRescale;
     AudioResampler resampler(audioEncoderContext.channelLayout(), audioEncoderContext.sampleRate(), audioEncoderContext.sampleFormat(),
                              audioDecoderContext.channelLayout(), audioDecoderContext.sampleRate(), audioDecoderContext.sampleFormat());
     while (true) {
@@ -225,7 +228,7 @@ int scale(const char *input) {
             inpFrame.setStreamIndex(videoStreamIndex);
             VideoFrame outFrame{ videoDecoderContext.pixelFormat(), videoDecoderContext.width() / 2, videoDecoderContext.height() / 2 };
             // SCALE
-            videoRescaler.rescale(outFrame, inpFrame, ec);
+            videoRescale.rescale(outFrame, inpFrame, ec);
             if (ec) {
                 LOGE("scale video error %s.\n", ec.message());
                 break;
@@ -339,8 +342,128 @@ jint Android_JNI_openInput(JNIEnv *env, jobject object, jstring path) {
     return 0;
 }
 
+jobject createBitmap(JNIEnv *env, int frameWidth, int frameHeight) {
+    jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
+    jmethodID createBitmapMethodId = env->GetStaticMethodID(bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    const wchar_t* configName = L"ARGB_8888";
+    int len = wcslen(configName);
+    jstring jConfigName;
+    if (sizeof(wchar_t) != sizeof(jchar)) {
+        jchar* str = (jchar*)malloc((len+1)*sizeof(jchar));
+        for (int i = 0; i < len; ++i) {
+            str[i] = (jchar)configName[i];
+        }
+        str[len] = 0;
+        jConfigName = env->NewString((const jchar*)str, len);
+    } else {
+        jConfigName = env->NewString((const jchar*)configName, len);
+    }
+    jclass bitmapConfigClass = env->FindClass("android/graphics/Bitmap$Config");
+    jmethodID valueOfMethodId = env->GetStaticMethodID(bitmapConfigClass, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
+    jobject bitmapConfigObject = env->CallStaticObjectMethod(bitmapConfigClass, valueOfMethodId, jConfigName);
+    return env->CallStaticObjectMethod(bitmapClass, createBitmapMethodId, frameWidth, frameHeight, bitmapConfigObject);
+}
+
+jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object, jstring inputPath) {
+    jclass arrayListClass = env->FindClass("java/util/ArrayList");
+    jmethodID arrayListConstructMethodId = env->GetMethodID(arrayListClass, "<init>", "()V");
+    jobject arrayListObject = env->NewObject(arrayListClass, arrayListConstructMethodId);
+    jmethodID arrayListAddMethodId = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
+
+    const char *input = env->GetStringUTFChars(inputPath, 0);
+    FormatContext inputContext;
+    string uri(input);
+    error_code ec;
+    inputContext.openInput(uri, ec);
+    if (ec) {
+
+    }
+    inputContext.findStreamInfo(ec);
+    if (ec) {
+
+    }
+    size_t videoStreamIndex = -1;
+    for (size_t i = 0; i < inputContext.streamsCount(); ++i) {
+        Stream st = inputContext.stream(i);
+        if (st.mediaType() == AVMEDIA_TYPE_VIDEO) {
+            videoStreamIndex = i;
+        }
+    }
+    if (videoStreamIndex == -1) {
+        LOGE("Can't found video stream.");
+    }
+    VideoDecoderContext videoDecoderContext(inputContext.stream(videoStreamIndex));
+    Codec videoCodec = findDecodingCodec(AV_CODEC_ID_H264);
+    videoDecoderContext.open(videoCodec, ec);
+
+    jobject bitmap = createBitmap(env, videoDecoderContext.width(), videoDecoderContext.height());
+
+    void *buffer;
+    if (AndroidBitmap_lockPixels(env, bitmap, &buffer) < 0) {
+        LOGE("AndroidBitmap lockPixels error.");
+        return NULL;
+    }
+//    AVFrame *frame = av_frame_alloc();
+//    SwsContext *swsContext = sws_getContext (
+//                    videoDecoderContext.width(),
+//                    videoDecoderContext.height(),
+//                    videoDecoderContext.pixelFormat(),
+//                    videoDecoderContext.width(),
+//                    videoDecoderContext.height(),
+//                    AV_PIX_FMT_RGBA,
+//                    SWS_BILINEAR,
+//                    NULL,
+//                    NULL,
+//                    NULL
+//            );
+//    VideoFrame pic((const uint8_t *) buffer, videoDecoderContext.frameSize(), AV_PIX_FMT_RGBA, videoDecoderContext.width(), videoDecoderContext.height(), 0);
+    VideoRescaler videoRescale;
+    while (true) {
+        Packet packet = inputContext.readPacket(ec);
+        if (ec) {
+            LOGE(("Packet reading error: %s"), ec.message());
+            break;
+        }
+        // EOF
+        if (!packet) {
+            break;
+        }
+        if (packet.streamIndex() == videoStreamIndex) {
+            auto videoFrame = videoDecoderContext.decode(packet, ec);
+            if (ec) {
+                break;
+            }
+            if (!videoFrame) {
+                continue;
+            }
+            uint8_t data[videoDecoderContext.width() * videoDecoderContext.height() * 4];
+            libyuv::I420ToABGR((const uint8_t*) videoFrame.raw()->data[0], videoFrame.raw()->linesize[0],
+                               (const uint8_t*) videoFrame.raw()->data[1], videoFrame.raw()->linesize[1],
+                               (const uint8_t*) videoFrame.raw()->data[2], videoFrame.raw()->linesize[2],
+                               data, videoDecoderContext.width() * 4, videoDecoderContext.width(), videoDecoderContext.height());
+//                env->CallBooleanMethod(arrayListObject, arrayListAddMethodId, bitmap);
+            jbyteArray array = env->NewByteArray(videoDecoderContext.width() * videoDecoderContext.height() * 4);
+            env->SetByteArrayRegion(array, 0, videoDecoderContext.width() * videoDecoderContext.height() * 4,
+                                    (const jbyte *) data);
+            jclass clazz = env->GetObjectClass(object);
+            jmethodID methodId = env->GetMethodID(clazz, "saveFrameToPath", "([B)V");
+            env->CallVoidMethod(object, methodId, array);
+//            VideoFrame outFrame{videoDecoderContext.pixelFormat(), videoDecoderContext.width(),
+//                                videoDecoderContext.height()};
+//            videoRescale.rescale(outFrame, videoFrame, ec);
+//            if (ec) {
+//                break;
+//            }
+        }
+    }
+    AndroidBitmap_unlockPixels(env, bitmap);
+    env->ReleaseStringUTFChars(inputPath, input);
+    return arrayListObject;
+}
+
 static JNINativeMethod method[] = {
-        { "openInput", "(Ljava/lang/String;)I", (void *) Android_JNI_openInput }
+        { "openInput",              "(Ljava/lang/String;)I",                    (void *) Android_JNI_openInput },
+        { "getVideoFrame",          "(Ljava/lang/String;)Ljava/util/List;",     (void *) Android_JNI_getVideoFrame }
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {

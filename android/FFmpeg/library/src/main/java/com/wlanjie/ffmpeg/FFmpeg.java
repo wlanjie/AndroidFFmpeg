@@ -1,64 +1,101 @@
 package com.wlanjie.ffmpeg;
 
+import android.graphics.Bitmap;
 import android.media.AudioTrack;
 import android.view.Surface;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * Created by wlanjie on 16/4/26.
  */
 public class FFmpeg {
 
-    private static final String TAG = "FFmpeg";
+  private static final String TAG = "FFmpeg";
 
-    static {
-        System.loadLibrary("ffmpeg");
-        System.loadLibrary("wlanjie");
-    }
+  static {
+    System.loadLibrary("ffmpeg");
+    System.loadLibrary("wlanjie");
+  }
 
-    private Surface surface;
-    private volatile static FFmpeg instance;
-    private AudioTrack mAudioTrack;
+  private Surface surface;
+  private volatile static FFmpeg instance;
+  private AudioTrack mAudioTrack;
 
-    protected FFmpeg() {}
+  protected FFmpeg() {
+  }
 
-    public static FFmpeg getInstance() {
+  public static FFmpeg getInstance() {
+    if (instance == null) {
+      synchronized (FFmpeg.class) {
         if (instance == null) {
-            synchronized (FFmpeg.class) {
-                if (instance == null) {
-                    instance = new FFmpeg();
-                }
-            }
+          instance = new FFmpeg();
         }
-        return instance;
+      }
     }
+    return instance;
+  }
 
-    private MediaSource mediaSource = new MediaSource();
+  private MediaSource mediaSource = new MediaSource();
 
-    /**
-     * 设置视频输入和输出文件
-     * @param inputFile 输入视频文件
-     * @throws FileNotFoundException 如果输入视频文件不存在抛出此异常
-     * @throws IllegalArgumentException 如果输入文件和输出文件为null,抛出此异常
-     */
-    public void openInput(File inputFile) throws FileNotFoundException, IllegalArgumentException {
-        if (inputFile == null) {
-            throw new IllegalArgumentException("input file must be not null");
-        }
-        if (!inputFile.exists()) {
-            throw new FileNotFoundException("input file not found");
-        }
-        mediaSource.setInputDataSource(inputFile.getAbsolutePath());
+  /**
+   * 设置视频输入和输出文件
+   *
+   * @param inputFile 输入视频文件
+   * @throws FileNotFoundException    如果输入视频文件不存在抛出此异常
+   * @throws IllegalArgumentException 如果输入文件和输出文件为null,抛出此异常
+   */
+  public void openInput(File inputFile) throws FileNotFoundException, IllegalArgumentException {
+    if (inputFile == null) {
+      throw new IllegalArgumentException("input file must be not null");
     }
+    if (!inputFile.exists()) {
+      throw new FileNotFoundException("input file not found");
+    }
+    mediaSource.setInputDataSource(inputFile.getAbsolutePath());
+  }
 
-    /**
-     * 打开输入文件
-     * @return >= 0 success, <0 error
-     * @throws IllegalStateException 不能打开时,或者打开的路径为空时抛出此异常
-     */
-    public native int openInput(String inputPath) throws IllegalStateException, IllegalArgumentException;
+  /**
+   * 打开输入文件
+   *
+   * @return >= 0 success, <0 error
+   * @throws IllegalStateException 不能打开时,或者打开的路径为空时抛出此异常
+   */
+  public native int openInput(String inputPath) throws IllegalStateException, IllegalArgumentException;
+
+  public native List<Bitmap> getVideoFrame(String inputPath);
+
+  int i = 0;
+  public void saveFrameToPath(byte[] data) {
+    i++;
+    if (i >= 5) {
+      return;
+    }
+    int BUFFER_SIZE = 1024 * 8;
+    try {
+      File file = new File("/sdcard/" + System.currentTimeMillis() + ".jpg");
+      file.createNewFile();
+      ByteBuffer byteBuffer = ByteBuffer.wrap(data);
+      Bitmap bitmap = Bitmap.createBitmap(560, 960, Bitmap.Config.ARGB_8888);
+      bitmap.copyPixelsFromBuffer(byteBuffer);
+      FileOutputStream fos = new FileOutputStream(file);
+      final BufferedOutputStream bos = new BufferedOutputStream(fos, BUFFER_SIZE);
+      bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
+      bos.flush();
+      bos.close();
+      fos.close();
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
 
 //    /**
 //     * 获取视频的宽
