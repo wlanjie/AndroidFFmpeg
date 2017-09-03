@@ -27,8 +27,8 @@ public class VideoFrameActivity extends Activity {
     recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
     VideoFrameAdapter adapter = new VideoFrameAdapter();
     recyclerView.setAdapter(adapter);
-    List<Bitmap> bitmaps = FFmpeg.getInstance().getVideoFrame("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
-//    adapter.setBitmaps(bitmaps);
+    List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
+    adapter.setBitmaps(videoFrames);
   }
 
   class VideoFrameAdapter extends RecyclerView.Adapter<ViewHolder> {

@@ -342,28 +342,6 @@ jint Android_JNI_openInput(JNIEnv *env, jobject object, jstring path) {
     return 0;
 }
 
-jobject createBitmap(JNIEnv *env, int frameWidth, int frameHeight) {
-    jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
-    jmethodID createBitmapMethodId = env->GetStaticMethodID(bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
-    const wchar_t* configName = L"ARGB_8888";
-    int len = wcslen(configName);
-    jstring jConfigName;
-    if (sizeof(wchar_t) != sizeof(jchar)) {
-        jchar* str = (jchar*)malloc((len+1)*sizeof(jchar));
-        for (int i = 0; i < len; ++i) {
-            str[i] = (jchar)configName[i];
-        }
-        str[len] = 0;
-        jConfigName = env->NewString((const jchar*)str, len);
-    } else {
-        jConfigName = env->NewString((const jchar*)configName, len);
-    }
-    jclass bitmapConfigClass = env->FindClass("android/graphics/Bitmap$Config");
-    jmethodID valueOfMethodId = env->GetStaticMethodID(bitmapConfigClass, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
-    jobject bitmapConfigObject = env->CallStaticObjectMethod(bitmapConfigClass, valueOfMethodId, jConfigName);
-    return env->CallStaticObjectMethod(bitmapClass, createBitmapMethodId, frameWidth, frameHeight, bitmapConfigObject);
-}
-
 jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object, jstring inputPath) {
     jclass arrayListClass = env->FindClass("java/util/ArrayList");
     jmethodID arrayListConstructMethodId = env->GetMethodID(arrayListClass, "<init>", "()V");
@@ -396,28 +374,21 @@ jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object, jstring inputPath
     Codec videoCodec = findDecodingCodec(AV_CODEC_ID_H264);
     videoDecoderContext.open(videoCodec, ec);
 
-    jobject bitmap = createBitmap(env, videoDecoderContext.width(), videoDecoderContext.height());
-
-    void *buffer;
-    if (AndroidBitmap_lockPixels(env, bitmap, &buffer) < 0) {
-        LOGE("AndroidBitmap lockPixels error.");
-        return NULL;
+    jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
+    jmethodID createBitmapMethodId = env->GetStaticMethodID(bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    const wchar_t* configName = L"ARGB_8888";
+    int len = wcslen(configName);
+    jchar* str = (jchar*)malloc((len+1)*sizeof(jchar));
+    for (int i = 0; i < len; ++i) {
+        str[i] = (jchar)configName[i];
     }
-//    AVFrame *frame = av_frame_alloc();
-//    SwsContext *swsContext = sws_getContext (
-//                    videoDecoderContext.width(),
-//                    videoDecoderContext.height(),
-//                    videoDecoderContext.pixelFormat(),
-//                    videoDecoderContext.width(),
-//                    videoDecoderContext.height(),
-//                    AV_PIX_FMT_RGBA,
-//                    SWS_BILINEAR,
-//                    NULL,
-//                    NULL,
-//                    NULL
-//            );
-//    VideoFrame pic((const uint8_t *) buffer, videoDecoderContext.frameSize(), AV_PIX_FMT_RGBA, videoDecoderContext.width(), videoDecoderContext.height(), 0);
-    VideoRescaler videoRescale;
+    str[len] = 0;
+    jstring jConfigName = env->NewString((const jchar*)str, len);
+    jclass bitmapConfigClass = env->FindClass("android/graphics/Bitmap$Config");
+    jmethodID valueOfMethodId = env->GetStaticMethodID(bitmapConfigClass, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
+    jobject bitmapConfigObject = env->CallStaticObjectMethod(bitmapConfigClass, valueOfMethodId, jConfigName);
+
+    int i = 0;
     while (true) {
         Packet packet = inputContext.readPacket(ec);
         if (ec) {
@@ -429,6 +400,10 @@ jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object, jstring inputPath
             break;
         }
         if (packet.streamIndex() == videoStreamIndex) {
+            i++;
+            if (i > 60) {
+                break;
+            }
             auto videoFrame = videoDecoderContext.decode(packet, ec);
             if (ec) {
                 break;
@@ -436,27 +411,28 @@ jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object, jstring inputPath
             if (!videoFrame) {
                 continue;
             }
+            AVPictureType pictureType = videoFrame.pictureType();
+            LOGE("pictureType: %d", pictureType);
             uint8_t data[videoDecoderContext.width() * videoDecoderContext.height() * 4];
             libyuv::I420ToABGR((const uint8_t*) videoFrame.raw()->data[0], videoFrame.raw()->linesize[0],
                                (const uint8_t*) videoFrame.raw()->data[1], videoFrame.raw()->linesize[1],
                                (const uint8_t*) videoFrame.raw()->data[2], videoFrame.raw()->linesize[2],
                                data, videoDecoderContext.width() * 4, videoDecoderContext.width(), videoDecoderContext.height());
-//                env->CallBooleanMethod(arrayListObject, arrayListAddMethodId, bitmap);
+
             jbyteArray array = env->NewByteArray(videoDecoderContext.width() * videoDecoderContext.height() * 4);
             env->SetByteArrayRegion(array, 0, videoDecoderContext.width() * videoDecoderContext.height() * 4,
                                     (const jbyte *) data);
-            jclass clazz = env->GetObjectClass(object);
-            jmethodID methodId = env->GetMethodID(clazz, "saveFrameToPath", "([B)V");
-            env->CallVoidMethod(object, methodId, array);
-//            VideoFrame outFrame{videoDecoderContext.pixelFormat(), videoDecoderContext.width(),
-//                                videoDecoderContext.height()};
-//            videoRescale.rescale(outFrame, videoFrame, ec);
-//            if (ec) {
-//                break;
-//            }
+
+            jobject bitmapObject = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodId, videoDecoderContext.width(), videoDecoderContext.height(), bitmapConfigObject);
+            jclass byteBufferClass = env->FindClass("java/nio/ByteBuffer");
+            jmethodID byteBufferWrapMethodId = env->GetStaticMethodID(byteBufferClass, "wrap", "([B)Ljava/nio/ByteBuffer;");
+            jobject byteBufferObject = env->CallStaticObjectMethod(byteBufferClass, byteBufferWrapMethodId, array);
+            jmethodID copyPixelsFromBufferMethodId = env->GetMethodID(bitmapClass, "copyPixelsFromBuffer", "(Ljava/nio/Buffer;)V");
+            env->CallVoidMethod(bitmapObject, copyPixelsFromBufferMethodId, byteBufferObject);
+
+            env->CallBooleanMethod(arrayListObject, arrayListAddMethodId, bitmapObject);
         }
     }
-    AndroidBitmap_unlockPixels(env, bitmap);
     env->ReleaseStringUTFChars(inputPath, input);
     return arrayListObject;
 }
