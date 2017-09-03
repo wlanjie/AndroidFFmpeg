@@ -4,12 +4,8 @@ import android.graphics.Bitmap;
 import android.media.AudioTrack;
 import android.view.Surface;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -71,30 +67,8 @@ public class FFmpeg {
 
   public native List<Bitmap> getVideoFrame(String inputPath);
 
-  int i = 0;
-  public void saveFrameToPath(byte[] data) {
-    i++;
-    if (i >= 5) {
-      return;
-    }
-    int BUFFER_SIZE = 1024 * 8;
-    try {
-      File file = new File("/sdcard/" + System.currentTimeMillis() + ".jpg");
-      file.createNewFile();
-      ByteBuffer byteBuffer = ByteBuffer.wrap(data);
-      Bitmap bitmap = Bitmap.createBitmap(560, 960, Bitmap.Config.ARGB_8888);
-      bitmap.copyPixelsFromBuffer(byteBuffer);
-      FileOutputStream fos = new FileOutputStream(file);
-      final BufferedOutputStream bos = new BufferedOutputStream(fos, BUFFER_SIZE);
-      bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-      bos.flush();
-      bos.close();
-      fos.close();
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+  public void saveFrameToPath(Bitmap bitmap) {
+
   }
 
 //    /**

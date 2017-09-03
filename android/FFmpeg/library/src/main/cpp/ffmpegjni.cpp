@@ -388,7 +388,8 @@ jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object, jstring inputPath
     jmethodID valueOfMethodId = env->GetStaticMethodID(bitmapConfigClass, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
     jobject bitmapConfigObject = env->CallStaticObjectMethod(bitmapConfigClass, valueOfMethodId, jConfigName);
 
-    int i = 0;
+    int size = videoDecoderContext.width() * videoDecoderContext.height() * 4;
+    jbyteArray array = env->NewByteArray(size);
     while (true) {
         Packet packet = inputContext.readPacket(ec);
         if (ec) {
@@ -400,10 +401,6 @@ jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object, jstring inputPath
             break;
         }
         if (packet.streamIndex() == videoStreamIndex) {
-            i++;
-            if (i > 60) {
-                break;
-            }
             auto videoFrame = videoDecoderContext.decode(packet, ec);
             if (ec) {
                 break;
@@ -411,25 +408,20 @@ jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object, jstring inputPath
             if (!videoFrame) {
                 continue;
             }
-            AVPictureType pictureType = videoFrame.pictureType();
-            LOGE("pictureType: %d", pictureType);
-            uint8_t data[videoDecoderContext.width() * videoDecoderContext.height() * 4];
+
+            uint8_t data[size];
             libyuv::I420ToABGR((const uint8_t*) videoFrame.raw()->data[0], videoFrame.raw()->linesize[0],
                                (const uint8_t*) videoFrame.raw()->data[1], videoFrame.raw()->linesize[1],
                                (const uint8_t*) videoFrame.raw()->data[2], videoFrame.raw()->linesize[2],
                                data, videoDecoderContext.width() * 4, videoDecoderContext.width(), videoDecoderContext.height());
 
-            jbyteArray array = env->NewByteArray(videoDecoderContext.width() * videoDecoderContext.height() * 4);
-            env->SetByteArrayRegion(array, 0, videoDecoderContext.width() * videoDecoderContext.height() * 4,
-                                    (const jbyte *) data);
-
+            env->SetByteArrayRegion(array, 0, size, (const jbyte *) data);
             jobject bitmapObject = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodId, videoDecoderContext.width(), videoDecoderContext.height(), bitmapConfigObject);
             jclass byteBufferClass = env->FindClass("java/nio/ByteBuffer");
             jmethodID byteBufferWrapMethodId = env->GetStaticMethodID(byteBufferClass, "wrap", "([B)Ljava/nio/ByteBuffer;");
             jobject byteBufferObject = env->CallStaticObjectMethod(byteBufferClass, byteBufferWrapMethodId, array);
             jmethodID copyPixelsFromBufferMethodId = env->GetMethodID(bitmapClass, "copyPixelsFromBuffer", "(Ljava/nio/Buffer;)V");
             env->CallVoidMethod(bitmapObject, copyPixelsFromBufferMethodId, byteBufferObject);
-
             env->CallBooleanMethod(arrayListObject, arrayListAddMethodId, bitmapObject);
         }
     }
