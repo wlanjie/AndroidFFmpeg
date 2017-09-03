@@ -2,16 +2,34 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:paddingBottom="@dimen/activity_vertical_margin"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
-    android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="com.walnjie.ffmpeg.MainActivity">
+    android:layout_height="match_parent">
+
+    <Button
+        android:id="@+id/rotation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="获取视频角度"/>
 
     <Button
         android:id="@+id/compress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_below="@id/rotation"
         android:text="压缩视频"/>
+
+    <Button
+        android:id="@+id/crop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/compress"
+        android:text="裁剪视频"/>
+
+    <Button
+        android:id="@+id/player"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/crop"
+        android:text="播放视频"/>
+
+
 </RelativeLayout>

@@ -20,20 +20,46 @@ include_directories(${PROJECT_SOURCE_DIR}/SDL/src/core/android)
 #add libyuv header
 include_directories(${PROJECT_SOURCE_DIR}/libyuv/include)
 
+include_directories(${PROJECT_SOURCE_DIR})
+
 #add SDL2 library
-add_subdirectory(SDL)
+#add_subdirectory(SDL)
 
 #add libyuv library
 add_subdirectory(libyuv)
 
-file(GLOB WLANJIE_SOURCE *.c)
+file(GLOB WLANJIE_SOURCE ffmpegjni.cpp
+                         audioresampler.cpp
+                         averror.cpp
+                         avtime.cpp
+                         avutils.cpp
+                         codec.cpp
+                         codeccontext.cpp
+                         dictionary.cpp
+                         format.cpp
+                         formatcontext.cpp
+                         frame.cpp
+                         packet.cpp
+                         pixelformat.cpp
+                         rational.cpp
+                         rect.cpp
+                         sampleformat.cpp
+                         stream.cpp
+                         timestamp.cpp
+                         videorescaler.cpp
+                         filters/buffersink.cpp
+                         filters/buffersrc.cpp
+                         filters/filter.cpp
+                         filters/filtercontext.cpp
+                         filters/filtergraph.cpp
+                         filters/filterpad.cpp)
 add_library(wlanjie SHARED ${WLANJIE_SOURCE})
 
 #link SDL2 library
-set(SDL2_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/SDL)
-message(STATUS "SDL2_LIB_DIR: ${SDL2_LIB_DIR}")
-add_library(SDL2_LIB STATIC IMPORTED)
-set_target_properties(SDL2_LIB PROPERTIES IMPORTED_LOCATION ${SDL2_LIB_DIR}/libSDL2.a)
+#set(SDL2_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/SDL)
+#message(STATUS "SDL2_LIB_DIR: ${SDL2_LIB_DIR}")
+#add_library(SDL2_LIB STATIC IMPORTED)
+#set_target_properties(SDL2_LIB PROPERTIES IMPORTED_LOCATION ${SDL2_LIB_DIR}/libSDL2.a)
 
 #link libyuv library
 set(YUV_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/libyuv)
@@ -50,4 +76,4 @@ set(LIBX264_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/../../../../../../tools/x264-build
 add_library(X264 STATIC IMPORTED)
 set_target_properties(X264 PROPERTIES IMPORTED_LOCATION ${LIBX264_LIB_DIR}/${ANDROID_ABI}/output/lib/libx264.a)
 
-target_link_libraries(wlanjie SDL2_LIB YUV_LIB X264 android log dl m z GLESv1_CM GLESv2 ffmpeg)
+target_link_libraries(wlanjie YUV_LIB X264 android log dl m z GLESv1_CM GLESv2 ffmpeg jnigraphics)

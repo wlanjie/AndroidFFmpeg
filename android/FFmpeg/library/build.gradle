@@ -1,17 +1,17 @@
-apply plugin: 'com.android.application'
+apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion 23
     buildToolsVersion "25.0.2"
 
     defaultConfig {
-        applicationId "com.walnjie.ffmpeg.library"
         minSdkVersion 14
         targetSdkVersion 22
         versionCode 1
         versionName "1.0"
         externalNativeBuild {
             cmake {
+                cppFlags "-std=c++11 -frtti -fexceptions"
                 abiFilters 'armeabi', 'armeabi-v7a'
             }
         }
@@ -33,6 +33,5 @@ android {
 }
 
 dependencies {
-    compile 'io.reactivex:rxandroid:1.2.0'
-    compile 'io.reactivex:rxjava:1.1.5'
+
 }
