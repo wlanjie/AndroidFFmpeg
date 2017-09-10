@@ -54,7 +54,7 @@ public class FFmpeg {
     if (!inputFile.exists()) {
       throw new FileNotFoundException("input file not found");
     }
-    mediaSource.setInputDataSource(inputFile.getAbsolutePath());
+    openInput(inputFile.getAbsolutePath());
   }
 
   /**
@@ -65,11 +65,26 @@ public class FFmpeg {
    */
   public native int openInput(String inputPath) throws IllegalStateException, IllegalArgumentException;
 
+  /**
+   * 设置视频输入和输出文件
+   *
+   * @param outputFile 输入视频文件
+   * @throws IllegalArgumentException 如果输出文件为null,抛出此异常
+   */
+  public void openOutput(File outputFile) throws IllegalArgumentException {
+    if (outputFile == null) {
+      throw new IllegalArgumentException("output file must be not null");
+    }
+    openOutput(outputFile.getAbsolutePath());
+  }
+
+  public native int openOutput(String outputPath);
+
   public native List<Bitmap> getVideoFrame(String inputPath);
 
-  public void saveFrameToPath(Bitmap bitmap) {
+  public native int scale(int newWidth, int newHeight);
 
-  }
+  public native Video getVideoInfo();
 
 //    /**
 //     * 获取视频的宽
@@ -294,9 +309,9 @@ public class FFmpeg {
 //        }
 //    }
 //
-//    /**
-//     * 释放资源
-//     */
-//    public native void release();
+    /**
+     * 释放资源
+     */
+    public native void release();
 
 }

@@ -15,6 +15,12 @@ import com.wlanjie.ffmpeg.FFmpeg;
 import java.util.ArrayList;
 import java.util.List;
 
+import rx.Observable;
+import rx.Subscriber;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
+import rx.schedulers.Schedulers;
+
 /**
  * Created by wlanjie on 2017/8/31.
  */
@@ -25,10 +31,37 @@ public class VideoFrameActivity extends Activity {
     setContentView(R.layout.activity_video_frame);
     RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
     recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
-    VideoFrameAdapter adapter = new VideoFrameAdapter();
+    final VideoFrameAdapter adapter = new VideoFrameAdapter();
     recyclerView.setAdapter(adapter);
-    List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
-    adapter.setBitmaps(videoFrames);
+//    List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
+//    adapter.setBitmaps(videoFrames);
+//    Observable.create(new Observable.OnSubscribe<List<Bitmap>>() {
+//      @Override
+//      public void call(Subscriber<? super List<Bitmap>> subscriber) {
+//        List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
+//        subscriber.onNext(videoFrames);
+//      }
+//    }).subscribeOn(Schedulers.io())
+//        .observeOn(AndroidSchedulers.mainThread())
+//        .subscribe(new Action1<List<Bitmap>>() {
+//          @Override
+//          public void call(List<Bitmap> bitmaps) {
+//            adapter.setBitmaps(bitmaps);
+//          }
+//        }, new Action1<Throwable>() {
+//          @Override
+//          public void call(Throwable throwable) {
+//
+//          }
+//        });
+    new Thread(){
+      @Override
+      public void run() {
+        super.run();
+        List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
+        adapter.setBitmaps(videoFrames);
+      }
+    }.start();
   }
 
   class VideoFrameAdapter extends RecyclerView.Adapter<ViewHolder> {
