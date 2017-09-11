@@ -327,12 +327,12 @@ double Video::getDuration() {
     return inputContext.duration().seconds();
 }
 
-int Video::getFrameRate() {
+double Video::getFrameRate() {
     for (size_t i = 0; i < inputContext.streamsCount(); ++i) {
         Stream st = inputContext.stream(i);
         if (st.mediaType() == AVMEDIA_TYPE_VIDEO) {
-            Rational rational(st.raw()->avg_frame_rate);
-            return (int) rational.operator()();
+            Rational rational(st.frameRate());
+            return rational.operator()();
         }
     }
     return 0;

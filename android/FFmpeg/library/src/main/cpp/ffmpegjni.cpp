@@ -210,7 +210,7 @@ jobject Android_JNI_getVideoInfo(JNIEnv *env, jobject object) {
     env->SetIntField(videoObject, videoTotalFrameFieldID, video.getTotalFrame());
     jfieldID videoDurationFieldID = env->GetFieldID(videoClass, "duration", "D");
     env->SetDoubleField(videoObject, videoDurationFieldID, video.getDuration());
-    jfieldID videoFrameRateFieldID = env->GetFieldID(videoClass, "frameRate", "I");
+    jfieldID videoFrameRateFieldID = env->GetFieldID(videoClass, "frameRate", "D");
     env->SetDoubleField(videoObject, videoFrameRateFieldID, video.getFrameRate());
     return videoObject;
 }

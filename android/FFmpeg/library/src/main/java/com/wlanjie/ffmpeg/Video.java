@@ -8,7 +8,7 @@ public class Video {
   private int height;
   private int totalFrame;
   private double duration;
-  private int frameRate;
+  private double frameRate;
 
   public int getWidth() {
     return width;
@@ -26,7 +26,7 @@ public class Video {
     return duration;
   }
 
-  public int getFrameRate() {
+  public double getFrameRate() {
     return frameRate;
   }
 }

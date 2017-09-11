@@ -59,7 +59,7 @@ public:
 
     double getDuration();
 
-    int getFrameRate();
+    double getFrameRate();
 
     void close();
 };
