@@ -131,16 +131,12 @@ jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object) {
     uint8_t data[size];
 
     std::vector<VideoFrame> frames = video.getVideoFrame();
-    while (true) {
-        if (frames.empty()) {
-            break;
-        }
-        VideoFrame videoFrame = frames.back();
+    for (int i = 0; i < frames.size(); i++) {
+        VideoFrame videoFrame = frames.at(i);
         libyuv::I420ToABGR((const uint8_t*) videoFrame.raw()->data[0], videoFrame.raw()->linesize[0],
                            (const uint8_t*) videoFrame.raw()->data[1], videoFrame.raw()->linesize[1],
                            (const uint8_t*) videoFrame.raw()->data[2], videoFrame.raw()->linesize[2],
                            data, video.getWidth() * 4, video.getWidth(), video.getHeight());
-        frames.pop_back();
         env->SetByteArrayRegion(array, 0, size, (const jbyte *) data);
         jobject bitmapObject = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodId, video.getWidth(), video.getHeight(), bitmapConfigObject);
         jclass byteBufferClass = env->FindClass("java/nio/ByteBuffer");
@@ -150,6 +146,7 @@ jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object) {
         env->CallVoidMethod(bitmapObject, copyPixelsFromBufferMethodId, byteBufferObject);
         env->CallBooleanMethod(arrayListObject, arrayListAddMethodId, bitmapObject);
     }
+    free(str);
     return arrayListObject;
 }
 

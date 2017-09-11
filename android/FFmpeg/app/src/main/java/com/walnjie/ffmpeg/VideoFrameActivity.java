@@ -33,33 +33,30 @@ public class VideoFrameActivity extends Activity {
     recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
     final VideoFrameAdapter adapter = new VideoFrameAdapter();
     recyclerView.setAdapter(adapter);
-//    List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
-//    adapter.setBitmaps(videoFrames);
-//    Observable.create(new Observable.OnSubscribe<List<Bitmap>>() {
-//      @Override
-//      public void call(Subscriber<? super List<Bitmap>> subscriber) {
-//        List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
-//        subscriber.onNext(videoFrames);
-//      }
-//    }).subscribeOn(Schedulers.io())
-//        .observeOn(AndroidSchedulers.mainThread())
-//        .subscribe(new Action1<List<Bitmap>>() {
-//          @Override
-//          public void call(List<Bitmap> bitmaps) {
-//            adapter.setBitmaps(bitmaps);
-//          }
-//        }, new Action1<Throwable>() {
-//          @Override
-//          public void call(Throwable throwable) {
-//
-//          }
-//        });
-    int result = FFmpeg.getInstance().openInput("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
-    if (result != 0) {
-      return;
-    }
-    List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame();
-    adapter.setBitmaps(videoFrames);
+    Observable.create(new Observable.OnSubscribe<List<Bitmap>>() {
+      @Override
+      public void call(Subscriber<? super List<Bitmap>> subscriber) {
+        int result = FFmpeg.getInstance().openInput("/sdcard/output.mp4");
+        if (result != 0) {
+          subscriber.onError(new RuntimeException());
+          return;
+        }
+        List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame();
+        subscriber.onNext(videoFrames);
+      }
+    }).subscribeOn(Schedulers.io())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(new Action1<List<Bitmap>>() {
+          @Override
+          public void call(List<Bitmap> bitmaps) {
+            adapter.setBitmaps(bitmaps);
+          }
+        }, new Action1<Throwable>() {
+          @Override
+          public void call(Throwable throwable) {
+
+          }
+        });
   }
 
   class VideoFrameAdapter extends RecyclerView.Adapter<ViewHolder> {
