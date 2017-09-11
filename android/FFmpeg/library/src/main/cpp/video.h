@@ -11,6 +11,8 @@
 
 namespace av {
 
+#define VIDEO_STREAM_INDEX 2000
+
 #define SUCCESS 0
 #define OPEN_INPUT_ERROR 4000
 #define FIND_STREAM_ERROR 4001
@@ -60,6 +62,8 @@ public:
     double getDuration();
 
     double getFrameRate();
+
+    std::vector<VideoFrame> getVideoFrame();
 
     void close();
 };

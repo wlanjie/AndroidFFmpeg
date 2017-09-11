@@ -8,6 +8,8 @@
 #include "videorescaler.h"
 #include "audioresampler.h"
 
+#include "libyuv.h"
+
 namespace av {
 
 Video::Video() {
@@ -336,6 +338,54 @@ double Video::getFrameRate() {
         }
     }
     return 0;
+}
+
+std::vector<VideoFrame> Video::getVideoFrame() {
+    std::vector<VideoFrame> frames;
+    size_t videoStreamIndex= VIDEO_STREAM_INDEX;
+    for (size_t i = 0; i < inputContext.streamsCount(); ++i) {
+        Stream st = inputContext.stream(i);
+        if (st.mediaType() == AVMEDIA_TYPE_VIDEO) {
+            videoStreamIndex = i;
+        }
+    }
+    if (videoStreamIndex == VIDEO_STREAM_INDEX) {
+        LOGE("Can't found video stream.");
+        return frames;
+    }
+    VideoDecoderContext videoDecoderContext(inputContext.stream(videoStreamIndex));
+    Codec videoCodec = findDecodingCodec(AV_CODEC_ID_H264);
+    videoDecoderContext.open(videoCodec, ec);
+    if (ec) {
+        LOGE("open decoder error: %s", ec.message());
+        return frames;
+    }
+    int size = videoDecoderContext.width() * videoDecoderContext.height() * 4;
+    while (true) {
+        Packet packet = inputContext.readPacket(ec);
+        if (ec) {
+            LOGE("Packet reading error: %s", ec.message());
+            break;
+        }
+
+        // EOF
+        if (!packet) {
+            break;
+        }
+        if (packet.streamIndex() == videoStreamIndex) {
+            auto videoFrame = videoDecoderContext.decode(packet, ec);
+            if (ec) {
+                LOGE("Decoding frame error: %s", ec.message());
+                break;
+            }
+            if (!videoFrame) {
+                continue;
+            }
+
+            frames.push_back(videoFrame);
+        }
+    }
+    return frames;
 }
 
 void Video::close() {

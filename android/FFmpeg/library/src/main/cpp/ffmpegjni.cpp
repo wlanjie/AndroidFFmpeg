@@ -106,37 +106,11 @@ jint Android_JNI_openOutput(JNIEnv *env, jobject object, jstring path) {
     return result;
 }
 
-jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object, jstring inputPath) {
+jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object) {
     jclass arrayListClass = env->FindClass("java/util/ArrayList");
     jmethodID arrayListConstructMethodId = env->GetMethodID(arrayListClass, "<init>", "()V");
     jobject arrayListObject = env->NewObject(arrayListClass, arrayListConstructMethodId);
     jmethodID arrayListAddMethodId = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
-
-    const char *input = env->GetStringUTFChars(inputPath, 0);
-    FormatContext inputContext;
-    string uri(input);
-    error_code ec;
-    inputContext.openInput(uri, ec);
-    if (ec) {
-
-    }
-    inputContext.findStreamInfo(ec);
-    if (ec) {
-
-    }
-    size_t videoStreamIndex = -1;
-    for (size_t i = 0; i < inputContext.streamsCount(); ++i) {
-        Stream st = inputContext.stream(i);
-        if (st.mediaType() == AVMEDIA_TYPE_VIDEO) {
-            videoStreamIndex = i;
-        }
-    }
-    if (videoStreamIndex == -1) {
-        LOGE("Can't found video stream.");
-    }
-    VideoDecoderContext videoDecoderContext(inputContext.stream(videoStreamIndex));
-    Codec videoCodec = findDecodingCodec(AV_CODEC_ID_H264);
-    videoDecoderContext.open(videoCodec, ec);
 
     jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
     jmethodID createBitmapMethodId = env->GetStaticMethodID(bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
@@ -152,45 +126,30 @@ jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object, jstring inputPath
     jmethodID valueOfMethodId = env->GetStaticMethodID(bitmapConfigClass, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
     jobject bitmapConfigObject = env->CallStaticObjectMethod(bitmapConfigClass, valueOfMethodId, jConfigName);
 
-    int size = videoDecoderContext.width() * videoDecoderContext.height() * 4;
+    int size = video.getWidth() * video.getHeight() * 4;
     jbyteArray array = env->NewByteArray(size);
     uint8_t data[size];
 
+    std::vector<VideoFrame> frames = video.getVideoFrame();
     while (true) {
-        Packet packet = inputContext.readPacket(ec);
-        if (ec) {
-            LOGE(("Packet reading error: %s"), ec.message());
+        if (frames.empty()) {
             break;
         }
-        // EOF
-        if (!packet) {
-            break;
-        }
-        if (packet.streamIndex() == videoStreamIndex) {
-            auto videoFrame = videoDecoderContext.decode(packet, ec);
-            if (ec) {
-                break;
-            }
-            if (!videoFrame) {
-                continue;
-            }
-
-            libyuv::I420ToABGR((const uint8_t*) videoFrame.raw()->data[0], videoFrame.raw()->linesize[0],
-                               (const uint8_t*) videoFrame.raw()->data[1], videoFrame.raw()->linesize[1],
-                               (const uint8_t*) videoFrame.raw()->data[2], videoFrame.raw()->linesize[2],
-                               data, videoDecoderContext.width() * 4, videoDecoderContext.width(), videoDecoderContext.height());
-
-            env->SetByteArrayRegion(array, 0, size, (const jbyte *) data);
-            jobject bitmapObject = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodId, videoDecoderContext.width(), videoDecoderContext.height(), bitmapConfigObject);
-            jclass byteBufferClass = env->FindClass("java/nio/ByteBuffer");
-            jmethodID byteBufferWrapMethodId = env->GetStaticMethodID(byteBufferClass, "wrap", "([B)Ljava/nio/ByteBuffer;");
-            jobject byteBufferObject = env->CallStaticObjectMethod(byteBufferClass, byteBufferWrapMethodId, array);
-            jmethodID copyPixelsFromBufferMethodId = env->GetMethodID(bitmapClass, "copyPixelsFromBuffer", "(Ljava/nio/Buffer;)V");
-            env->CallVoidMethod(bitmapObject, copyPixelsFromBufferMethodId, byteBufferObject);
-            env->CallBooleanMethod(arrayListObject, arrayListAddMethodId, bitmapObject);
-        }
+        VideoFrame videoFrame = frames.back();
+        libyuv::I420ToABGR((const uint8_t*) videoFrame.raw()->data[0], videoFrame.raw()->linesize[0],
+                           (const uint8_t*) videoFrame.raw()->data[1], videoFrame.raw()->linesize[1],
+                           (const uint8_t*) videoFrame.raw()->data[2], videoFrame.raw()->linesize[2],
+                           data, video.getWidth() * 4, video.getWidth(), video.getHeight());
+        frames.pop_back();
+        env->SetByteArrayRegion(array, 0, size, (const jbyte *) data);
+        jobject bitmapObject = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodId, video.getWidth(), video.getHeight(), bitmapConfigObject);
+        jclass byteBufferClass = env->FindClass("java/nio/ByteBuffer");
+        jmethodID byteBufferWrapMethodId = env->GetStaticMethodID(byteBufferClass, "wrap", "([B)Ljava/nio/ByteBuffer;");
+        jobject byteBufferObject = env->CallStaticObjectMethod(byteBufferClass, byteBufferWrapMethodId, array);
+        jmethodID copyPixelsFromBufferMethodId = env->GetMethodID(bitmapClass, "copyPixelsFromBuffer", "(Ljava/nio/Buffer;)V");
+        env->CallVoidMethod(bitmapObject, copyPixelsFromBufferMethodId, byteBufferObject);
+        env->CallBooleanMethod(arrayListObject, arrayListAddMethodId, bitmapObject);
     }
-    env->ReleaseStringUTFChars(inputPath, input);
     return arrayListObject;
 }
 
@@ -222,7 +181,7 @@ void Android_JNI_release(JNIEnv *env, jobject object) {
 static JNINativeMethod method[] = {
         { "openInput",              "(Ljava/lang/String;)I",                    (void *) Android_JNI_openInput },
         { "openOutput",             "(Ljava/lang/String;)I",                    (void *) Android_JNI_openOutput },
-        { "getVideoFrame",          "(Ljava/lang/String;)Ljava/util/List;",     (void *) Android_JNI_getVideoFrame },
+        { "getVideoFrame",          "()Ljava/util/List;",                       (void *) Android_JNI_getVideoFrame },
         { "scale",                  "(II)I",                                    (void *) Android_JNI_scale },
         { "getVideoInfo",           "()Lcom/wlanjie/ffmpeg/Video;",             (void *) Android_JNI_getVideoInfo },
         { "release",                "()V",                                      (void *) Android_JNI_release }

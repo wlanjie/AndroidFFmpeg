@@ -54,14 +54,12 @@ public class VideoFrameActivity extends Activity {
 //
 //          }
 //        });
-    new Thread(){
-      @Override
-      public void run() {
-        super.run();
-        List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
-        adapter.setBitmaps(videoFrames);
-      }
-    }.start();
+    int result = FFmpeg.getInstance().openInput("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
+    if (result != 0) {
+      return;
+    }
+    List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame();
+    adapter.setBitmaps(videoFrames);
   }
 
   class VideoFrameAdapter extends RecyclerView.Adapter<ViewHolder> {

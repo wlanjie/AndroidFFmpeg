@@ -80,7 +80,7 @@ public class FFmpeg {
 
   public native int openOutput(String outputPath);
 
-  public native List<Bitmap> getVideoFrame(String inputPath);
+  public native List<Bitmap> getVideoFrame();
 
   public native int scale(int newWidth, int newHeight);
 
