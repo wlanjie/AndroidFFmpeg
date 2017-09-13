@@ -50,11 +50,12 @@ public class VideoFrameActivity extends Activity {
           @Override
           public void call(List<Bitmap> bitmaps) {
             adapter.setBitmaps(bitmaps);
+            FFmpeg.getInstance().release();
           }
         }, new Action1<Throwable>() {
           @Override
           public void call(Throwable throwable) {
-
+            FFmpeg.getInstance().release();
           }
         });
   }
