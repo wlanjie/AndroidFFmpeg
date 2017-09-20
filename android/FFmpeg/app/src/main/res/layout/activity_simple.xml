@@ -5,9 +5,16 @@
               android:layout_height="match_parent">
 
     <Button
+        android:id="@+id/short_video"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="短视频"/>
+
+    <Button
         android:id="@+id/get_video_info"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_toRightOf="@id/short_video"
         android:text="video信息"/>
 
     <Button
@@ -23,4 +30,5 @@
         android:layout_height="wrap_content"
         android:layout_toRightOf="@id/scale"
         android:text="获取视频帧"/>
+
 </RelativeLayout>

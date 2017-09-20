@@ -97,9 +97,9 @@ VideoFrame::VideoFrame(PixelFormat pixelFormat, int width, int height, int align
 VideoFrame::VideoFrame(const uint8_t *data, size_t size, PixelFormat pixelFormat, int width, int height, int align)
     : VideoFrame(pixelFormat, width, height, align)
 {
-    size_t calcSize = av_image_get_buffer_size(pixelFormat, width, height, align);
-    if (calcSize != size)
-        throw length_error("Data size and required buffer for this format/width/height/align not equal");
+//    size_t calcSize = av_image_get_buffer_size(pixelFormat, width, height, align);
+//    if (calcSize != size)
+//        throw length_error("Data size and required buffer for this format/width/height/align not equal");
 
     uint8_t *buf[4];
     int      linesize[4];
@@ -207,10 +207,10 @@ AudioSamples::AudioSamples(const uint8_t *data, size_t size, SampleFormat sample
     : AudioSamples(sampleFormat, samplesCount, channelLayout, sampleRate, align)
 {
     const auto channels = av_get_channel_layout_nb_channels(channelLayout);
-    auto calcSize = sampleFormat.requiredBufferSize(channels, samplesCount, align);
+//    auto calcSize = sampleFormat.requiredBufferSize(channels, samplesCount, align);
 
-    if (calcSize > size)
-        throw length_error("Data size and required buffer for this format/nb_samples/nb_channels/align not equal");
+//    if (calcSize > size)
+//        throw length_error("Data size and required buffer for this format/nb_samples/nb_channels/align not equal");
 
     uint8_t *buf[AV_NUM_DATA_POINTERS];
     int      linesize[AV_NUM_DATA_POINTERS];

@@ -81,6 +81,14 @@ public class FFmpeg {
 
   public native Video getVideoInfo();
 
+  public native int beginSection();
+
+  public native int endSection();
+
+  public native int encoderVideo(byte[] frame);
+
+  public native int encoderAudio(byte[] audio);
+
   /**
    * 释放资源
    */

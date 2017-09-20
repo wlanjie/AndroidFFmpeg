@@ -171,8 +171,31 @@ jobject Android_JNI_getVideoInfo(JNIEnv *env, jobject object) {
     return videoObject;
 }
 
+jint Android_JNI_encoderVideo(JNIEnv *env, jobject object, jbyteArray frame) {
+    jbyte *videoFrame = env->GetByteArrayElements(frame, 0);
+    jsize frameLength = env->GetArrayLength(frame);
+    int result = video.encoderVideo(videoFrame, frameLength);
+    env->ReleaseByteArrayElements(frame, videoFrame, 0);
+    return result;
+}
+
+jint Android_JNI_encoderAudio(JNIEnv *env, jobject object, jbyteArray audio) {
+    jbyte *audioFrame = env->GetByteArrayElements(audio, 0);
+    int result = video.encoderAudio(audioFrame);
+    env->ReleaseByteArrayElements(audio, audioFrame, 0);
+    return result;
+}
+
 void Android_JNI_release(JNIEnv *env, jobject object) {
     video.close();
+}
+
+int Android_JNI_beginSection(JNIEnv *env, jobject object) {
+    return video.beginSection();
+}
+
+int Android_JNI_endSection(JNIEnv *env, jobject object) {
+    return video.endSection();
 }
 
 static JNINativeMethod method[] = {
@@ -181,6 +204,10 @@ static JNINativeMethod method[] = {
         { "getVideoFrame",          "()Ljava/util/List;",                       (void *) Android_JNI_getVideoFrame },
         { "scale",                  "(II)I",                                    (void *) Android_JNI_scale },
         { "getVideoInfo",           "()Lcom/wlanjie/ffmpeg/Video;",             (void *) Android_JNI_getVideoInfo },
+        { "encoderVideo",           "([B)I",                                    (void *) Android_JNI_encoderVideo },
+        { "encoderAudio",           "([B)I",                                    (void *) Android_JNI_encoderAudio },
+        { "beginSection",           "()I",                                      (void *) Android_JNI_beginSection },
+        { "endSection",             "()I",                                      (void *) Android_JNI_endSection },
         { "release",                "()V",                                      (void *) Android_JNI_release }
 };
 

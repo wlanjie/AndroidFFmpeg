@@ -8,6 +8,7 @@
 #include <system_error>
 
 #include "formatcontext.h"
+#include "codeccontext.h"
 
 namespace av {
 
@@ -35,12 +36,15 @@ namespace av {
 #define WRITE_TRAILER_ERROR 4018
 #define FLUSH_VIDEO_ERROR 4019
 #define FLUSH_AUDIO_ERROR 4020
+#define RGBA_TO_I420_ERROR 4021
 
 class Video {
 private:
     FormatContext inputContext;
     FormatContext outputContext;
     OutputFormat outputFormat;
+    AudioEncoderContext audioEncoderContext;
+    VideoEncoderContext videoEncoderContext;
     std::error_code ec;
 
 public:
@@ -64,6 +68,14 @@ public:
     double getFrameRate();
 
     std::vector<VideoFrame> getVideoFrame();
+
+    int beginSection();
+
+    int endSection();
+
+    int encoderVideo(signed char *videoFrame, int frameSize);
+
+    int encoderAudio(signed char *audioFrame);
 
     void close();
 };

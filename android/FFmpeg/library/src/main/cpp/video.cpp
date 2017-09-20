@@ -23,12 +23,12 @@ Video::~Video() {
 int Video::openInput(std::string uri) {
     inputContext.openInput(uri, ec);
     if (ec) {
-        LOGE("Can't open input path: %s error: %s", uri, ec.message());
+        LOGE("Can't open input path: %s error: %s", uri.c_str(), ec.message().c_str());
         return OPEN_INPUT_ERROR;
     }
     inputContext.findStreamInfo(ec);
     if (ec) {
-        LOGE("Can't find stream error: %s", ec.message());
+        LOGE("Can't find stream error: %s", ec.message().c_str());
         return FIND_STREAM_ERROR;
     }
     return SUCCESS;
@@ -39,7 +39,7 @@ int Video::openOutput(std::string uri) {
     outputContext.setFormat(outputFormat);
     outputContext.openOutput(uri, ec);
     if (ec) {
-        LOGE("Can't open output path: %s uri error: %s", ec.message());
+        LOGE("Can't open output path: %s uri error: %s", uri.c_str(), ec.message().c_str());
         return OPEN_OUTPUT_ERROR;
     }
     return SUCCESS;
@@ -60,7 +60,7 @@ int Video::scale(int newWidth, int newHeight) {
             videoCodec = findEncodingCodec(AV_CODEC_ID_H264);
             videoOutputStream = outputContext.addStream(videoCodec, ec);
             if (ec) {
-                LOGE("Can't add video stream %s", ec.message());
+                LOGE("Can't add video stream %s", ec.message().c_str());
                 return ADD_VIDEO_STREAM_ERROR;
             }
         } else if (st.mediaType() == AVMEDIA_TYPE_AUDIO) {
@@ -68,7 +68,7 @@ int Video::scale(int newWidth, int newHeight) {
             audioCodec = findEncodingCodec(AV_CODEC_ID_AAC);
             audioOutputStream = outputContext.addStream(audioCodec, ec);
             if (ec) {
-                LOGE("Can't add audio stream %s", ec.message());
+                LOGE("Can't add audio stream %s", ec.message().c_str());
                 return ADD_AUDIO_STREAM_ERROR;
             }
         }
@@ -100,7 +100,7 @@ int Video::scale(int newWidth, int newHeight) {
         Codec videoCodec = findDecodingCodec(AV_CODEC_ID_H264);
         videoDecoderContext.open(videoCodec, ec);
         if (ec) {
-            LOGE("Can't open decoder error: %s", ec.message());
+            LOGE("Can't open decoder error: %s", ec.message().c_str());
             return OPEN_VIDEO_DECODE_ERROR;
         }
     }
@@ -110,7 +110,7 @@ int Video::scale(int newWidth, int newHeight) {
         Codec audioCodec = findDecodingCodec(AV_CODEC_ID_AAC);
         audioDecoderContext.open(audioCodec, ec);
         if (ec) {
-            LOGE("Can't not open audio decoder error: %s", ec.message());
+            LOGE("Can't not open audio decoder error: %s", ec.message().c_str());
             return OPEN_AUDIO_DECODE_ERROR;
         }
     }
@@ -126,7 +126,7 @@ int Video::scale(int newWidth, int newHeight) {
     videoEncoderContext.addFlags(outputContext.outputFormat().isFlags(AVFMT_GLOBALHEADER) ? CODEC_FLAG_GLOBAL_HEADER : 0);
     videoEncoderContext.open(videoCodec, ec);
     if (ec) {
-        LOGE("Can't open encoder error: %s", ec.message());
+        LOGE("Can't open encoder error: %s", ec.message().c_str());
         return OPEN_VIDEO_ENCODER_ERROR;
     }
 
@@ -142,13 +142,13 @@ int Video::scale(int newWidth, int newHeight) {
     audioEncoderContext.open(ec);
 
     if (ec) {
-        LOGE("Can't open audio encoder error: %s", ec.message());
+        LOGE("Can't open audio encoder error: %s", ec.message().c_str());
         return OPEN_AUDIO_ENCODER_ERROR;
     }
     outputContext.dump();
     outputContext.writeHeader(ec);
     if (ec) {
-        LOGE("Can't not write header error: %s", ec.message());
+        LOGE("Can't not write header error: %s", ec.message().c_str());
         return WRITE_HEADER_ERROR;
     }
 
@@ -158,7 +158,7 @@ int Video::scale(int newWidth, int newHeight) {
     while (true) {
         Packet packet = inputContext.readPacket(ec);
         if (ec) {
-            LOGE("Packet reading error: %s", ec.message());
+            LOGE("Packet reading error: %s", ec.message().c_str());
             break;
         }
         // EOF
@@ -171,7 +171,7 @@ int Video::scale(int newWidth, int newHeight) {
             VideoFrame inpFrame = videoDecoderContext.decode(packet, ec);
 
             if (ec) {
-                LOGE("Decoding video error: %s", ec.message());
+                LOGE("Decoding video error: %s", ec.message().c_str());
                 return DECODING_VIDEO_ERROR;
             }
             if (!inpFrame) {
@@ -185,13 +185,13 @@ int Video::scale(int newWidth, int newHeight) {
             // SCALE
             videoRescale.rescale(outFrame, inpFrame, ec);
             if (ec) {
-                LOGE("scale video error %s.\n", ec.message());
+                LOGE("scale video error %s.\n", ec.message().c_str());
                 break;
             }
             // ENCODE
             Packet videoPacket = videoEncoderContext.encode(outFrame, ec);
             if (ec) {
-                LOGE("Encoding error: %s", ec.message());
+                LOGE("Encoding error: %s", ec.message().c_str());
                 return ENCODING_VIDEO_ERROR;
             } else if (!videoPacket) {
                 LOGE("Empty packet.");
@@ -201,13 +201,13 @@ int Video::scale(int newWidth, int newHeight) {
             videoPacket.setStreamIndex(videoStreamIndex);
             outputContext.writePacket(videoPacket, ec);
             if (ec) {
-                LOGE("Write video packet error: %s", ec.message());
+                LOGE("Write video packet error: %s", ec.message().c_str());
                 return WRITE_PACKET_ERROR;
             }
         } else if (packet.streamIndex() == audioStreamIndex) {
             auto samples = audioDecoderContext.decode(packet, ec);
             if (ec) {
-                LOGE("Decoding audio error: %s", ec.message());
+                LOGE("Decoding audio error: %s", ec.message().c_str());
                 return DECODING_AUDIO_ERROR;
             }
             // Empty samples set should not be pushed to the resampler, but it is valid case for the
@@ -247,7 +247,7 @@ int Video::scale(int newWidth, int newHeight) {
                 audioPacket.setStreamIndex(audioStreamIndex);
                 outputContext.writePacket(audioPacket, ec);
                 if (ec) {
-                    LOGE("Write audio packet error: %s", ec.message());
+                    LOGE("Write audio packet error: %s", ec.message().c_str());
                     return WRITE_PACKET_ERROR;
                 }
             }
@@ -264,7 +264,7 @@ int Video::scale(int newWidth, int newHeight) {
         audioPacket.setStreamIndex(audioStreamIndex);
         outputContext.writePacket(audioPacket, ec);
         if (ec) {
-            LOGE("flush video error: %s", ec.message());
+            LOGE("flush video error: %s", ec.message().c_str());
             return FLUSH_VIDEO_ERROR;
         }
     }
@@ -278,14 +278,14 @@ int Video::scale(int newWidth, int newHeight) {
         videoPacket.setStreamIndex(videoStreamIndex);
         outputContext.writePacket(videoPacket, ec);
         if (ec) {
-            LOGE("flush audio error: %s", ec.message());
+            LOGE("flush audio error: %s", ec.message().c_str());
             return FLUSH_AUDIO_ERROR;
         }
     }
 
     outputContext.writeTrailer(ec);
     if (ec) {
-        LOGE("Write Trailer error: %s", ec.message());
+        LOGE("Write Trailer error: %s", ec.message().c_str());
         return WRITE_TRAILER_ERROR;
     }
     videoDecoderContext.close(ec);
@@ -357,14 +357,14 @@ std::vector<VideoFrame> Video::getVideoFrame() {
     Codec videoCodec = findDecodingCodec(AV_CODEC_ID_H264);
     videoDecoderContext.open(videoCodec, ec);
     if (ec) {
-        LOGE("open decoder error: %s", ec.message());
+        LOGE("open decoder error: %s", ec.message().c_str());
         return frames;
     }
     int size = videoDecoderContext.width() * videoDecoderContext.height() * 4;
     while (true) {
         Packet packet = inputContext.readPacket(ec);
         if (ec) {
-            LOGE("Packet reading error: %s", ec.message());
+            LOGE("Packet reading error: %s", ec.message().c_str());
             break;
         }
 
@@ -375,7 +375,7 @@ std::vector<VideoFrame> Video::getVideoFrame() {
         if (packet.streamIndex() == videoStreamIndex) {
             auto videoFrame = videoDecoderContext.decode(packet, ec);
             if (ec) {
-                LOGE("Decoding frame error: %s", ec.message());
+                LOGE("Decoding frame error: %s", ec.message().c_str());
                 break;
             }
             if (!videoFrame) {
@@ -388,9 +388,137 @@ std::vector<VideoFrame> Video::getVideoFrame() {
     return frames;
 }
 
+int audioPts = 0;
+int Video::encoderAudio(signed char *audioFrame) {
+    AudioSamples ouSamples((const uint8_t *) audioFrame, 0, audioEncoderContext.sampleFormat(), 1, audioEncoderContext.channelLayout(), audioEncoderContext.sampleRate());
+//    ouSamples.raw()->pts = ++audioPts;
+//    Packet audioPacket = audioEncoderContext.encode(ouSamples, ec);
+//    if (ec) {
+//        LOGE("encode audio error: %s.", ec.message().c_str());
+//        return ENCODING_AUDIO_ERROR;
+//    }
+//    if (!audioPacket) {
+//        return ENCODING_AUDIO_ERROR;
+//    }
+//    outputContext.writePacket(audioPacket, ec);
+//    if (ec) {
+//        LOGE("write audio packet error: %s", ec.message().c_str());
+//        return WRITE_PACKET_ERROR;
+//    }
+    return SUCCESS;
+}
+int i = 0;
+int Video::encoderVideo(signed char *videoFrame, int frameSize) {
+    int width = 720;
+    int height = 1280;
+    int ySize = width * height;
+    uint8_t *data = static_cast<uint8_t *> (av_malloc(width * height * 3 / 2));
+    uint8_t *y = data;
+    uint8_t *u = y + ySize;
+    uint8_t *v = u + (ySize >> 2);
+    int yStride = width;
+    int uStride = width >> 1;
+    int vStride = width >> 1;
+    int result = libyuv::RGBAToI420((const uint8 *) videoFrame, width * 4,
+                       y, yStride,
+                       u, uStride,
+                       v, vStride,
+                       width, height);
+    if (result != 0) {
+        LOGE("rgba to I420 error.");
+        return RGBA_TO_I420_ERROR;
+    }
+    result = libyuv::I420Rotate(
+            y, yStride,
+            u, uStride,
+            v, vStride,
+            y, yStride,
+            u, uStride,
+            v, vStride,
+            width, height,
+            libyuv::RotationMode::kRotate180
+    );
+    if (result != 0) {
+        LOGE("yuv rotate error.");
+        return RGBA_TO_I420_ERROR;
+    }
+    VideoFrame outFrame(data, 0, AV_PIX_FMT_YUV420P, width, height);
+    outFrame.raw()->linesize[0] = yStride;
+    outFrame.raw()->linesize[1] = uStride;
+    outFrame.raw()->linesize[2] = vStride;
+    outFrame.raw()->data[0] = y;
+    outFrame.raw()->data[1] = u;
+    outFrame.raw()->data[2] = v;
+    outFrame.raw()->quality = 1;
+    outFrame.raw()->pts = ++i;
+    Packet videoPacket = videoEncoderContext.encode(outFrame, ec);
+    av_free(data);
+    if (ec) {
+        LOGE("encode video error: %s.", ec.message().c_str());
+        return ENCODING_VIDEO_ERROR;
+    }
+    if (videoPacket.isComplete()) {
+        videoPacket.setStreamIndex(0);
+        outputContext.writePacket(videoPacket, ec);
+        if (ec) {
+            LOGE("write video packet error: %s.", ec.message().c_str());
+            return WRITE_PACKET_ERROR;
+        }
+    }
+    return SUCCESS;
+}
+
 void Video::close() {
     inputContext.close();
     outputContext.close();
+}
+
+int Video::beginSection() {
+    Codec videoCodec = findEncodingCodec(AV_CODEC_ID_H264);
+    Stream videoStream = outputContext.addStream(videoCodec, ec);
+    if (ec) {
+        LOGE("add video stream error %s.", ec.message().c_str());
+        return ADD_VIDEO_STREAM_ERROR;
+    }
+    videoEncoderContext = VideoEncoderContext(videoStream);
+    videoEncoderContext.setWidth(720);
+    videoEncoderContext.setHeight(1280);
+    videoEncoderContext.setPixelFormat(AV_PIX_FMT_YUV420P);
+    videoEncoderContext.setTimeBase(Rational(1, 25));
+    videoEncoderContext.setBitRate(320 * 1000);
+    videoEncoderContext.addFlags(outputContext.outputFormat().isFlags(AVFMT_GLOBALHEADER) ? CODEC_FLAG_GLOBAL_HEADER : 0);
+    videoEncoderContext.open(videoCodec, ec);
+    if (ec) {
+        LOGE("video encoder open error: %s.", ec.message().c_str());
+        return OPEN_VIDEO_ENCODER_ERROR;
+    }
+    Codec audioCodec = findEncodingCodec(AV_CODEC_ID_AAC);
+    Stream audioStream = outputContext.addStream(audioCodec, ec);
+    if (ec) {
+        LOGE("add audio stream error: %s.", ec.message().c_str());
+        return ADD_AUDIO_STREAM_ERROR;
+    }
+    audioEncoderContext = AudioEncoderContext(audioStream);
+    auto sampleFormats = audioCodec.supportedSampleFormats();
+    auto sampleRates = audioCodec.supportedSamplerates();
+    audioEncoderContext.setSampleFormat(AV_SAMPLE_FMT_S16);
+    audioEncoderContext.setSampleRate(44100);
+    audioEncoderContext.setChannelLayout(AV_CH_LAYOUT_STEREO);
+    audioEncoderContext.setChannels(2);
+    audioEncoderContext.setTimeBase(Rational(1, audioEncoderContext.sampleRate()));
+    audioEncoderContext.setBitRate(64 * 1000);
+    audioEncoderContext.open(ec);
+    if (ec) {
+        LOGE("audio encoder open error: %s.", ec.message().c_str());
+        return OPEN_AUDIO_ENCODER_ERROR;
+    }
+    outputContext.writeHeader(ec);
+    return SUCCESS;
+}
+
+int Video::endSection() {
+    outputContext.writeTrailer(ec);
+    return SUCCESS;
 }
 
 }

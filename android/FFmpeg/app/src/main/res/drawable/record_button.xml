@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#074" />
+            <size android:width="60dp" android:height="60dp" />
+        </shape>
+    </item>
+
+    <item android:drawable="@drawable/ic_video"
+        android:left="8dp"
+        android:right="8dp"
+        android:top="8dp"
+        android:bottom="8dp"/>
+</layer-list>

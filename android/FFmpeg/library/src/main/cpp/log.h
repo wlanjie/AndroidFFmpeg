@@ -8,6 +8,7 @@
 #include <android/log.h>
 
 #define TAG "FFmpeg"
+#define LOG
 
 #ifdef LOG
 #define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, TAG ,__VA_ARGS__)

@@ -15,11 +15,12 @@ import com.wlanjie.ffmpeg.FFmpeg;
 import java.util.ArrayList;
 import java.util.List;
 
-import rx.Observable;
-import rx.Subscriber;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
-import rx.schedulers.Schedulers;
+import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
 
 /**
  * Created by wlanjie on 2017/8/31.
@@ -33,28 +34,29 @@ public class VideoFrameActivity extends Activity {
     recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
     final VideoFrameAdapter adapter = new VideoFrameAdapter();
     recyclerView.setAdapter(adapter);
-    Observable.create(new Observable.OnSubscribe<List<Bitmap>>() {
+    Observable.create(new ObservableOnSubscribe<List<Bitmap>>() {
       @Override
-      public void call(Subscriber<? super List<Bitmap>> subscriber) {
+      public void subscribe(ObservableEmitter<List<Bitmap>> e) throws Exception {
         int result = FFmpeg.getInstance().openInput("/sdcard/output.mp4");
         if (result != 0) {
-          subscriber.onError(new RuntimeException());
+          e.onError(new RuntimeException());
           return;
         }
         List<Bitmap> videoFrames = FFmpeg.getInstance().getVideoFrame();
-        subscriber.onNext(videoFrames);
+        e.onNext(videoFrames);
       }
     }).subscribeOn(Schedulers.io())
         .observeOn(AndroidSchedulers.mainThread())
-        .subscribe(new Action1<List<Bitmap>>() {
+        .subscribe(new Consumer<List<Bitmap>>() {
           @Override
-          public void call(List<Bitmap> bitmaps) {
+          public void accept(List<Bitmap> bitmaps) throws Exception {
             adapter.setBitmaps(bitmaps);
             FFmpeg.getInstance().release();
           }
-        }, new Action1<Throwable>() {
+        }, new Consumer<Throwable>() {
           @Override
-          public void call(Throwable throwable) {
+          public void accept(Throwable throwable) throws Exception {
+            throwable.printStackTrace();
             FFmpeg.getInstance().release();
           }
         });
