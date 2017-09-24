@@ -19,7 +19,7 @@ public class AudioProcessor extends Thread {
     mAudioRecord = audioRecord;
     mAudioSetting = audioSetting;
     mRecordBufferSize = AudioUtils.getRecordBufferSize(audioSetting.getChannelCount(), audioSetting.getSampleRate());
-    mRecordBuffer = new byte[4096];
+    mRecordBuffer = new byte[2048];
   }
 
   public void setOnAudioRecordListener(OnAudioRecordListener l) {

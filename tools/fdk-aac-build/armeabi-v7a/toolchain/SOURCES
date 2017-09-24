@@ -1,0 +1,21 @@
+toolchain/build.git                    f8db3f1d0824da5315df3415814ba76108157796 Static link ld.gold by mingw to avoid dependencies on libwinpthread-1.dll
+toolchain/gmp.git                      e6b9669dafc6a5f83c80b4b4176359b78bccdc90 Add gmp-5.0.5.tar.bz2
+toolchain/mpfr.git                     bfcf1bfa38469208aaad8873cd4c68781061d90f add mpfr-3.1.1.tar.bz2
+toolchain/mpc.git                      835d16e92eed875638a8b5d552034c3b1aae045b add mpc-1.0.1.tar.gz
+toolchain/cloog.git                    98972d5434ffcb4d11d2c81a46600e9a1cda9110 MinGW-w64 build fix (lacks ffs declaration)
+toolchain/isl.git                      b05d4572958c5d497da793f3317084bab90c3033 add isl-0.11.1.tar.bz2 needed by GCC 4.8 with graphite
+toolchain/ppl.git                      8ba1875b4c5341d902321761022a6d2a0b5b19a4 add ppl-1.0.tar.bz2
+toolchain/expat.git                    40172a0ae9d40a068f1e1a48ffcf6a1ccf765ed5 expat package for building gdb-7.3
+toolchain/binutils.git                 4f16de34c2f531495992afc6ecaab46391b59ff8 Fix build
+toolchain/gcc.git                      0dd93631a0aa1b5c2f807270305225bc2786393b backport fix for ICE: in add_stores, at var-tracking.c:6000
+toolchain/gdb.git                      d54e4b7af5c45d4bcde6f65e5dc44c821739740f Misc gdb-7.7 fixes for Android
+toolchain/python.git                   0d4194853e08d3244931523470331c00dfb94863 Fix python build inc_dirs[] and lib_dirs[] for linux/darwin
+toolchain/perl.git                     1121daca35c6c692602621eab28d4de19f0b347d Add -Dcc_as_ld to configure
+toolchain/mclinker.git                 d20e247caf801ae6418e4226a19dd98719a7af75 Fix comparison between signed and unsigned integer expressions [-Werror=sign-compare].
+toolchain/yasm.git                     87c09baff80ca5bbe938392d8f320e621707f317 test commit
+toolchain/clang.git (release_35)       f7bf93b58a05c72f7294cad69cfeb8d5d5851d60 [ndk] Frontend: Fix SourceColumnMap assertion failure on non-ascii characters.
+toolchain/llvm.git (release_35)        a3ebbc54575b8a9ca280cb3587bb90bddd34352c Merge "[3.5] writable .gcc_except_table for mips[64]" into release_35
+toolchain/compiler-rt.git (release_35) 69e1e46d2b03c4a8d573120d8f202f4367930eb1 Do not define CRT_HAS_128BIT for MIPS64
+toolchain/clang.git (release_34)       a284801985744bd9667b9d14f079b3a2e8b19130 [ndk] Define __USER_LABEL_PREFIX__ to empty string.
+toolchain/llvm.git (release_34)        b2631bf0dc9579ddfb4bc1afdf7998c12fa268af Merge "python: AC_PATH_PROG -> AC_PATH_PROGS and fix search order" into release_34
+toolchain/compiler-rt.git (release_34) 4f9b4718e8d836317c224955a1e87b7bb5252ae1 Update clear_cache to trunk@208591

@@ -181,7 +181,8 @@ jint Android_JNI_encoderVideo(JNIEnv *env, jobject object, jbyteArray frame) {
 
 jint Android_JNI_encoderAudio(JNIEnv *env, jobject object, jbyteArray audio) {
     jbyte *audioFrame = env->GetByteArrayElements(audio, 0);
-    int result = video.encoderAudio(audioFrame);
+    jsize frameLength = env->GetArrayLength(audio);
+    int result = video.encoderAudio(audioFrame, frameLength);
     env->ReleaseByteArrayElements(audio, audioFrame, 0);
     return result;
 }
@@ -211,6 +212,32 @@ static JNINativeMethod method[] = {
         { "release",                "()V",                                      (void *) Android_JNI_release }
 };
 
+void log_callback(void *ptr, int level, const char *fmt, va_list vl) {
+//    switch(level) {
+//        case AV_LOG_DEBUG:
+//            LOGE(fmt, vl);
+//            break;
+//        case AV_LOG_VERBOSE:
+//            LOGE(fmt, vl);
+//            break;
+//        case AV_LOG_INFO:
+//            LOGE(fmt, vl);
+//            break;
+//        case AV_LOG_WARNING:
+//            LOGE(fmt, vl);
+//            break;
+//        case AV_LOG_ERROR:
+//            LOGE(fmt, vl);
+//            break;
+//    }
+    int print_prefix = 1;
+    char prev[1024];
+    char line[1024];
+    av_log_format_line(ptr, level, fmt, vl, line, sizeof(line), &print_prefix);
+    strcpy(prev, line);
+    LOGE("%s", line);
+}
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env;
     if (vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
@@ -221,6 +248,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     env->RegisterNatives(clazz, method, NELEM(method));
     init();
     setFFmpegLoggingLevel(AV_LOG_DEBUG);
+    av_log_set_callback(log_callback);
     return JNI_VERSION_1_6;
 }
 

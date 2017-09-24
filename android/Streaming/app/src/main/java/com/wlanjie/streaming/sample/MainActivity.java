@@ -24,7 +24,7 @@ public class MainActivity extends AppCompatActivity {
     setContentView(R.layout.activity_main);
 
     final EditText rtmpUrlEdit = (EditText) findViewById(R.id.rtmp_url);
-    rtmpUrlEdit.setText("rtmp://192.168.1.103/live/wlanjie");
+    rtmpUrlEdit.setText("rtmp://192.168.1.101/live/wlanjie");
 
     RxPermissions rxPermissions = new RxPermissions(this);
     rxPermissions.request(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)

@@ -32,7 +32,7 @@ public class AudioUtils {
   }
 
   public static int getRecordBufferSize(int channelCount, int sampleRate) {
-    int channelConfiguration = AudioFormat.CHANNEL_CONFIGURATION_MONO;
+    int channelConfiguration = AudioFormat.CHANNEL_IN_MONO;
     if(channelCount == 2) {
       channelConfiguration = AudioFormat.CHANNEL_IN_STEREO;
     }

@@ -43,8 +43,8 @@ private:
     FormatContext inputContext;
     FormatContext outputContext;
     OutputFormat outputFormat;
-    AudioEncoderContext audioEncoderContext;
-    VideoEncoderContext videoEncoderContext;
+    AudioEncoderContext *audioEncoderContext;
+    VideoEncoderContext *videoEncoderContext;
     std::error_code ec;
 
 public:
@@ -75,7 +75,7 @@ public:
 
     int encoderVideo(signed char *videoFrame, int frameSize);
 
-    int encoderAudio(signed char *audioFrame);
+    int encoderAudio(signed char *audioFrame, int frameSize);
 
     void close();
 };

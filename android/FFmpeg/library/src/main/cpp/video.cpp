@@ -17,7 +17,8 @@ Video::Video() {
 }
 
 Video::~Video() {
-
+    delete videoEncoderContext;
+    delete audioEncoderContext;
 }
 
 int Video::openInput(std::string uri) {
@@ -130,6 +131,7 @@ int Video::scale(int newWidth, int newHeight) {
         return OPEN_VIDEO_ENCODER_ERROR;
     }
 
+    audioStream.setTimeBase(Rational(1, 44100));
     AudioEncoderContext audioEncoderContext (audioOutputStream);
     auto sampleFormats = audioCodec.supportedSampleFormats();
     auto sampleRates = audioCodec.supportedSamplerates();
@@ -139,7 +141,7 @@ int Video::scale(int newWidth, int newHeight) {
     audioEncoderContext.setChannelLayout(AV_CH_LAYOUT_STEREO);
     audioEncoderContext.setTimeBase(Rational( 1, audioEncoderContext.sampleRate() ));
     audioEncoderContext.setBitRate(audioDecoderContext.bitRate());
-    audioEncoderContext.open(ec);
+    audioEncoderContext.open(audioCodec, ec);
 
     if (ec) {
         LOGE("Can't open audio encoder error: %s", ec.message().c_str());
@@ -389,22 +391,27 @@ std::vector<VideoFrame> Video::getVideoFrame() {
 }
 
 int audioPts = 0;
-int Video::encoderAudio(signed char *audioFrame) {
-    AudioSamples ouSamples((const uint8_t *) audioFrame, 0, audioEncoderContext.sampleFormat(), 1, audioEncoderContext.channelLayout(), audioEncoderContext.sampleRate());
-//    ouSamples.raw()->pts = ++audioPts;
-//    Packet audioPacket = audioEncoderContext.encode(ouSamples, ec);
-//    if (ec) {
-//        LOGE("encode audio error: %s.", ec.message().c_str());
-//        return ENCODING_AUDIO_ERROR;
-//    }
-//    if (!audioPacket) {
-//        return ENCODING_AUDIO_ERROR;
-//    }
-//    outputContext.writePacket(audioPacket, ec);
-//    if (ec) {
-//        LOGE("write audio packet error: %s", ec.message().c_str());
-//        return WRITE_PACKET_ERROR;
-//    }
+int Video::encoderAudio(signed char *audioFrame, int frameSize) {
+    AudioSamples ouSamples(audioEncoderContext->sampleFormat(), audioEncoderContext->frameSize(), audioEncoderContext->channelLayout(), audioEncoderContext->sampleRate());
+    int bufferSize = av_samples_get_buffer_size(NULL, audioEncoderContext->channels(), audioEncoderContext->frameSize(), audioEncoderContext->sampleFormat(), 1);
+    uint8_t *audioData = static_cast<uint8_t *> (av_malloc((size_t) bufferSize));
+    avcodec_fill_audio_frame(ouSamples.raw(), audioEncoderContext->channels(), audioEncoderContext->sampleFormat(), audioData, bufferSize, 1);
+    ouSamples.raw()->pts = ++audioPts;
+    memcpy(audioData, audioFrame, (size_t) bufferSize);
+    ouSamples.raw()->data[0] = audioData;
+    Packet audioPacket = audioEncoderContext->encode(ouSamples, ec);
+    if (ec) {
+        LOGE("encode audio error: %s.", ec.message().c_str());
+        return ENCODING_AUDIO_ERROR;
+    }
+    if (!audioPacket) {
+        return ENCODING_AUDIO_ERROR;
+    }
+    outputContext.writePacket(audioPacket, ec);
+    if (ec) {
+        LOGE("write audio packet error: %s", ec.message().c_str());
+        return WRITE_PACKET_ERROR;
+    }
     return SUCCESS;
 }
 int i = 0;
@@ -451,7 +458,7 @@ int Video::encoderVideo(signed char *videoFrame, int frameSize) {
     outFrame.raw()->data[2] = v;
     outFrame.raw()->quality = 1;
     outFrame.raw()->pts = ++i;
-    Packet videoPacket = videoEncoderContext.encode(outFrame, ec);
+    Packet videoPacket = videoEncoderContext->encode(outFrame, ec);
     av_free(data);
     if (ec) {
         LOGE("encode video error: %s.", ec.message().c_str());
@@ -480,14 +487,16 @@ int Video::beginSection() {
         LOGE("add video stream error %s.", ec.message().c_str());
         return ADD_VIDEO_STREAM_ERROR;
     }
-    videoEncoderContext = VideoEncoderContext(videoStream);
-    videoEncoderContext.setWidth(720);
-    videoEncoderContext.setHeight(1280);
-    videoEncoderContext.setPixelFormat(AV_PIX_FMT_YUV420P);
-    videoEncoderContext.setTimeBase(Rational(1, 25));
-    videoEncoderContext.setBitRate(320 * 1000);
-    videoEncoderContext.addFlags(outputContext.outputFormat().isFlags(AVFMT_GLOBALHEADER) ? CODEC_FLAG_GLOBAL_HEADER : 0);
-    videoEncoderContext.open(videoCodec, ec);
+    videoStream.setTimeBase(Rational(1, 25));
+    videoStream.setFrameRate(25);
+    videoEncoderContext = new VideoEncoderContext(videoStream);
+    videoEncoderContext->setWidth(720);
+    videoEncoderContext->setHeight(1280);
+    videoEncoderContext->setPixelFormat(AV_PIX_FMT_YUV420P);
+    videoEncoderContext->setTimeBase(Rational(1, 25));
+    videoEncoderContext->setBitRate(320 * 1000);
+    videoEncoderContext->addFlags(outputContext.outputFormat().isFlags(AVFMT_GLOBALHEADER) ? CODEC_FLAG_GLOBAL_HEADER : 0);
+    videoEncoderContext->open(videoCodec, ec);
     if (ec) {
         LOGE("video encoder open error: %s.", ec.message().c_str());
         return OPEN_VIDEO_ENCODER_ERROR;
@@ -498,16 +507,15 @@ int Video::beginSection() {
         LOGE("add audio stream error: %s.", ec.message().c_str());
         return ADD_AUDIO_STREAM_ERROR;
     }
-    audioEncoderContext = AudioEncoderContext(audioStream);
-    auto sampleFormats = audioCodec.supportedSampleFormats();
-    auto sampleRates = audioCodec.supportedSamplerates();
-    audioEncoderContext.setSampleFormat(AV_SAMPLE_FMT_S16);
-    audioEncoderContext.setSampleRate(44100);
-    audioEncoderContext.setChannelLayout(AV_CH_LAYOUT_STEREO);
-    audioEncoderContext.setChannels(2);
-    audioEncoderContext.setTimeBase(Rational(1, audioEncoderContext.sampleRate()));
-    audioEncoderContext.setBitRate(64 * 1000);
-    audioEncoderContext.open(ec);
+    audioStream.setTimeBase(Rational(1, 44100));
+    audioEncoderContext = new AudioEncoderContext(audioStream);
+    audioEncoderContext->setSampleFormat(AV_SAMPLE_FMT_S16);
+    audioEncoderContext->setSampleRate(44100);
+    audioEncoderContext->setChannelLayout(AV_CH_LAYOUT_MONO);
+    audioEncoderContext->setChannels(1);
+    audioEncoderContext->setTimeBase(Rational(1, audioEncoderContext->sampleRate()));
+    audioEncoderContext->setBitRate(32 * 1000);
+    audioEncoderContext->open(audioCodec, ec);
     if (ec) {
         LOGE("audio encoder open error: %s.", ec.message().c_str());
         return OPEN_AUDIO_ENCODER_ERROR;

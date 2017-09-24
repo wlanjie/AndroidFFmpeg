@@ -10,7 +10,7 @@ public class AudioSetting {
   private int minBps = 32;
   private int maxBps = 64;
   private int sampleRate = 44100;
-  private int channelCount = 2;
+  private int channelCount = 1;
   private int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
   private int aacProfile = MediaCodecInfo.CodecProfileLevel.AACObjectLC;
 

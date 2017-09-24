@@ -114,7 +114,7 @@ elif [ "$FF_ARCH" = "x86" ]; then
 elif [ "$FF_ARCH" = "x86-64" ]; then
     FF_ANDROID_PLATFORM=android-21
     FF_BUILD_NAME=x86-64
-    FF_BUILD_NAME_OPENSSL=x86_-4
+    FF_BUILD_NAME_OPENSSL=x86-64
     FF_BUILD_NAME_X264=x86-64
     FF_CROSS_PREFIX=x86_64-linux-android
     FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_64_VER}
@@ -156,6 +156,8 @@ FF_DEP_OPENSSL_INC=$FF_BUILD_ROOT/openssl-build/$FF_BUILD_NAME_OPENSSL/output/in
 FF_DEP_OPENSSL_LIB=$FF_BUILD_ROOT/openssl-build/$FF_BUILD_NAME_OPENSSL/output/lib
 FF_DEP_X264_INC=$FF_BUILD_ROOT/x264-build/$FF_BUILD_NAME_X264/output/include
 FF_DEP_X264_LIB=$FF_BUILD_ROOT/x264-build/$FF_BUILD_NAME_X264/output/lib
+FF_DEP_FDK_AAC_INC=$FF_BUILD_ROOT/fdk-aac-build/$FF_BUILD_NAME/output/include
+FF_DEP_FDK_AAC_LIB=$FF_BUILD_ROOT/fdk-aac-build/$FF_BUILD_NAME/output/lib
 
 case "$UNAME_S" in
     CYGWIN_NT-*)
@@ -217,7 +219,19 @@ if [ -f "${FF_DEP_OPENSSL_LIB}/libssl.a" ]; then
     FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-openssl"
 
     FF_CFLAGS="$FF_CFLAGS -I${FF_DEP_OPENSSL_INC}"
-    FF_DEP_LIBS="-L${FF_DEP_OPENSSL_LIB} -lssl -lcrypto"
+    FF_DEP_LIBS="$FF_DEP_LIBS -L${FF_DEP_OPENSSL_LIB} -lssl -lcrypto"
+fi
+
+#with libfdk-aac
+if [ -f "${FF_DEP_FDK_AAC_LIB}/libfdk-aac.a" ]; then
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-nonfree"
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-libfdk-aac"
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-encoder=libfdk-aac"
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-decoder=libfdk-aac"
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-muxer=adts"
+
+    FF_CFLAGS="$FF_CFLAGS -I${FF_DEP_FDK_AAC_INC}"
+    FF_DEP_LIBS="$FF_DEP_LIBS -L${FF_DEP_FDK_AAC_LIB} -lfdk_aac"
 fi
 
 #with x264
@@ -227,7 +241,7 @@ if [ -f "${FF_DEP_X264_LIB}/libx264.a" ]; then
     FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-encoder=libx264"
 
     FF_CFLAGS="$FF_CFLAGS -I${FF_DEP_X264_INC}"
-    FF_DEP_LIBS="-L${FF_DEP_X264_LIB} -lx264"
+    FF_DEP_LIBS="$FF_DEP_LIBS -L${FF_DEP_X264_LIB} -lx264"
 fi
 
 FF_CFG_FLAGS="$FF_CFG_FLAGS $COMMON_FF_CFG_FLAGS"
@@ -265,6 +279,9 @@ if [ -f "./config.h" ]; then
 fi
 
 echo "ff_cflags  $FF_CFLAGS"
+echo "FF_DEP_LIBS $FF_DEP_LIBS"
+echo "FF_CFG_FLAGS $FF_CFG_FLAGS"
+
 which $CC
 ./configure $FF_CFG_FLAGS \
     --extra-cflags="$FF_CFLAGS $FF_EXTRA_CFLAGS" \
