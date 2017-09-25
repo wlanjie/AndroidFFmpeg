@@ -2,7 +2,7 @@
 /* -----------------------------------------------------------------------------------------------------------
 Software License for The Fraunhofer FDK AAC Codec Library for Android
 
-ï¿½ Copyright  1995 - 2015 Fraunhofer-Gesellschaft zur Fï¿½rderung der angewandten Forschung e.V.
+© Copyright  1995 - 2015 Fraunhofer-Gesellschaft zur Förderung der angewandten Forschung e.V.
   All rights reserved.
 
  1.    INTRODUCTION
@@ -702,8 +702,8 @@ the encoder deactivates PNS calculation internally.
 #ifndef _AAC_ENC_LIB_H_
 #define _AAC_ENC_LIB_H_
 
-#include "libSYS/include/machine_type.h"
-#include "libSYS/include/FDK_audio.h"
+#include "machine_type.h"
+#include "FDK_audio.h"
 
 #define AACENCODER_LIB_VL0 3
 #define AACENCODER_LIB_VL1 4

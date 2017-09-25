@@ -12,7 +12,7 @@ AM_CPPFLAGS = \
     -I$(top_srcdir)/libFDK/include \
     -I$(top_srcdir)/libPCMutils/include
 
-AM_CXXFLAGS = -fno-exceptions -fno-rtti -std=c++98
+AM_CXXFLAGS = -fno-exceptions -fno-rtti
 libfdk_aac_la_LINK = $(LINK) $(libfdk_aac_la_LDFLAGS)
 # Mention a dummy pure C file to trigger generation of the $(LINK) variable
 nodist_EXTRA_libfdk_aac_la_SOURCES = dummy.c
@@ -186,9 +186,11 @@ libfdk_aac_la_SOURCES = \
 
 EXTRA_DIST = \
     $(top_srcdir)/autogen.sh \
+    $(top_srcdir)/MODULE_LICENSE_FRAUNHOFER \
     $(top_srcdir)/NOTICE \
     $(top_srcdir)/Android.mk \
     $(top_srcdir)/fdk-aac.sym \
+    $(top_srcdir)/Makefile.vc \
     $(top_srcdir)/documentation/*.pdf \
     $(top_srcdir)/libAACdec/src/*.h \
     $(top_srcdir)/libAACdec/src/arm/*.cpp \
@@ -209,10 +211,12 @@ EXTRA_DIST = \
     $(top_srcdir)/libMpegTPDec/src/*.h \
     $(top_srcdir)/libMpegTPDec/src/version \
     $(top_srcdir)/libFDK/include/*.h \
+    $(top_srcdir)/libFDK/include/aarch64/*.h \
     $(top_srcdir)/libFDK/include/arm/*.h \
     $(top_srcdir)/libFDK/include/mips/*.h \
     $(top_srcdir)/libFDK/include/ppc/*.h \
     $(top_srcdir)/libFDK/include/x86/*.h \
     $(top_srcdir)/libFDK/src/arm/*.cpp \
-    $(top_srcdir)/libFDK/src/mips/*.cpp
+    $(top_srcdir)/libFDK/src/mips/*.cpp \
+    $(top_srcdir)/win32/*.h
 

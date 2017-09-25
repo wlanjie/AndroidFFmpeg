@@ -118,14 +118,18 @@ export COMMON_FF_CFG_FLAGS=""
 FF_CFG_FLAGS="$FF_CFG_FLAGS --prefix=$FF_PREFIX"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-static"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --disable-shared"
+FF_CFG_FLAGS="$FF_CFG_FLAGS --disable-dependency-tracking"
+FF_CFG_FLAGS="$FF_CFG_FLAGS --with-pic"
+FF_CFG_FLAGS="$FF_CFG_FLAGS --host=$FF_CROSS_PREFIX"
+#FF_CFG_FLAGS="$FF_CFG_FLAGS --target=$FF_CROSS_PREFIX
 
 echo ""
 echo "--------------------"
 echo "[*] configurate fdk-aac "
 echo "--------------------"
 cd ../extra/fdk-aac
-autoreconf -fiv
-make clean
+./autogen.sh
+#make clean
 ./configure $FF_CFG_FLAGS
 
 echo ""

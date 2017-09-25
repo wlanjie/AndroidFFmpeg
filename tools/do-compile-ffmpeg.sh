@@ -225,13 +225,12 @@ fi
 #with libfdk-aac
 if [ -f "${FF_DEP_FDK_AAC_LIB}/libfdk-aac.a" ]; then
     FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-nonfree"
-    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-libfdk-aac"
-    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-encoder=libfdk-aac"
-    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-decoder=libfdk-aac"
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-libfdk_aac"
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-encoder=libfdk_aac"
     FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-muxer=adts"
 
     FF_CFLAGS="$FF_CFLAGS -I${FF_DEP_FDK_AAC_INC}"
-    FF_DEP_LIBS="$FF_DEP_LIBS -L${FF_DEP_FDK_AAC_LIB} -lfdk_aac"
+    FF_DEP_LIBS="$FF_DEP_LIBS -L${FF_DEP_FDK_AAC_LIB} -lfdk-aac"
 fi
 
 #with x264
