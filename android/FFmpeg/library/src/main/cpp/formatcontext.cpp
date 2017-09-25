@@ -777,7 +777,8 @@ void FormatContext::writePacket(const Packet &pkt, OptionalErrorCode ec, int(*wr
     }
 
     // Make reference to packet
-    auto writePkt = pkt;
+//    auto writePkt = pkt;
+    Packet *writePkt = (Packet *) &pkt;
 
     if (!pkt.isNull()) {
         auto streamIndex = pkt.streamIndex();
@@ -791,12 +792,12 @@ void FormatContext::writePacket(const Packet &pkt, OptionalErrorCode ec, int(*wr
 
         // Set packet time base to stream one
         if (st.timeBase() != pkt.timeBase()) {
-            writePkt.setTimeBase(st.timeBase());
+            writePkt->setTimeBase(st.timeBase());
         }
     }
 
     resetSocketAccess();
-    int sts = write_proc(m_raw, writePkt.isNull() ? nullptr : writePkt.raw());
+    int sts = write_proc(m_raw, writePkt->isNull() ? nullptr : writePkt->raw());
     sts = checkPbError(sts);
     if (sts < 0)
         throws_if(ec, sts, ffmpeg_category());

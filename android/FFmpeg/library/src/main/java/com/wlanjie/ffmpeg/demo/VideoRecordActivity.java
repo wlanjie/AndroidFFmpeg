@@ -6,6 +6,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 
+import com.wlanjie.ffmpeg.FFmpeg;
 import com.wlanjie.ffmpeg.VideoRecorder;
 import com.wlanjie.ffmpeg.library.R;
 import com.wlanjie.ffmpeg.setting.AudioSetting;
@@ -32,6 +33,7 @@ public class VideoRecordActivity extends AppCompatActivity {
           public void onClick(View v) {
             if (mVideoRecorder.isRecording()) {
               mVideoRecorder.stopRecorder();
+              FFmpeg.getInstance().release();
               return;
             }
             mVideoRecorder.startRecorder("/sdcard/" + System.currentTimeMillis() + ".mp4");

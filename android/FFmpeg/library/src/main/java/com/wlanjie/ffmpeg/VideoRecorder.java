@@ -84,6 +84,7 @@ public class VideoRecorder {
 
   public void onDestroy() {
     mVideoRenderer.destroy();
+    FFmpeg.getInstance().release();
   }
 
   public boolean isRecording() {
@@ -101,7 +102,6 @@ public class VideoRecorder {
       @Override
       public void onFrame(byte[] rgba) {
         int result = FFmpeg.getInstance().encoderVideo(rgba);
-        System.out.println("result = " + result);
       }
     });
     mAudioProcessor.start();

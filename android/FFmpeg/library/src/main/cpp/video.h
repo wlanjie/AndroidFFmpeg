@@ -46,7 +46,7 @@ private:
     AudioEncoderContext *audioEncoderContext;
     VideoEncoderContext *videoEncoderContext;
     std::error_code ec;
-
+    std::string outputUri;
 public:
     Video();
     ~Video();

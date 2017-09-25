@@ -36,13 +36,14 @@ int Video::openInput(std::string uri) {
 }
 
 int Video::openOutput(std::string uri) {
-    outputFormat.setFormat("mp4");
-    outputContext.setFormat(outputFormat);
-    outputContext.openOutput(uri, ec);
-    if (ec) {
-        LOGE("Can't open output path: %s uri error: %s", uri.c_str(), ec.message().c_str());
-        return OPEN_OUTPUT_ERROR;
-    }
+    outputUri = uri;
+//    outputFormat.setFormat("mp4");
+//    outputContext.setFormat(outputFormat);
+//    outputContext.openOutput(uri, ec);
+//    if (ec) {
+//        LOGE("Can't open output path: %s uri error: %s", uri.c_str(), ec.message().c_str());
+//        return OPEN_OUTPUT_ERROR;
+//    }
     return SUCCESS;
 }
 
@@ -391,14 +392,13 @@ std::vector<VideoFrame> Video::getVideoFrame() {
 }
 
 int audioPts = 0;
+int i = 0;
+
 int Video::encoderAudio(signed char *audioFrame, int frameSize) {
     AudioSamples ouSamples(audioEncoderContext->sampleFormat(), audioEncoderContext->frameSize(), audioEncoderContext->channelLayout(), audioEncoderContext->sampleRate());
-    int bufferSize = av_samples_get_buffer_size(NULL, audioEncoderContext->channels(), audioEncoderContext->frameSize(), audioEncoderContext->sampleFormat(), 1);
-    uint8_t *audioData = static_cast<uint8_t *> (av_malloc((size_t) bufferSize));
-    avcodec_fill_audio_frame(ouSamples.raw(), audioEncoderContext->channels(), audioEncoderContext->sampleFormat(), audioData, bufferSize, 1);
-    ouSamples.raw()->pts = ++audioPts;
-    memcpy(audioData, audioFrame, (size_t) bufferSize);
-    ouSamples.raw()->data[0] = audioData;
+    ouSamples.raw()->data[0] = (uint8_t *) audioFrame;
+    ouSamples.raw()->pts = audioPts;
+    audioPts += audioEncoderContext->frameSize();
     Packet audioPacket = audioEncoderContext->encode(ouSamples, ec);
     if (ec) {
         LOGE("encode audio error: %s.", ec.message().c_str());
@@ -407,14 +407,16 @@ int Video::encoderAudio(signed char *audioFrame, int frameSize) {
     if (!audioPacket) {
         return ENCODING_AUDIO_ERROR;
     }
-    outputContext.writePacket(audioPacket, ec);
-    if (ec) {
-        LOGE("write audio packet error: %s", ec.message().c_str());
-        return WRITE_PACKET_ERROR;
+    if (audioPacket.isComplete()) {
+        outputContext.writePacket(audioPacket, ec);
+        if (ec) {
+            LOGE("write audio packet error: %s", ec.message().c_str());
+            return WRITE_PACKET_ERROR;
+        }
     }
     return SUCCESS;
 }
-int i = 0;
+
 int Video::encoderVideo(signed char *videoFrame, int frameSize) {
     int width = 720;
     int height = 1280;
@@ -456,16 +458,16 @@ int Video::encoderVideo(signed char *videoFrame, int frameSize) {
     outFrame.raw()->data[0] = y;
     outFrame.raw()->data[1] = u;
     outFrame.raw()->data[2] = v;
-    outFrame.raw()->quality = 1;
-    outFrame.raw()->pts = ++i;
+//    outFrame.raw()->quality = 1;
+    outFrame.raw()->pts = i;
+    i++;
     Packet videoPacket = videoEncoderContext->encode(outFrame, ec);
     av_free(data);
-    if (ec) {
+    if (ec || !videoPacket) {
         LOGE("encode video error: %s.", ec.message().c_str());
         return ENCODING_VIDEO_ERROR;
     }
     if (videoPacket.isComplete()) {
-        videoPacket.setStreamIndex(0);
         outputContext.writePacket(videoPacket, ec);
         if (ec) {
             LOGE("write video packet error: %s.", ec.message().c_str());
@@ -481,6 +483,8 @@ void Video::close() {
 }
 
 int Video::beginSection() {
+    outputFormat.setFormat("mp4");
+    outputContext.setFormat(outputFormat);
     Codec videoCodec = findEncodingCodec(AV_CODEC_ID_H264);
     Stream videoStream = outputContext.addStream(videoCodec, ec);
     if (ec) {
@@ -492,11 +496,20 @@ int Video::beginSection() {
     videoEncoderContext = new VideoEncoderContext(videoStream);
     videoEncoderContext->setWidth(720);
     videoEncoderContext->setHeight(1280);
+    videoEncoderContext->setMaxBFrames(3);
+    videoEncoderContext->setGopSize(50);
     videoEncoderContext->setPixelFormat(AV_PIX_FMT_YUV420P);
     videoEncoderContext->setTimeBase(Rational(1, 25));
-    videoEncoderContext->setBitRate(320 * 1000);
+    videoEncoderContext->setBitRate(480 * 1000);
     videoEncoderContext->addFlags(outputContext.outputFormat().isFlags(AVFMT_GLOBALHEADER) ? CODEC_FLAG_GLOBAL_HEADER : 0);
-    videoEncoderContext->open(videoCodec, ec);
+    videoEncoderContext->setOption("preset", "ultrafast", ec);
+    if (ec) {
+        LOGE("");
+    }
+    Dictionary dictionary;
+    dictionary.set("tune", "zerolatency");
+    dictionary.set("profile", "baseline");
+    videoEncoderContext->open(dictionary, videoCodec, ec);
     if (ec) {
         LOGE("video encoder open error: %s.", ec.message().c_str());
         return OPEN_VIDEO_ENCODER_ERROR;
@@ -514,17 +527,49 @@ int Video::beginSection() {
     audioEncoderContext->setChannelLayout(AV_CH_LAYOUT_MONO);
     audioEncoderContext->setChannels(1);
     audioEncoderContext->setTimeBase(Rational(1, audioEncoderContext->sampleRate()));
-    audioEncoderContext->setBitRate(32 * 1000);
+    audioEncoderContext->setBitRate(40 * 1000);
     audioEncoderContext->open(audioCodec, ec);
     if (ec) {
         LOGE("audio encoder open error: %s.", ec.message().c_str());
         return OPEN_AUDIO_ENCODER_ERROR;
+    }
+    outputContext.openOutput(outputUri, ec);
+    if (ec) {
+        LOGE("Can't open output path: %s uri error: %s", outputUri.c_str(), ec.message().c_str());
+        return OPEN_OUTPUT_ERROR;
     }
     outputContext.writeHeader(ec);
     return SUCCESS;
 }
 
 int Video::endSection() {
+    // flush audio
+    while (true) {
+        AudioSamples null(nullptr);
+        Packet audioPacket = audioEncoderContext->encode(null, ec);
+        if (ec || !audioPacket)
+            break;
+
+        outputContext.writePacket(audioPacket, ec);
+        if (ec) {
+            LOGE("flush video error: %s", ec.message().c_str());
+            return FLUSH_VIDEO_ERROR;
+        }
+    }
+
+    while (true) {
+        VideoFrame null(nullptr);
+        Packet videoPacket = videoEncoderContext->encode(null, ec);
+        if (ec || !videoPacket) {
+            break;
+        }
+        outputContext.writePacket(videoPacket, ec);
+        if (ec) {
+            LOGE("flush audio error: %s", ec.message().c_str());
+            return FLUSH_AUDIO_ERROR;
+        }
+    }
+
     outputContext.writeTrailer(ec);
     return SUCCESS;
 }
