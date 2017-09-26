@@ -33,7 +33,6 @@ public class VideoRecordActivity extends AppCompatActivity {
           public void onClick(View v) {
             if (mVideoRecorder.isRecording()) {
               mVideoRecorder.stopRecorder();
-              FFmpeg.getInstance().release();
               return;
             }
             mVideoRecorder.startRecorder("/sdcard/" + System.currentTimeMillis() + ".mp4");

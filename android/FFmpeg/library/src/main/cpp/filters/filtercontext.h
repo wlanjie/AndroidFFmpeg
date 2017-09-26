@@ -3,9 +3,9 @@
 
 #include <memory>
 
-#include "ffmpeg.h"
+#include "core/ffmpeg.h"
 #include "filter.h"
-#include "averror.h"
+#include "core/averror.h"
 //#include "filteropaque.h"
 //#include "filtercontext_helper.h"
 

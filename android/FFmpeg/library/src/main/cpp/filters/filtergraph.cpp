@@ -4,10 +4,10 @@
 #include <sstream>
 #include <cassert>
 
-#include "avutils.h"
+#include "core/avutils.h"
 #include "filtergraph.h"
 //#include "filterinout.h"
-#include "avlog.h"
+#include "core/avlog.h"
 
 using namespace std;
 

@@ -4,9 +4,9 @@
 
 #include "video.h"
 #include "log.h"
-#include "codeccontext.h"
-#include "videorescaler.h"
-#include "audioresampler.h"
+#include "core/codeccontext.h"
+#include "core/videorescaler.h"
+#include "core/audioresampler.h"
 
 #include "libyuv.h"
 

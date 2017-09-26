@@ -4,11 +4,11 @@
 #include <stdint.h>
 #include <memory>
 
-#include "ffmpeg.h"
-#include "rational.h"
+#include "core/ffmpeg.h"
+#include "core/rational.h"
 #include "filtercontext.h"
 #include "filter.h"
-#include "averror.h"
+#include "core/averror.h"
 
 namespace av {
 

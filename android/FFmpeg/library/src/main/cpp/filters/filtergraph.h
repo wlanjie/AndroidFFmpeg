@@ -4,12 +4,12 @@
 #include <map>
 #include <memory>
 
-#include "ffmpeg.h"
+#include "core/ffmpeg.h"
 #include "filtercontext.h"
 #include "buffersink.h"
 #include "buffersrc.h"
 
-#include "averror.h"
+#include "core/averror.h"
 
 namespace av {
 

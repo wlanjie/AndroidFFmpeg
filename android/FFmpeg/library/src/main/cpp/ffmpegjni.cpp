@@ -10,14 +10,17 @@
 #include <system_error>
 
 #include "log.h"
-#include "av.h"
-#include "avutils.h"
-#include "formatcontext.h"
-#include "codec.h"
-#include "codeccontext.h"
-#include "videorescaler.h"
-#include "audioresampler.h"
+#include "core/av.h"
+#include "core/avutils.h"
+#include "core/formatcontext.h"
+#include "core/codec.h"
+#include "core/codeccontext.h"
+#include "core/videorescaler.h"
+#include "core/audioresampler.h"
+
 #include "video.h"
+#include "arguments.h"
+#include "shortvideo.h"
 
 #include "libyuv.h"
 
@@ -25,6 +28,9 @@
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
 #endif
 #define CLASS_NAME  "com/wlanjie/ffmpeg/FFmpeg"
+
+#define AUDIO_SETTING "com/wlanjie/ffmpeg/setting/AudioSetting"
+#define VIDEO_SETTING "com/wlanjie/ffmpeg/setting/VideoSetting"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,6 +45,7 @@ using namespace std;
 using namespace av;
 
 Video video;
+ShortVideo shortVideo;
 
 void remux(const char *input, const char *output) {
     string uri { input };
@@ -101,7 +108,7 @@ jint Android_JNI_openInput(JNIEnv *env, jobject object, jstring path) {
 jint Android_JNI_openOutput(JNIEnv *env, jobject object, jstring path) {
     const char *output = env->GetStringUTFChars(path, 0);
     string uri(output);
-    int result = video.openOutput(uri);
+    int result = shortVideo.openOutput(uri);
     env->ReleaseStringUTFChars(path, output);
     return result;
 }
@@ -174,7 +181,7 @@ jobject Android_JNI_getVideoInfo(JNIEnv *env, jobject object) {
 jint Android_JNI_encoderVideo(JNIEnv *env, jobject object, jbyteArray frame) {
     jbyte *videoFrame = env->GetByteArrayElements(frame, 0);
     jsize frameLength = env->GetArrayLength(frame);
-    int result = video.encoderVideo(videoFrame, frameLength);
+    int result = shortVideo.encodeVideo((uint8_t *) videoFrame);
     env->ReleaseByteArrayElements(frame, videoFrame, 0);
     return result;
 }
@@ -182,7 +189,7 @@ jint Android_JNI_encoderVideo(JNIEnv *env, jobject object, jbyteArray frame) {
 jint Android_JNI_encoderAudio(JNIEnv *env, jobject object, jbyteArray audio) {
     jbyte *audioFrame = env->GetByteArrayElements(audio, 0);
     jsize frameLength = env->GetArrayLength(audio);
-    int result = video.encoderAudio(audioFrame, frameLength);
+    int result = shortVideo.encodeAudio((uint8_t *) audioFrame);
     env->ReleaseByteArrayElements(audio, audioFrame, 0);
     return result;
 }
@@ -191,12 +198,29 @@ void Android_JNI_release(JNIEnv *env, jobject object) {
     video.close();
 }
 
+void Android_JNI_setSetting(JNIEnv *env, jobject object, jobject audioSetting, jobject videoSetting) {
+    Arguments arguments;
+    jclass audioSettingClass = env->GetObjectClass(audioSetting);
+    arguments.audioBitRate = env->CallIntMethod(audioSetting, env->GetMethodID(audioSettingClass, "getBitRate", "()I"));
+    arguments.audioSampleRate = env->CallIntMethod(audioSetting, env->GetMethodID(audioSettingClass, "getSampleRate", "()I"));
+    arguments.audioChannelCount = env->CallIntMethod(audioSetting, env->GetMethodID(audioSettingClass, "getChannelCount", "()I"));
+    jclass videoSettingClass = env->GetObjectClass(videoSetting);
+    arguments.videoWidth = env->CallIntMethod(videoSetting, env->GetMethodID(videoSettingClass, "getVideoWidth", "()I")) ;
+    arguments.videoHeight = env->CallIntMethod(videoSetting, env->GetMethodID(videoSettingClass, "getVideoHeight", "()I")) ;
+    arguments.videoFrameRate = env->CallIntMethod(videoSetting, env->GetMethodID(videoSettingClass, "getFrameRate", "()I")) ;
+    arguments.videoGopSize = env->CallIntMethod(videoSetting, env->GetMethodID(videoSettingClass, "getGopSize", "()I")) ;
+    arguments.videoBitRate = env->CallIntMethod(videoSetting, env->GetMethodID(videoSettingClass, "getBitRate", "()I")) ;
+    shortVideo.setArguments(arguments);
+    env->DeleteLocalRef(videoSettingClass);
+    env->DeleteLocalRef(audioSettingClass);
+}
+
 int Android_JNI_beginSection(JNIEnv *env, jobject object) {
-    return video.beginSection();
+    return shortVideo.beginSection();
 }
 
 int Android_JNI_endSection(JNIEnv *env, jobject object) {
-    return video.endSection();
+    return shortVideo.endSection();
 }
 
 static JNINativeMethod method[] = {
@@ -207,6 +231,7 @@ static JNINativeMethod method[] = {
         { "getVideoInfo",           "()Lcom/wlanjie/ffmpeg/Video;",             (void *) Android_JNI_getVideoInfo },
         { "encoderVideo",           "([B)I",                                    (void *) Android_JNI_encoderVideo },
         { "encoderAudio",           "([B)I",                                    (void *) Android_JNI_encoderAudio },
+        { "setSetting",             "(L" AUDIO_SETTING ";L" VIDEO_SETTING ";" ")V",       (void *) Android_JNI_setSetting },
         { "beginSection",           "()I",                                      (void *) Android_JNI_beginSection },
         { "endSection",             "()I",                                      (void *) Android_JNI_endSection },
         { "release",                "()V",                                      (void *) Android_JNI_release }

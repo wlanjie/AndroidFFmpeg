@@ -7,8 +7,8 @@
 
 #include <system_error>
 
-#include "formatcontext.h"
-#include "codeccontext.h"
+#include "core/formatcontext.h"
+#include "core/codeccontext.h"
 
 namespace av {
 

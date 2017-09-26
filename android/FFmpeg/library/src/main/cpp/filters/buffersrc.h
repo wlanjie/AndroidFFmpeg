@@ -1,12 +1,12 @@
 #ifndef AV_BUFFERSRC_H
 #define AV_BUFFERSRC_H
 
-#include "ffmpeg.h"
+#include "core/ffmpeg.h"
 #include "filtercontext.h"
 #include "filter.h"
-#include "rational.h"
-#include "frame.h"
-#include "averror.h"
+#include "core/rational.h"
+#include "core/frame.h"
+#include "core/averror.h"
 
 namespace av {
 

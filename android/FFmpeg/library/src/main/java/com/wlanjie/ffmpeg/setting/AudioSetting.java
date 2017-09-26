@@ -7,12 +7,11 @@ import android.media.MediaCodecInfo;
  * Created by wlanjie on 2017/6/14.
  */
 public class AudioSetting {
-  private int minBps = 32;
-  private int maxBps = 64;
+  private int bitRate = 32 * 1000;
   private int sampleRate = 44100;
   private int channelCount = 1;
   private int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
-  private int aacProfile = MediaCodecInfo.CodecProfileLevel.AACObjectLC;
+  private boolean aec = false;
 
   public boolean isAec() {
     return aec;
@@ -22,22 +21,12 @@ public class AudioSetting {
     this.aec = aec;
   }
 
-  private boolean aec = false;
-
-  public int getMinBps() {
-    return minBps;
+  public int getBitRate() {
+    return bitRate;
   }
 
-  public void setMinBps(int minBps) {
-    this.minBps = minBps;
-  }
-
-  public int getMaxBps() {
-    return maxBps;
-  }
-
-  public void setMaxBps(int maxBps) {
-    this.maxBps = maxBps;
+  public void setBitRate(int bitRate) {
+    this.bitRate = bitRate;
   }
 
   public int getSampleRate() {
@@ -62,13 +51,5 @@ public class AudioSetting {
 
   public void setAudioEncoding(int audioEncoding) {
     this.audioEncoding = audioEncoding;
-  }
-
-  public int getAacProfile() {
-    return aacProfile;
-  }
-
-  public void setAacProfile(int aacProfile) {
-    this.aacProfile = aacProfile;
   }
 }

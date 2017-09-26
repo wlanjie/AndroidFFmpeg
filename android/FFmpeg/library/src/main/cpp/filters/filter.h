@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "ffmpeg.h"
+#include "core/ffmpeg.h"
 #include "filterpad.h"
 
 extern "C" {

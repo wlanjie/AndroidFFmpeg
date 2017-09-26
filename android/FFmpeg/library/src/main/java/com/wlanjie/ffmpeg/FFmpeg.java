@@ -2,6 +2,9 @@ package com.wlanjie.ffmpeg;
 
 import android.graphics.Bitmap;
 
+import com.wlanjie.ffmpeg.setting.AudioSetting;
+import com.wlanjie.ffmpeg.setting.VideoSetting;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.List;
@@ -80,6 +83,8 @@ public class FFmpeg {
   public native int scale(int newWidth, int newHeight);
 
   public native Video getVideoInfo();
+
+  public native void setSetting(AudioSetting audioSetting, VideoSetting videoSetting);
 
   public native int beginSection();
 

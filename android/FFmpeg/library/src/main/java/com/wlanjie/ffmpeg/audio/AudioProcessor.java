@@ -30,6 +30,11 @@ public class AudioProcessor extends Thread {
     mStop = true;
     if (mAudioRecord != null) {
       mAudioRecord.stop();
+    }
+  }
+
+  public void destroy() {
+    if (mAudioRecord != null) {
       mAudioRecord.release();
       mAudioRecord = null;
     }

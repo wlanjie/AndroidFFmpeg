@@ -29,30 +29,31 @@ include_directories(${PROJECT_SOURCE_DIR})
 add_subdirectory(libyuv)
 
 file(GLOB WLANJIE_SOURCE ffmpegjni.cpp
-                         audioresampler.cpp
-                         averror.cpp
-                         avtime.cpp
-                         avutils.cpp
-                         codec.cpp
-                         codeccontext.cpp
-                         dictionary.cpp
-                         format.cpp
-                         formatcontext.cpp
-                         frame.cpp
-                         packet.cpp
-                         pixelformat.cpp
-                         rational.cpp
-                         rect.cpp
-                         sampleformat.cpp
-                         stream.cpp
-                         timestamp.cpp
-                         videorescaler.cpp
-                         filters/buffersink.cpp
-                         filters/buffersrc.cpp
-                         filters/filter.cpp
-                         filters/filtercontext.cpp
-                         filters/filtergraph.cpp
-                         filters/filterpad.cpp
+                         core/audioresampler.cpp
+                         core/averror.cpp
+                         core/avtime.cpp
+                         core/avutils.cpp
+                         core/codec.cpp
+                         core/codeccontext.cpp
+                         core/dictionary.cpp
+                         core/format.cpp
+                         core/formatcontext.cpp
+                         core/frame.cpp
+                         core/packet.cpp
+                         core/pixelformat.cpp
+                         core/rational.cpp
+                         core/rect.cpp
+                         core/sampleformat.cpp
+                         core/stream.cpp
+                         core/timestamp.cpp
+                         core/videorescaler.cpp
+                         core/filters/buffersink.cpp
+                         core/filters/buffersrc.cpp
+                         core/filters/filter.cpp
+                         core/filters/filtercontext.cpp
+                         core/filters/filtergraph.cpp
+                         core/filters/filterpad.cpp
+                         shortvideo.cpp
                          video.cpp)
 add_library(wlanjie SHARED ${WLANJIE_SOURCE})
 

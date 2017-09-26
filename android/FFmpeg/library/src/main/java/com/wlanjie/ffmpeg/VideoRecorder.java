@@ -54,6 +54,8 @@ public class VideoRecorder {
       }
     });
 
+    FFmpeg.getInstance().setSetting(audioSetting, videoSetting);
+
     mGLSurfaceView.setEGLContextClientVersion(2);
     mGLSurfaceView.setRenderer(mVideoRenderer);
     mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
@@ -84,6 +86,7 @@ public class VideoRecorder {
 
   public void onDestroy() {
     mVideoRenderer.destroy();
+    mAudioProcessor.destroy();
     FFmpeg.getInstance().release();
   }
 
@@ -95,8 +98,14 @@ public class VideoRecorder {
     if (mIsRecording) {
       return;
     }
-    FFmpeg.getInstance().openOutput(filePath);
-    FFmpeg.getInstance().beginSection();
+    int result = FFmpeg.getInstance().openOutput(filePath);
+    if (result != 0) {
+      return;
+    }
+    result = FFmpeg.getInstance().beginSection();
+    if (result != 0) {
+      return;
+    }
     mVideoRenderer.startEncoder();
     mVideoRenderer.setOnFrameListener(new VideoRenderer.OnFrameListener() {
       @Override

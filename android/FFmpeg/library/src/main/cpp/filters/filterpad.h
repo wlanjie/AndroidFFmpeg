@@ -5,8 +5,8 @@
 #include <memory>
 #include <type_traits>
 
-#include "ffmpeg.h"
-#include "avutils.h"
+#include "core/ffmpeg.h"
+#include "core/avutils.h"
 
 namespace av {
 
