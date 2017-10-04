@@ -54,7 +54,8 @@ file(GLOB WLANJIE_SOURCE ffmpegjni.cpp
                          core/filters/filtergraph.cpp
                          core/filters/filterpad.cpp
                          shortvideo.cpp
-                         video.cpp)
+                         video.cpp
+                         videorecorder.cpp)
 add_library(wlanjie SHARED ${WLANJIE_SOURCE})
 
 #link SDL2 library

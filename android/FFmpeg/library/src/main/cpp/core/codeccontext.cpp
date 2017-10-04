@@ -493,6 +493,14 @@ void CodecContext2::setTimeBase(const Rational &value) noexcept
     RAW_SET2(isValid() && !isOpened(), time_base, value.getValue());
 }
 
+void CodecContext2::setFrameRate(const Rational &value) noexcept {
+    RAW_SET2(isValid() && !isOpened(), framerate, value.getValue());
+}
+
+Rational CodecContext2::frameRate() const noexcept {
+    return RAW_GET2(isValid(), framerate, AVRational());
+}
+
 const Stream &CodecContext2::stream() const noexcept
 {
     return m_stream;

@@ -83,6 +83,9 @@ public:
     Rational timeBase() const noexcept;
     void setTimeBase(const Rational &value) noexcept;
 
+    void setFrameRate(const Rational &value) noexcept;
+    Rational frameRate() const noexcept;
+
     const Stream& stream() const noexcept;
     Codec codec() const noexcept;
 

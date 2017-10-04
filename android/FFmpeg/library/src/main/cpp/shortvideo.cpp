@@ -156,12 +156,23 @@ int ShortVideo::encodeVideo(uint8_t *videoFrame) {
         return ENCODING_VIDEO_ERROR;
     }
     if (videoPacket.isComplete()) {
+        // TODO
+        AVRational timeBase = videoEncoderContext->stream().timeBase();
+        AVRational frameRate = { arguments.videoFrameRate, 1 };
+        AVRational timeBaseQ = AV_TIME_BASE_Q;
+        int64_t duration = (int64_t) ((AV_TIME_BASE) * (1 / av_q2d(frameRate)));
+        int64_t nowTime = gettime() - start_time;
+        videoPacket.raw()->pts = av_rescale_q(nowTime, timeBaseQ, timeBase);;
+        videoPacket.raw()->dts = videoPacket.raw()->pts;
+        videoPacket.raw()->duration = av_rescale_q(duration, timeBaseQ, timeBase);
+
         outputContext.writePacket(videoPacket, ec);
         if (ec) {
             LOGE("write video packet error: %s.", ec.message().c_str());
             return WRITE_PACKET_ERROR;
         }
     }
+
     return SUCCESS;
 }
 
@@ -170,25 +181,28 @@ void ShortVideo::setArguments(Arguments &arg) {
 }
 
 int ShortVideo::initVideoEncoderContext() {
-    Codec videoCodec = findEncodingCodec(AV_CODEC_ID_H264);
+    Codec videoCodec = findEncodingCodec("libx264");
     Stream videoStream = outputContext.addStream(videoCodec, ec);
     if (ec) {
         LOGE("add video stream error %s", ec.message().c_str());
         return ADD_VIDEO_STREAM_ERROR;
     }
-    videoStream.setTimeBase(Rational( 1, arguments.videoFrameRate ));
-    // TODO
-    videoStream.setFrameRate(arguments.videoFrameRate);
+    videoStream.setTimeBase(Rational(1, 180000));
+    videoStream.setFrameRate(Rational(arguments.videoFrameRate, 1));
     videoEncoderContext = new VideoEncoderContext(videoStream);
     videoEncoderContext->setWidth(arguments.videoWidth);
     videoEncoderContext->setHeight(arguments.videoHeight);
-    videoEncoderContext->setMaxBFrames(3);
+    videoEncoderContext->setMaxBFrames(1);
     videoEncoderContext->setGopSize(arguments.videoGopSize);
     videoEncoderContext->setPixelFormat(AV_PIX_FMT_YUV420P);
-    videoEncoderContext->setTimeBase(videoStream.timeBase());
+    videoEncoderContext->setTimeBase(Rational(1, arguments.videoFrameRate));
+    videoEncoderContext->setFrameRate(Rational(arguments.videoFrameRate, 1));
+//    videoEncoderContext->raw()->qmin = 10;
+//    videoEncoderContext->raw()->qmax = 51;
     videoEncoderContext->setBitRate(arguments.videoBitRate);
     videoEncoderContext->addFlags(outputContext.outputFormat().isFlags(AVFMT_GLOBALHEADER) ? CODEC_FLAG_GLOBAL_HEADER : 0);
-    videoEncoderContext->setOption("preset", "ultrafast", ec);
+//    videoEncoderContext->raw()->thread_type = FF_THREAD_SLICE;
+    videoEncoderContext->setOption("preset", "slow", ec);
     if (ec) {
         LOGE("video encoder setOption error %s", ec.message().c_str());
         return SET_OPTION_ERROR;
@@ -201,6 +215,8 @@ int ShortVideo::initVideoEncoderContext() {
         LOGE("video encoder open error: %s.", ec.message().c_str());
         return OPEN_VIDEO_ENCODER_ERROR;
     }
+    outputContext.dump();
+    start_time = gettime();
     return SUCCESS;
 }
 

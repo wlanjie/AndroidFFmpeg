@@ -21,6 +21,7 @@
 #include "video.h"
 #include "arguments.h"
 #include "shortvideo.h"
+#include "videorecorder.h"
 
 #include "libyuv.h"
 
@@ -109,8 +110,10 @@ jint Android_JNI_openOutput(JNIEnv *env, jobject object, jstring path) {
     const char *output = env->GetStringUTFChars(path, 0);
     string uri(output);
     int result = shortVideo.openOutput(uri);
+//    VideoRecorder recorder;
+//    recorder.recorder((char *) output);
     env->ReleaseStringUTFChars(path, output);
-    return result;
+    return 0;
 }
 
 jobject Android_JNI_getVideoFrame(JNIEnv *env, jobject object) {

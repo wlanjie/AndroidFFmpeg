@@ -37,6 +37,7 @@ private:
 
     std::error_code ec;
 
+    int64_t start_time = 0;
     int audioNextPts;
     int videoNextPts;
 

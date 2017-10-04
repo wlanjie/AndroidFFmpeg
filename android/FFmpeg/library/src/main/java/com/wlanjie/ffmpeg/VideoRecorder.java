@@ -124,10 +124,10 @@ public class VideoRecorder {
   }
 
   public void stopRecorder() {
+    mIsRecording = false;
     FFmpeg.getInstance().endSection();
     mAudioProcessor.stopEncode();
     mVideoRenderer.stopEncoder();
-    mIsRecording = false;
   }
 
   class CallbackBridge implements CameraCallback {

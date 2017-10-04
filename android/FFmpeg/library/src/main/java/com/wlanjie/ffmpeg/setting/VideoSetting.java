@@ -5,11 +5,11 @@ package com.wlanjie.ffmpeg.setting;
  */ 
 public class VideoSetting {
  
-  private int videoWidth = 360;
-  private int videoHeight = 640;
+  private int videoWidth = 540;
+  private int videoHeight = 960;
   private int frameRate = 24;
-  private int gopSize = 2;
-  private int bitRate = 480 * 1000;
+  private int gopSize = frameRate * 2;
+  private int bitRate = 1200 * 1000;
 
   public int getVideoWidth() {
     return videoWidth;

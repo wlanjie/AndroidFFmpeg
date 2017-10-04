@@ -87,7 +87,7 @@ public class SimpleActivity extends Activity {
             Observable.create(new ObservableOnSubscribe<Integer>() {
               @Override
               public void subscribe(ObservableEmitter<Integer> e) throws Exception {
-                int result = FFmpeg.getInstance().openInput("/sdcard/DCIM/Camera/20170726_173615_5692.mp4");
+                int result = FFmpeg.getInstance().openInput("/sdcard/tencent/MicroMsg/WeiXin/wx_camera_1502880546390.mp4");
                 if (result != 0) {
                   e.onError(new RuntimeException());
                   return;

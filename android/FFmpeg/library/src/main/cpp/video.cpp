@@ -37,13 +37,13 @@ int Video::openInput(std::string uri) {
 
 int Video::openOutput(std::string uri) {
     outputUri = uri;
-//    outputFormat.setFormat("mp4");
-//    outputContext.setFormat(outputFormat);
-//    outputContext.openOutput(uri, ec);
-//    if (ec) {
-//        LOGE("Can't open output path: %s uri error: %s", uri.c_str(), ec.message().c_str());
-//        return OPEN_OUTPUT_ERROR;
-//    }
+    outputFormat.setFormat("mp4");
+    outputContext.setFormat(outputFormat);
+    outputContext.openOutput(uri, ec);
+    if (ec) {
+        LOGE("Can't open output path: %s uri error: %s", uri.c_str(), ec.message().c_str());
+        return OPEN_OUTPUT_ERROR;
+    }
     return SUCCESS;
 }
 
