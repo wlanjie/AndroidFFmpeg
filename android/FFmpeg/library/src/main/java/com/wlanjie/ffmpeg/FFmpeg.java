@@ -94,6 +94,8 @@ public class FFmpeg {
 
   public native int encoderAudio(byte[] audio);
 
+  public native int composeVideos(List<String> videoPath, String composePath);
+
   /**
    * 释放资源
    */

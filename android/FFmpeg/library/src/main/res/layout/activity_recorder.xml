@@ -8,11 +8,42 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
-    <Button
-        android:id="@+id/record"
-        android:layout_width="wrap_content"
+    <RelativeLayout
+        android:id="@+id/bottom_layout"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="16dp"
-        android:text="开始录制"/>
+        android:layout_gravity="bottom">
+
+        <CheckedTextView
+            android:id="@+id/record_delete"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="18dp"
+            android:background="@drawable/record_delete_selector"
+            android:button="@null"
+            android:visibility="visible" />
+
+        <TextView
+            android:id="@+id/record_controller"
+            android:layout_width="108dp"
+            android:layout_height="108dp"
+            android:layout_centerInParent="true"
+            android:background="@drawable/small_video_shoot"
+            android:gravity="center"
+            android:text="按住拍"
+            android:textColor="@android:color/holo_green_light"
+            android:textSize="16sp" />
+
+        <CheckedTextView
+            android:id="@+id/compose"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_centerVertical="true"
+            android:layout_alignParentRight="true"
+            android:layout_marginRight="18dp"
+            android:background="@android:drawable/ic_media_play"/>
+
+    </RelativeLayout>
+
 </FrameLayout>

@@ -24,6 +24,7 @@
 #include "videorecorder.h"
 
 #include "libyuv.h"
+#include "composevideo.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -226,6 +227,35 @@ int Android_JNI_endSection(JNIEnv *env, jobject object) {
     return shortVideo.endSection();
 }
 
+int Android_JNI_composeVideos(JNIEnv *env, jobject object, jobject listObject, jstring composePath) {
+    ComposeVideo composeVideo;
+    const char* composeUri = env->GetStringUTFChars(composePath, NULL);
+    jclass listClass = env->GetObjectClass(listObject);
+    int videoSize = env->CallIntMethod(listObject, env->GetMethodID(listClass, "size", "()I"));
+
+    std::vector<char*> inputVideoUri;
+
+    for (int i = 0; i < videoSize; ++i) {
+        jstring videoPath = (jstring) env->CallObjectMethod(listObject, env->GetMethodID(listClass, "get", "(I)Ljava/lang/Object;"), i);
+        const char* videoUri = env->GetStringUTFChars(videoPath, NULL);
+
+        char* uri = (char *) malloc(strlen(videoUri) + 1);
+        strcpy(uri, videoUri);
+        inputVideoUri.push_back(uri);
+
+        env->ReleaseStringUTFChars(videoPath, videoUri);
+        env->DeleteLocalRef(videoPath);
+    }
+
+//    composeVideo.composeVideo(inputVideoUri[0], inputVideoUri[1], (char *) composeUri);
+    shortVideo.composeVideo(inputVideoUri, (char *) composeUri);
+
+    env->ReleaseStringUTFChars(composePath, composeUri);
+    env->DeleteLocalRef(listClass);
+    LOGE("compose video done");
+    return 0;
+}
+
 static JNINativeMethod method[] = {
         { "openInput",              "(Ljava/lang/String;)I",                    (void *) Android_JNI_openInput },
         { "openOutput",             "(Ljava/lang/String;)I",                    (void *) Android_JNI_openOutput },
@@ -237,6 +267,7 @@ static JNINativeMethod method[] = {
         { "setSetting",             "(L" AUDIO_SETTING ";L" VIDEO_SETTING ";" ")V",       (void *) Android_JNI_setSetting },
         { "beginSection",           "()I",                                      (void *) Android_JNI_beginSection },
         { "endSection",             "()I",                                      (void *) Android_JNI_endSection },
+        { "composeVideos",          "(Ljava/util/List;Ljava/lang/String;)I",    (void *) Android_JNI_composeVideos },
         { "release",                "()V",                                      (void *) Android_JNI_release }
 };
 

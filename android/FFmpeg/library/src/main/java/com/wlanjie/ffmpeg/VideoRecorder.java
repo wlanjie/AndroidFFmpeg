@@ -17,6 +17,10 @@ import com.wlanjie.ffmpeg.setting.CameraSetting;
 import com.wlanjie.ffmpeg.setting.VideoSetting;
 import com.wlanjie.ffmpeg.video.VideoRenderer;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
 /**
  * Created by wlanjie on 2017/9/13.
  */
@@ -33,6 +37,7 @@ public class VideoRecorder {
   private LivingCamera mCamera;
   private CameraCallback mCameraCallback;
   private AudioProcessor mAudioProcessor;
+  private List<String> mVideos = new LinkedList<>();
 
   public VideoRecorder(Context context) {
     mVideoRenderer = new VideoRenderer(context);
@@ -121,6 +126,14 @@ public class VideoRecorder {
       }
     });
     mIsRecording = true;
+    mVideos.add(filePath);
+  }
+
+  public int compositeVideos(String composePath) {
+    List<String> videos = new ArrayList<>();
+    videos.add("/sdcard/a.mp4");
+    videos.add("/sdcard/b.mp4");
+    return FFmpeg.getInstance().composeVideos(mVideos, composePath);
   }
 
   public void stopRecorder() {

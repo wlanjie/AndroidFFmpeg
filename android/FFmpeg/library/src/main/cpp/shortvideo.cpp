@@ -2,6 +2,8 @@
 // Created by wlanjie on 2017/9/25.
 //
 
+#include <queue>
+
 #include "shortvideo.h"
 #include "log.h"
 #include "errorcode.h"
@@ -44,6 +46,7 @@ int ShortVideo::beginSection() {
 }
 
 int ShortVideo::endSection() {
+    LOGE("endSection");
     // flush
     while (true) {
         AudioSamples null(nullptr);
@@ -54,7 +57,6 @@ int ShortVideo::endSection() {
         outputContext.writePacket(audioPacket, ec);
         if (ec) {
             LOGE("flush video error: %s", ec.message().c_str());
-            return FLUSH_VIDEO_ERROR;
         }
     }
 
@@ -67,7 +69,6 @@ int ShortVideo::endSection() {
         outputContext.writePacket(videoPacket, ec);
         if (ec) {
             LOGE("flush audio error: %s", ec.message().c_str());
-            return FLUSH_AUDIO_ERROR;
         }
     }
 
@@ -127,20 +128,6 @@ int ShortVideo::encodeVideo(uint8_t *videoFrame) {
         LOGE("rgba to I420 error.");
         return RGBA_TO_I420_ERROR;
     }
-    result = libyuv::I420Rotate(
-            y, yStride,
-            u, uStride,
-            v, vStride,
-            y, yStride,
-            u, uStride,
-            v, vStride,
-            width, height,
-            libyuv::RotationMode::kRotate180
-    );
-    if (result != 0) {
-        LOGE("yuv rotate error.");
-        return RGBA_TO_I420_ERROR;
-    }
     VideoFrame outFrame(AV_PIX_FMT_YUV420P, width, height);
     outFrame.raw()->linesize[0] = yStride;
     outFrame.raw()->linesize[1] = uStride;
@@ -189,6 +176,11 @@ int ShortVideo::initVideoEncoderContext() {
     }
     videoStream.setTimeBase(Rational(1, 180000));
     videoStream.setFrameRate(Rational(arguments.videoFrameRate, 1));
+
+    char rotateStr[1024];
+    sprintf(rotateStr, "%d", 180);
+    av_dict_set(&videoStream.raw()->metadata, "rotate", rotateStr, 0);
+
     videoEncoderContext = new VideoEncoderContext(videoStream);
     videoEncoderContext->setWidth(arguments.videoWidth);
     videoEncoderContext->setHeight(arguments.videoHeight);
@@ -240,6 +232,151 @@ int ShortVideo::initAudioEncoderContext() {
         LOGE("audio encoder open error: %s.", ec.message().c_str());
         return OPEN_AUDIO_ENCODER_ERROR;
     }
+    return SUCCESS;
+}
+
+int ShortVideo::composeVideo(std::vector<char *> inputVideoUri, char* composeUri) {
+    FormatContext inputContext;
+    char* inputUri = inputVideoUri.front();
+    inputContext.openInput(inputUri, ec);
+    if (ec) {
+        LOGE("open input path: %s error: %s", inputUri, ec.message().c_str());
+        return OPEN_INPUT_ERROR;
+    }
+    inputContext.findStreamInfo(ec);
+    if (ec) {
+        LOGE("find stream error: %s path: %s", ec.message().c_str(), inputUri);
+        return FIND_STREAM_ERROR;
+    }
+
+    OutputFormat outputFormat("mp4");
+    outputContext.setFormat(outputFormat);
+    size_t videoStreamIndex;
+    size_t audioStreamIndex;
+    
+    for (size_t i = 0; i < inputContext.streamsCount(); ++i) {
+        auto stream = inputContext.stream(i);
+        auto codecContext = GenericCodecContext(stream);
+        if (!outputContext.outputFormat().codecSupported(codecContext.codec())) {
+            continue;
+        }
+        auto outputStream = outputContext.addStream(codecContext.codec(), ec);
+        if (ec) {
+            if (ec == Errors::FormatCodecUnsupported) {
+                continue;
+            } else {
+                LOGE("add stream error: %s", ec.message().c_str());
+                return ADD_VIDEO_STREAM_ERROR;
+            }
+        }
+        if (outputStream.mediaType() == AVMEDIA_TYPE_VIDEO) {
+            videoStreamIndex = i;
+            char rotateStr[1024];
+            sprintf(rotateStr, "%d", 180);
+            av_dict_set(&outputStream.raw()->metadata, "rotate", rotateStr, 0);
+        } else {
+            audioStreamIndex = i;
+        }
+        outputStream.setTimeBase(stream.timeBase());
+        auto outputCodecContext = GenericCodecContext(outputStream);
+        outputCodecContext.copyContextFrom(codecContext, ec);
+        if (ec) {
+            LOGE("copy context error: %s", ec.message().c_str());
+            return ADD_VIDEO_STREAM_ERROR;
+        }
+    }
+    inputVideoUri.erase(inputVideoUri.begin());
+    outputContext.openOutput(composeUri, ec);
+    if (ec) {
+        LOGE("open output error path: %s error: %s", composeUri, ec.message().c_str());
+        return OPEN_OUTPUT_ERROR;
+    }
+    outputContext.dump();
+    outputContext.writeHeader(ec);
+    if (ec) {
+        LOGE("write header error: %s", ec.message().c_str());
+        return WRITE_HEADER_ERROR;
+    }
+    int videoPts = 0;
+    int audioPts = 0;
+    int videoDts = 0;
+    int audioDts = 0;
+    while (1) {
+        auto packet = inputContext.readPacket(ec);
+        if (!packet) {
+            if (inputVideoUri.empty()) {
+                break;
+            } else {
+                float videoDuration = 0;
+                float audioDuration = 0;
+                size_t videoStreamIndex = 0;
+                size_t audioStreamIndex = 0;
+                for (size_t i = 0; i < inputContext.streamsCount(); ++i) {
+                    auto stream = inputContext.stream(i);
+                    if (stream.mediaType() == AVMEDIA_TYPE_VIDEO) {
+                        videoStreamIndex = i;
+                    } else if (stream.mediaType() == AVMEDIA_TYPE_AUDIO) {
+                        audioStreamIndex = i;
+                    }
+                }
+                videoDuration = (float) (av_q2d(inputContext.stream(videoStreamIndex).timeBase()) * videoPts);
+                audioDuration = (float) (av_q2d(inputContext.stream(audioStreamIndex).timeBase()) * audioPts);
+                if (audioDuration > videoDuration) {
+                    videoPts = (int) (audioDuration / av_q2d(inputContext.stream(videoStreamIndex).timeBase()));
+                    videoDts = videoPts;
+                    audioPts++;
+                    audioDts++;
+                } else {
+                    audioPts = (int) (videoDuration / av_q2d(inputContext.stream(audioStreamIndex).timeBase()));
+                    audioDts = videoPts;
+                    videoPts++;
+                    videoDts++;
+                }
+
+                inputContext.close();
+                inputContext.openInput(inputVideoUri.front(), ec);
+                if (ec) {
+                    LOGE("open input path: %s error: %s", inputUri, ec.message().c_str());
+                    return OPEN_INPUT_ERROR;
+                }
+                inputContext.findStreamInfo(ec);
+                if (ec) {
+                    LOGE("find stream error: %s path: %s", ec.message().c_str(), inputUri);
+                    return FIND_STREAM_ERROR;
+                }
+                inputVideoUri.erase(inputVideoUri.begin());
+                continue;
+            }
+        }
+        if (packet.streamIndex() == videoStreamIndex) {
+            if (strcmp(inputContext.raw()->filename, inputUri) != 0) {
+                packet.setPts(packet.pts().timestamp() + videoPts);
+                packet.setDts(packet.dts().timestamp() + videoDts);
+            } else {
+                videoPts = packet.pts().timestamp();
+                videoDts = packet.dts().timestamp();
+            }
+        } else if (packet.streamIndex() == audioStreamIndex) {
+            if (strcmp(inputContext.raw()->filename, inputUri) != 0) {
+                packet.setPts(packet.pts().timestamp() + audioPts);
+                packet.setDts(packet.dts().timestamp() + audioDts);
+            } else {
+                audioPts = packet.pts().timestamp();
+                audioDts = packet.dts().timestamp();
+            }
+        }
+
+        packet.raw()->pts = av_rescale_q_rnd(packet.pts().timestamp(), inputContext.stream(packet.streamIndex()).timeBase(), outputContext.stream(packet.streamIndex()).timeBase(), (AVRounding) (AV_ROUND_INF | AV_ROUND_PASS_MINMAX));
+        packet.raw()->dts = av_rescale_q_rnd(packet.pts().timestamp(), inputContext.stream(packet.streamIndex()).timeBase(), outputContext.stream(packet.streamIndex()).timeBase(), (AVRounding) (AV_ROUND_INF | AV_ROUND_PASS_MINMAX));
+        packet.raw()->pos = -1;
+        outputContext.writePacket(packet, ec);
+        if (ec) {
+            LOGE("write packet error: %s", ec.message().c_str());
+        }
+    }
+    outputContext.writeTrailer(ec);
+    inputContext.close();
+    outputContext.close();
     return SUCCESS;
 }
 

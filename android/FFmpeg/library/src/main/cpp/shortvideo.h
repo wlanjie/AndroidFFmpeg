@@ -24,6 +24,7 @@ public:
     int encodeAudio(uint8_t *audioFrame);
     int encodeVideo(uint8_t *videoFrame);
     void setArguments(Arguments& arg);
+    int composeVideo(std::vector<char*> inputVideoUri, char* composeUri);
     void close();
 
 private:
@@ -31,6 +32,7 @@ private:
     int initAudioEncoderContext();
 
 private:
+    FormatContext inputContext;
     FormatContext outputContext;
     VideoEncoderContext *videoEncoderContext;
     AudioEncoderContext *audioEncoderContext;
