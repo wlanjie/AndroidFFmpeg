@@ -24,7 +24,6 @@
 #include "videorecorder.h"
 
 #include "libyuv.h"
-#include "composevideo.h"
 
 #ifndef NELEM
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -228,7 +227,6 @@ int Android_JNI_endSection(JNIEnv *env, jobject object) {
 }
 
 int Android_JNI_composeVideos(JNIEnv *env, jobject object, jobject listObject, jstring composePath) {
-    ComposeVideo composeVideo;
     const char* composeUri = env->GetStringUTFChars(composePath, NULL);
     jclass listClass = env->GetObjectClass(listObject);
     int videoSize = env->CallIntMethod(listObject, env->GetMethodID(listClass, "size", "()I"));

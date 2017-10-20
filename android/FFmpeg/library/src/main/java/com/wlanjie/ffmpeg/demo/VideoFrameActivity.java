@@ -38,7 +38,7 @@ public class VideoFrameActivity extends Activity {
     Observable.create(new ObservableOnSubscribe<List<Bitmap>>() {
       @Override
       public void subscribe(ObservableEmitter<List<Bitmap>> e) throws Exception {
-        int result = FFmpeg.getInstance().openInput("/sdcard/output.mp4");
+        int result = FFmpeg.getInstance().openInput("/sdcard/a.mp4");
         if (result != 0) {
           e.onError(new RuntimeException());
           return;
